@@ -1,5 +1,4 @@
 .env
 tools/stakeholder-sim/output/
-.venv/
-__pycache__/
-*.py[cod]
+tools/stakeholder-sim/node_modules/
+tools/stakeholder-sim/dist/

@@ -1,0 +1,28 @@
+{
+  "name": "smartrail-stakeholder-sim",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+  },
+  "scripts": {
+    "panel": "tsx src/panel.ts",
+    "review": "tsx src/review-panel.ts",
+    "smoke": "tsx src/smoke-test.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@langchain/core": "^1.2.14",
+    "@langchain/google-genai": "^2.3.2",
+    "dotenv": "^18.0.5",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}
