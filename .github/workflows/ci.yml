@@ -50,7 +50,7 @@ jobs:
           load: ${{ github.ref != 'refs/heads/main' }}
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE }}:${{ github.sha }}
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@v0.36.0
         if: github.ref != 'refs/heads/main'
         with: { image-ref: "${{ env.IMAGE }}:${{ github.sha }}", severity: "CRITICAL,HIGH", exit-code: "1", ignore-unfixed: true }
   deploy-staging:
