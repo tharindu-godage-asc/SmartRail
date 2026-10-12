@@ -4,7 +4,7 @@ namespace: smartrail-prod
 resources: [../../base]
 images:
   - name: ghcr.io/tharindu-godage-asc/smartrail-api
-    newTag: 4d681a0109455d074932969ba31ba77dc648b399
+    newTag: 942ffbf8fd6366bae25c7e41b667ddd6050a50f0
 patches:
   - target: { kind: Deployment, name: smartrail-api }
     patch: |-
