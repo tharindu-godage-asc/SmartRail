@@ -1,0 +1,67 @@
+name: ci
+on:
+  push: { branches: [main, develop] }
+  pull_request:
+permissions:
+  contents: write        # lets the deploy job update the staging image tag
+  packages: write        # push to GHCR
+  security-events: write # CodeQL
+env:
+  IMAGE: ghcr.io/${{ github.repository_tharindu-godage-asc }}/smartrail-api
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: smartrail-platform } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: 10.0.x }
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release -warnaserror
+      - run: dotnet test --no-build -c Release --collect:"XPlat Code Coverage" --results-directory ./coverage
+      - run: dotnet list package --vulnerable --include-transitive 2>&1 | tee vuln.txt; ! grep -q "has the following vulnerable packages" vuln.txt
+      - uses: actions/upload-artifact@v4
+        with: { name: coverage, path: smartrail-platform/coverage }
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: github/codeql-action/init@v3
+        with: { languages: csharp }
+      - uses: github/codeql-action/autobuild@v3
+        with: { working-directory: smartrail-platform }
+      - uses: github/codeql-action/analyze@v3
+  image:
+    needs: [build-test, security]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: github.ref == 'refs/heads/main'
+        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: docker/build-push-action@v6
+        with:
+          context: smartrail-platform
+          file: smartrail-platform/src/SmartRail.Api/Dockerfile
+          load: ${{ github.ref != 'refs/heads/main' }}
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+      - uses: aquasecurity/trivy-action@0.28.0
+        if: github.ref != 'refs/heads/main'
+        with: { image-ref: "${{ env.IMAGE }}:${{ github.sha }}", severity: "CRITICAL,HIGH", exit-code: "1", ignore-unfixed: true }
+  deploy-staging:
+    # GitOps: CI only edits the image tag in deploy/overlays/staging. Argo CD pulls the change into the cluster.
+    needs: image
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          cd smartrail-platform/deploy/overlays/staging
+          sed -i "s|newTag: .*|newTag: ${GITHUB_SHA}|" kustomization.yaml
+          git config user.name "ci-bot" && git config user.email "ci-bot@users.noreply.github.com"
+          git commit -am "deploy: staging ${GITHUB_SHA::7} [skip ci]" && git push

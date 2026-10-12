@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: smartrail-api }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: smartrail-api } }
+  template:
+    metadata: { labels: { app: smartrail-api } }
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/tharindu-godage-asc/smartrail-api
+          ports: [{ containerPort: 8080 }]
+          env:
+            - { name: DEPLOYMENT_ENVIRONMENT, value: base }
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://otel-collector.observability:4317" }
+            - { name: OTEL_EXPORTER_OTLP_PROTOCOL, value: grpc }
+          readinessProbe: { httpGet: { path: /health/ready, port: 8080 }, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health/live, port: 8080 }, periodSeconds: 20 }
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 384Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: smartrail-api }
+spec:
+  selector: { app: smartrail-api }
+  ports: [{ port: 80, targetPort: 8080 }]

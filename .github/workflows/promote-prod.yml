@@ -1,0 +1,15 @@
+name: promote-prod
+# Manual promotion: copies the image tag that is running in staging to prod. Argo CD then syncs prod (manual sync).
+on:
+  workflow_dispatch:
+permissions: { contents: write }
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          TAG=$(grep -oP 'newTag: \K.*' smartrail-platform/deploy/overlays/staging/kustomization.yaml)
+          sed -i "s|newTag: .*|newTag: ${TAG}|" smartrail-platform/deploy/overlays/prod/kustomization.yaml
+          git config user.name "ci-bot" && git config user.email "ci-bot@users.noreply.github.com"
+          git commit -am "deploy: prod ${TAG::7} [skip ci]" && git push

@@ -1,0 +1,40 @@
+# Local "dev" environment: API + Postgres + observability stack.
+# Start:  docker compose up --build        Grafana: http://localhost:3000   API: http://localhost:8080
+services:
+  api:
+    build: { context: ., dockerfile: src/SmartRail.Api/Dockerfile }
+    environment:
+      DEPLOYMENT_ENVIRONMENT: dev
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+    ports: ["8080:8080"]
+    depends_on: [postgres, otel-collector]
+  postgres:
+    image: postgres:17
+    environment: { POSTGRES_USER: smartrail, POSTGRES_PASSWORD: smartrail-dev-only, POSTGRES_DB: smartrail }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    ports: ["5432:5432"]
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes: ["./observability/otel-collector.yaml:/etc/otel/config.yaml:ro"]
+    depends_on: [prometheus, loki, tempo]
+  prometheus:
+    image: prom/prometheus:latest
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--web.enable-remote-write-receiver"]
+    volumes: ["./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+  loki:
+    image: grafana/loki:latest
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+  tempo:
+    image: grafana/tempo:latest
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes: ["./observability/tempo.yaml:/etc/tempo/tempo.yaml:ro"]
+  grafana:
+    image: grafana/grafana:latest
+    environment: { GF_AUTH_ANONYMOUS_ENABLED: "true", GF_AUTH_ANONYMOUS_ORG_ROLE: Admin }
+    volumes: ["./observability/grafana/provisioning:/etc/grafana/provisioning:ro"]
+    ports: ["3000:3000"]
+    depends_on: [prometheus, loki, tempo]
+volumes:
+  pgdata:

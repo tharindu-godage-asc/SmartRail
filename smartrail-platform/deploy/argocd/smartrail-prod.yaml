@@ -1,0 +1,9 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: { name: smartrail-prod, namespace: argocd }
+spec:
+  project: default
+  source: { repoURL: "https://github.com/tharindu-godage-asc/smartrail.git", targetRevision: main, path: smartrail-platform/deploy/overlays/prod }
+  destination: { server: "https://kubernetes.default.svc", namespace: smartrail-prod }
+  # No automated sync: production is synced by hand after checking staging.
+  syncPolicy: { syncOptions: [CreateNamespace=true] }
