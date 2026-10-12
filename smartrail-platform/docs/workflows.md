@@ -4,7 +4,7 @@ SmartRail has three automations, all defined under `.github/` at the repo root:
 
 | # | File | Trigger | Purpose |
 |---|------|---------|---------|
-| 1 | `workflows/ci.yml` | Push to `main` / `develop`, any pull request | Build, test, scan, publish the image, deploy to staging |
+| 1 | `workflows/ci.yml` | Push to `main` / `develop`, any pull request | Build, test, scan, publish the image, deploy to dev, test and staging |
 | 2 | `workflows/promote-prod.yml` | Manual (`workflow_dispatch`) | Promote the staging image tag to prod |
 | 3 | `dependabot.yml` | Weekly schedule | Open PRs for dependency updates |
 
@@ -13,7 +13,7 @@ files in git (an image tag), and Argo CD pulls that change into Kubernetes.
 
 ```
  PR / push ──► build-test ┐
-                          ├─► image ──► deploy-staging ──► Argo CD ──► staging
+                          ├─► image ──► deploy-nonprod ──► Argo CD ──► dev, test, staging
               security ───┘     │            (main only)
                                 └─ PRs: build + Trivy scan, no push
 
@@ -60,11 +60,11 @@ Starts only when `build-test` **and** `security` both pass.
 
 Images are tagged with the full commit SHA, so every image maps to exactly one commit.
 
-#### `deploy-staging`
+#### `deploy-nonprod`
 Runs on `main` only, after `image` succeeds.
 
-Edits `newTag:` in `smartrail-platform/deploy/overlays/staging/kustomization.yaml` to the
-new commit SHA, then commits and pushes it as `ci-bot`. The commit message contains
+Edits `newTag:` in the `dev`, `test` and `staging` overlays (under `smartrail-platform/deploy/overlays/`) to the
+new commit SHA in one commit, then pushes it as `ci-bot`. The commit message contains
 `[skip ci]`, so it does not trigger another run. Argo CD sees the change and syncs staging
 automatically.
 
@@ -109,13 +109,11 @@ passes the tests and clears the security scans.
 
 | Env | Deployed by | Sync |
 |-----|-------------|------|
-| dev | Argo CD app `smartrail-dev` | automatic (tag edited by hand) |
-| test | Argo CD app `smartrail-test` | automatic (tag edited by hand) |
-| staging | `ci.yml` → `deploy-staging` | automatic |
+| dev | `ci.yml` → `deploy-nonprod` | automatic |
+| test | `ci.yml` → `deploy-nonprod` | automatic |
+| staging | `ci.yml` → `deploy-nonprod` | automatic |
 | prod | `promote-prod.yml` | **manual** in Argo CD |
 
-Dev and test are not updated by CI yet. Change their `newTag` in
-`smartrail-platform/deploy/overlays/<env>/kustomization.yaml` to deploy to them.
 
 ## One-time setup checklist
 

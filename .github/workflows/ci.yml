@@ -53,15 +53,18 @@ jobs:
       - uses: aquasecurity/trivy-action@v0.36.0
         if: github.ref != 'refs/heads/main'
         with: { image-ref: "${{ env.IMAGE }}:${{ github.sha }}", severity: "CRITICAL,HIGH", exit-code: "1", ignore-unfixed: true }
-  deploy-staging:
-    # GitOps: CI only edits the image tag in deploy/overlays/staging. Argo CD pulls the change into the cluster.
+  deploy-nonprod:
+    # GitOps: CI only edits the image tag in the dev, test and staging overlays. Argo CD pulls the change into the cluster.
+    # Prod is never touched here; it is promoted manually with the promote-prod workflow.
     needs: image
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: |
-          cd smartrail-platform/deploy/overlays/staging
-          sed -i "s|newTag: .*|newTag: ${GITHUB_SHA}|" kustomization.yaml
+          for env in dev test staging; do
+            sed -i "s|newTag: .*|newTag: ${GITHUB_SHA}|" smartrail-platform/deploy/overlays/${env}/kustomization.yaml
+          done
           git config user.name "ci-bot" && git config user.email "ci-bot@users.noreply.github.com"
-          git commit -am "deploy: staging ${GITHUB_SHA::7} [skip ci]" && git push
+          git commit -am "deploy: dev, test, staging ${GITHUB_SHA::7} [skip ci]"
+          git pull --rebase && git push
