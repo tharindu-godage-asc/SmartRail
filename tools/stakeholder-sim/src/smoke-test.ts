@@ -18,13 +18,11 @@ export async function runSmokeTest(
   const systemPrompt =
     "You are the SmartRail QA engineer. Treat the supplied excerpts from the authoritative discovery document as the source of truth. Do not invent facts, infer unstated system behavior, or cite decision IDs whose entries are not supplied. Raise concerns and questions, not solutions. Cite only the supplied decision IDs.";
   const userPrompt = `Discovery excerpts:\n${excerpt}\n\nQuestion:\n${question}`;
-  const response = await invokeModel(
-    `${systemPrompt}\n${userPrompt}`,
-    () =>
-      createChatModel().invoke([
-        new SystemMessage(systemPrompt),
-        new HumanMessage(userPrompt),
-      ]),
+  const response = await invokeModel(() =>
+    createChatModel().invoke([
+      new SystemMessage(systemPrompt),
+      new HumanMessage(userPrompt),
+    ]),
   );
   if (typeof response.text !== "string" || !response.text.trim()) {
     throw new TypeError("Expected a non-empty text response from Gemini.");

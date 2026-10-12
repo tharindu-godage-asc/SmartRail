@@ -306,7 +306,7 @@ export async function loadDiscovery(): Promise<string> {
   return readFile(DISCOVERY_PATH, "utf8");
 }
 
-async function loadPersona(role: PanelRole): Promise<string> {
+export async function loadPersona(role: PanelRole): Promise<string> {
   return readFile(resolve(PERSONAS_DIR, `${role.slug}.md`), "utf8");
 }
 
@@ -378,7 +378,7 @@ export function buildDiscoveryExcerpt(
   ].filter(Boolean).join("\n\n");
 }
 
-function sourceMaterial(discoveryExcerpt: string, persona: string): string {
+export function sourceMaterial(discoveryExcerpt: string, persona: string): string {
   return [
     "AUTHORITATIVE SOURCE — the excerpts below come from SmartRail's discovery document and are the source of truth. Do not invent facts or treat omitted requirements as settled.",
     "The role persona is only a concise perspective. If it differs from discovery, follow discovery and flag the discrepancy.",
@@ -387,7 +387,7 @@ function sourceMaterial(discoveryExcerpt: string, persona: string): string {
   ].join("\n");
 }
 
-async function generateText(
+export async function generateText(
   systemPrompt: string,
   userPrompt: string,
 ): Promise<string> {
@@ -395,10 +395,7 @@ async function generateText(
     new SystemMessage(systemPrompt),
     new HumanMessage(userPrompt),
   ];
-  const response = await invokeModel(
-    `${systemPrompt}\n${userPrompt}`,
-    () => createChatModel().invoke(messages),
-  );
+  const response = await invokeModel(() => createChatModel().invoke(messages));
   const answer = response.text;
   if (typeof answer !== "string" || answer.trim().length === 0) {
     throw new TypeError("Expected a non-empty text response from Gemini.");
@@ -418,10 +415,7 @@ async function generateFinding(
     new SystemMessage(systemPrompt),
     new HumanMessage(userPrompt),
   ];
-  const finding = await invokeModel(
-    `${systemPrompt}\n${userPrompt}`,
-    () => model.invoke(messages),
-  );
+  const finding = await invokeModel(() => model.invoke(messages));
   return validateFinding(finding, decisionIds);
 }
 
