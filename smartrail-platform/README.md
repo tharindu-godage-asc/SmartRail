@@ -14,7 +14,7 @@ Written on 12 Oct 2026 without a .NET SDK or Docker available, so nothing here h
 1. Install .NET 10 SDK, Docker, kind, kubectl (and Argo CD CLI if wanted). If you use an older SDK, change `TargetFramework` in `Directory.Build.props` and the Dockerfile image tags.
 2. `./scripts/bootstrap.sh` creates the solution, adds packages, builds and runs the tests.
 3. `docker compose up --build`. API at http://localhost:8080/api/v1/status, Grafana at http://localhost:3000 (anonymous admin, dev only).
-4. In Grafana, Explore, pick Prometheus, Loki or Tempo and filter by `deployment_environment="dev"`.
+4. In Grafana, Explore, pick Prometheus, Loki or Tempo and filter by `deployment_environment`: `local` is this Docker Compose stack; `dev`, `test`, `staging` and `prod` are the Kubernetes environments.
 
 ## GitOps on your machine
 1. Replace `OWNER` in `deploy/` and `.github/` with your GitHub user or organisation, and push the repository.

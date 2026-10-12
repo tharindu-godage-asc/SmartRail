@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        # DEPLOY_TOKEN (optional) lets this push bypass branch protection on main; see docs/branch-protection.md.
+        with: { token: "${{ secrets.DEPLOY_TOKEN || secrets.GITHUB_TOKEN }}" }
       - run: |
           TAG=$(grep -oP 'newTag: \K.*' smartrail-platform/deploy/overlays/staging/kustomization.yaml)
           sed -i "s|newTag: .*|newTag: ${TAG}|" smartrail-platform/deploy/overlays/prod/kustomization.yaml

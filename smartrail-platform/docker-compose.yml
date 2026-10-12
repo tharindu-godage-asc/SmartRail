@@ -1,10 +1,10 @@
-# Local "dev" environment: API + Postgres + observability stack.
+# Local "local" environment (separate from the cluster's dev): API + Postgres + observability stack.
 # Start:  docker compose up --build        Grafana: http://localhost:3000   API: http://localhost:8080
 services:
   api:
     build: { context: ., dockerfile: src/SmartRail.Api/Dockerfile }
     environment:
-      DEPLOYMENT_ENVIRONMENT: dev
+      DEPLOYMENT_ENVIRONMENT: local
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
     ports: ["8080:8080"]
