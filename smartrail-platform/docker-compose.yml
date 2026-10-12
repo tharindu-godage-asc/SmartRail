@@ -17,6 +17,7 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otel/config.yaml"]
+    ports: ["4317:4317"]
     volumes: ["./observability/otel-collector.yaml:/etc/otel/config.yaml:ro"]
     depends_on: [prometheus, loki, tempo]
   prometheus:
