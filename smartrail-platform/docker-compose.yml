@@ -8,8 +8,8 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       # Runtime connection: the smartrail_app role (DML only). Migrations use the admin user. Development-only passwords.
-      ConnectionStrings__Smartrail: "Host=postgres;Port=5432;Database=smartrail;Username=smartrail_app;Password=smartrail-app-dev-only"
-      ConnectionStrings__SmartrailMigrations: "Host=postgres;Port=5432;Database=smartrail;Username=smartrail;Password=smartrail-dev-only"
+      ConnectionStrings__Smartrail: "Host=postgres;Port=5432;Database=smartrail;Username=smartrail_app;Password=smartrail-app-dev-only;Gss Encryption Mode=Disable"
+      ConnectionStrings__SmartrailMigrations: "Host=postgres;Port=5432;Database=smartrail;Username=smartrail;Password=smartrail-dev-only;Gss Encryption Mode=Disable"
       # Only this stack applies migrations and loads the demo journey on startup; the cluster and prod never set these.
       Database__ApplyMigrationsOnStartup: "true"
       Seeding__DemoData: "true"

@@ -147,19 +147,19 @@ Names and columns follow [smartrail-schema.sql](smartrail-schema.sql) exactly (i
 | Tests cannot clean up by TRUNCATE | Each test class uses its own fresh database (section 10.3) |
 
 ## 9) Acceptance Criteria
-- [ ] On an empty Postgres, applying `0001_initial` creates exactly the 13 tables in section 5 and no others (plus EF's `__EFMigrationsHistory`).
-- [ ] `dotnet ef migrations script` produces SQL with the unique indexes, CHECK constraints, the trigger and the revokes.
-- [ ] The Compose Postgres image is pinned to PostgreSQL 13 or later (currently `postgres:17`), because `gen_random_uuid()` is built in only from 13; the Testcontainers fixture uses the same image tag.
-- [ ] Reference seed gives 3 languages, 1 line, 5 stations with Sinhala and Tamil translations and 2 platforms each, services 8058 (5 stops) and 8061 (3 stops, no Ragama or Maradana).
-- [ ] With `Seeding:DemoData` on, today's journey 8058 exists with status Scheduled, one operator assignment covering the whole operating day and 5 Pending stop states; running the seeder twice adds nothing. With the flag off nothing demo is created.
-- [ ] An UPDATE or DELETE on `train_event` fails with the trigger's error as the admin user and as `smartrail_app`; TRUNCATE fails too; `smartrail_app` can SELECT and INSERT.
-- [ ] `smartrail_app` can SELECT, INSERT, UPDATE and DELETE on an ordinary table (for example `journey`), including a table the admin user creates after the init script ran, and can only SELECT on `__EFMigrationsHistory`.
-- [ ] A migration run without the `smartrail_app` role fails with a clear error.
-- [ ] After `docker compose down -v` and `up`, pgAdmin shows databases `smartrail` and `keycloak`, and `keycloak` has no SmartRail tables.
-- [ ] `/health/ready` is 200 with the database up and migrated, 503 with it down or behind on migrations, and 200 with no connection string configured.
-- [ ] The cluster apps (dev, test, staging) stay Synced and Healthy after this merges.
-- [ ] CLAUDE.md lists the `dotnet ef` commands (restore tool, add migration, update database, script, remove last migration) and the two flags.
-- [ ] CI is green: build with `-warnaserror`, vulnerable-package check, and the Testcontainers database tests.
+- [x] On an empty Postgres, applying `0001_initial` creates exactly the 13 tables in section 5 and no others (plus EF's `__EFMigrationsHistory`).
+- [x] `dotnet ef migrations script` produces SQL with the unique indexes, CHECK constraints, the trigger and the revokes.
+- [x] The Compose Postgres image is pinned to PostgreSQL 13 or later (currently `postgres:17`), because `gen_random_uuid()` is built in only from 13; the Testcontainers fixture uses the same image tag.
+- [x] Reference seed gives 3 languages, 1 line, 5 stations with Sinhala and Tamil translations and 2 platforms each, services 8058 (5 stops) and 8061 (3 stops, no Ragama or Maradana).
+- [x] With `Seeding:DemoData` on, today's journey 8058 exists with status Scheduled, one operator assignment covering the whole operating day and 5 Pending stop states; running the seeder twice adds nothing. With the flag off nothing demo is created.
+- [x] An UPDATE or DELETE on `train_event` fails with the trigger's error as the admin user and as `smartrail_app`; TRUNCATE fails too; `smartrail_app` can SELECT and INSERT.
+- [x] `smartrail_app` can SELECT, INSERT, UPDATE and DELETE on an ordinary table (for example `journey`), including a table the admin user creates after the init script ran, and can only SELECT on `__EFMigrationsHistory`.
+- [x] A migration run without the `smartrail_app` role fails with a clear error.
+- [x] After `docker compose down -v` and `up`, pgAdmin shows databases `smartrail` and `keycloak`, and `keycloak` has no SmartRail tables. (Verified 2026-10-13 against the real Compose stack, via psql instead of pgAdmin.)
+- [x] `/health/ready` is 200 with the database up and migrated, 503 with it down or behind on migrations, and 200 with no connection string configured.
+- [ ] The cluster apps (dev, test, staging) stay Synced and Healthy after this merges. (Checked so far: the same image with no database settings stays Ready, 200 on ready, live and status. Confirm in Argo CD after the merge.)
+- [x] CLAUDE.md lists the `dotnet ef` commands (restore tool, add migration, update database, script, remove last migration) and the two flags.
+- [ ] CI is green: build with `-warnaserror`, vulnerable-package check, and the Testcontainers database tests. (Local: build with warnings as errors, vulnerable-package scan and all 47 tests pass. Confirm on the pull request.)
 
 ## 10) Test Plan
 ### 10.1 Fixture data
