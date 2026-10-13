@@ -89,9 +89,9 @@ Feature folders, no cross-feature references:
 - Telemetry: counter `smartrail.events.received` (tags: event_type, outcome = recorded | duplicate | rejected, deployment.environment); histogram `smartrail.events.report_to_visible_seconds` (NFR-04); a span per command; log fields journeyId, clientEventId (never the token).
 ### Migration and seed (moved to its own spec)
 The migration and seed are now specified in `_specs/database-foundation.md` and must be built **before** this slice. The list below is kept for reference and matches that spec.
-- Migration `0001_initial`: language, line, station, platform, line_station, train_service, service_stop, journey, operator_assignment, journey_stop_state, train_event, plus the append-only trigger and role grants. Do NOT include `order_reference` (D-71), tickets, payments, menu or outbox tables yet.
+- Migration `0001_initial` (13 tables): language, line, line_translation, station, station_translation, platform, line_station, train_service, service_stop, journey, operator_assignment, journey_stop_state, train_event, plus the append-only trigger and the revokes on `train_event` (the role `smartrail_app` gets default privileges from the Compose init script). Do NOT include `controller_assignment` (added by the controller-in-charge slice), `order_reference` (D-71), tickets, payments, menu or outbox tables yet.
 - Seed, reference layer (every environment): Sinhala/Tamil/English languages; the seeded line with its stations (Veyangoda, Gampaha, Ragama, Maradana, Colombo Fort), platforms, service 8058 with stop times and designated arrival stops, an express service that skips stops (FR-15).
-- Seed, demo layer (dev, test, staging only): journey 8058 for the controllable clock's date, Unassigned → one operator assignment (Nimal), stop states Pending. Keep demo seed out of prod.
+- Seed, demo layer (only where `Seeding:DemoData` is true, which Compose sets and the cluster does not): journey 8058 for the controllable clock's date with status Scheduled, one operator assignment for Nimal covering the whole operating day, stop states Pending. Keep demo seed out of prod.
 - Clients depending on this: the Flutter operator app (later), the passenger app and displays (later), the controller dashboard.
 
 ## 8) Edge Cases handled in this slice
@@ -121,7 +121,7 @@ Deferred to slice 2: EC-05, EC-07, EC-08 (exceptions).
 
 ## 10) Test Plan
 ### 10.1 Seed and fixture data
-Fixed test clock set to 2026-10-06 08:20 (Tuesday). Service 8058: Veyangoda 08:20, Gampaha 08:30, Ragama 08:42, Maradana 08:50, Colombo Fort 08:55 (use the real seeded times; these are placeholders ❓ check against your seed). Nimal assigned 08:00–10:00. A second operator with no assignment.
+Fixed test clock set to 2026-10-06 08:20 (Tuesday). Service 8058 uses the times in `database-foundation.md` §7 (Veyangoda dep 08:20; Gampaha arr 08:30 dep 08:31; Ragama arr 08:42 dep 08:43; Maradana arr 08:50 dep 08:51; Colombo Fort arr 08:55). The demo seed assigns Nimal for the whole operating day (00:00 to 24:00 Asia/Colombo), so manual testing works at any time; for the assignment-window edge tests (R1) the test creates its own assignment (for example 08:00–10:00) rather than relying on the demo seed. A second operator has no assignment.
 ### 10.2 Unit tests (Domain/Application, no database)
 Assignment window edges (equal to valid_from, equal to valid_to); time limits at exactly +1 min and −8 h; delay and ETA calculation (+8 → each remaining stop +8; early departure clamps to 0); On time at ±2, Delayed at +3; forward skip marks intermediate stops Inferred; out-of-order arrival gives the same final state.
 ### 10.3 Integration tests (WebApplicationFactory + Postgres in Testcontainers)
@@ -135,5 +135,5 @@ Happy path; duplicate; no token; wrong role; not assigned; Unassigned journey; i
 - ❓ Q1: Poll only in slice 1, SignalR in slice 2? (recommended, keeps the first slice small; NFR-04 is met by polling every 10 s)
 - ❓ Q2: Routes and response shape as proposed in section 4, or do you already have names?
 - ❓ Q3: Should invalid-order reports (backward, conflicting time) be stored as exceptions already, or wait for slice 2? (recommended: wait)
-- ❓ Q4: Use the real 8058 stop times from your seed in 10.1, not the placeholders above (the seed times are Q5 of `database-foundation.md`).
+- Q4 (settled 13 Oct): the 8058 stop times come from `database-foundation.md` §7.
 - Decision owner: tharindu, by 13 Oct so the migration can start.
