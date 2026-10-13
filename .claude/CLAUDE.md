@@ -28,6 +28,7 @@ SmartRail is a public railway passenger and operations platform (individual asse
   - `docs/` ADRs (ADR-15 delivery, ADR-16 mobile), `workflows.md`, `branch-protection.md`
   - `deploy/` Kustomize base and overlays, Argo CD apps, kind config, in-cluster collector
   - `observability/` collector, Prometheus, Tempo and Grafana config; `scripts/` `bootstrap.sh`, `bootstrap-cluster.sh`
+  - `docker/postgres/init/` SQL that Compose and the integration tests both run: roles, the `keycloak` database, default privileges
 - `.github/` workflows and Dependabot config (repo root, not under `smartrail-platform/`).
 - `tools/stakeholder-sim/` the stakeholder simulation tool (Node).
 
@@ -37,7 +38,14 @@ Run from `smartrail-platform/` unless noted.
 - Test: `dotnet test`
 - Run local stack: `docker compose up --build` (API on http://localhost:8080, Grafana on http://localhost:3000)
 - Create or repair the cluster: `./scripts/bootstrap-cluster.sh` (Git Bash; safe to re-run)
-- Migrations: TODO add the exact `dotnet ef` commands once the first migration exists
+- Database (EF Core, Postgres). Restore the pinned tool once: `dotnet tool restore`. The tool commands use `--project src/SmartRail.Infrastructure --startup-project src/SmartRail.Api`:
+  - Add a migration: `dotnet ef migrations add <Name> --project src/SmartRail.Infrastructure --startup-project src/SmartRail.Api --output-dir Persistence/Migrations`
+  - Apply to the Compose database: `dotnet ef database update --project src/SmartRail.Infrastructure --startup-project src/SmartRail.Api` (uses the admin connection from `SMARTRAIL_MIGRATIONS_CONNECTION`, default is the Compose admin user)
+  - Print the SQL: `dotnet ef migrations script --project src/SmartRail.Infrastructure --startup-project src/SmartRail.Api -o migration.sql`
+  - Undo the last migration (only if it is not applied or merged yet): `dotnet ef migrations remove --project src/SmartRail.Infrastructure --startup-project src/SmartRail.Api`
+  - Never edit a merged migration; add a new one. Each slice adds its own tables in its own migration. A new table is usable by the API role automatically (default privileges); if it must be append-only or read-only, revoke explicitly in that migration and test it.
+  - Two settings control the database at startup, both off by default: `Database:ApplyMigrationsOnStartup` (apply migrations as the admin user) and `Seeding:DemoData` (today's demo journey 8058). Only Docker Compose turns them on (`Database__ApplyMigrationsOnStartup`, `Seeding__DemoData`); the cluster and prod never do. With no `ConnectionStrings:Smartrail` the API runs without a database.
+  - Reset the local database: `docker compose down -v`, then `docker compose up --build` (the init scripts in `docker/postgres/init/` run again).
 
 ## Architecture rules
 - Dependencies point inward: Api and Infrastructure may use Application; Application may use Domain; Domain uses nothing.
