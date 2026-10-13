@@ -11,6 +11,7 @@ SmartRail is a public railway passenger and operations platform (individual asse
   - `local`: Docker Compose on the owner's machine (`deployment_environment="local"`).
   - `dev`, `test`, `staging`, `prod`: one namespace each (`smartrail-<env>`) in the kind cluster, one Argo CD app each.
   - CI deploys every `main` build to dev, test and staging. Prod only changes through the manual `promote-prod` workflow plus a manual Argo CD sync. Details: `smartrail-platform/docs/workflows.md`.
+- Identity: Keycloak in Compose only for now (not yet in the cluster).
 - Observability: OpenTelemetry to Prometheus, Loki, Tempo, Grafana (Compose stack; the in-cluster collector forwards to it). Dashboard: SmartRail Overview.
 
 ## Where things are
@@ -29,6 +30,7 @@ SmartRail is a public railway passenger and operations platform (individual asse
   - `deploy/` Kustomize base and overlays, Argo CD apps, kind config, in-cluster collector
   - `observability/` collector, Prometheus, Tempo and Grafana config; `scripts/` `bootstrap.sh`, `bootstrap-cluster.sh`
   - `docker/postgres/init/` SQL that Compose and the integration tests both run: roles, the `keycloak` database, default privileges
+  - `docker/keycloak/` the Keycloak realm file (source of truth); `scripts/get-token.sh`, `scripts/smoke-auth.sh`
 - `.github/` workflows and Dependabot config (repo root, not under `smartrail-platform/`).
 - `tools/stakeholder-sim/` the stakeholder simulation tool (Node).
 
@@ -46,6 +48,16 @@ Run from `smartrail-platform/` unless noted.
   - Never edit a merged migration; add a new one. Each slice adds its own tables in its own migration. A new table is usable by the API role automatically (default privileges); if it must be append-only or read-only, revoke explicitly in that migration and test it.
   - Two settings control the database at startup, both off by default: `Database:ApplyMigrationsOnStartup` (apply migrations as the admin user) and `Seeding:DemoData` (today's demo journey 8058). Only Docker Compose turns them on (`Database__ApplyMigrationsOnStartup`, `Seeding__DemoData`); the cluster and prod never do. With no `ConnectionStrings:Smartrail` the API runs without a database.
   - Reset the local database: `docker compose down -v`, then `docker compose up --build` (the init scripts in `docker/postgres/init/` run again).
+
+- Identity (Keycloak, spec `_specs/keycloak-identity.md`). Compose runs Keycloak 26.7.5 in development mode: console http://localhost:8180 (user `admin`, password `admin-dev-only`), realm `smartrail`, database `keycloak`. Development-only passwords throughout.
+  - The realm file `docker/keycloak/realm-smartrail.json` is the source of truth (roles, clients, demo users). It is imported only when the realm does not exist, so after editing it run `docker compose down -v` and `up`. The demo user IDs equal `DemoIds` in `Seeding/DemoIds.cs`; a test checks it.
+  - Demo users: `nimal` (operator, assigned to the demo journey), `operator2` (operator, never assigned), `jayasinghe` (controller), and the `smartrail-caterer` client (client credentials).
+  - Get a token: `scripts/get-token.sh nimal` (also `operator2`, `jayasinghe`, `caterer`). Example: `curl -H "Authorization: Bearer $(scripts/get-token.sh nimal)" http://localhost:8080/api/v1/whoami`. The `smartrail-dev-token` client behind it is Compose-only and must never be in another realm.
+  - Check the real Keycloak by hand before merging identity changes: `scripts/smoke-auth.sh` (not in CI). The 403 cases are proved by the integration tests, which use their own test token issuer.
+  - Export the live realm to compare with the file (the file is hand-kept and much smaller than an export): `docker compose exec -T keycloak /opt/keycloak/bin/kc.sh export --dir /tmp/export --realm smartrail --users realm_file --http-port=18080 --http-management-port=19000`, then `docker compose cp keycloak:/tmp/export/smartrail-realm.json .`. The extra ports avoid a clash with the running server.
+  - **The issuer rule:** a token's `iss` is the address Keycloak was reached at. Compose fixes it with `KC_HOSTNAME=http://localhost:8180`, the API accepts only that issuer (`Authentication:Authority`), and fetches keys from `Authentication:MetadataAddress` (`http://keycloak:8080/...`, thanks to `KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true`). Always fetch tokens from `localhost:8180`. The Android emulator reaches the host as `10.0.2.2`; that is for the sign-in spike.
+  - API settings (section `Authentication`): `Authority`, `Audience`, `MetadataAddress`, `RequireHttpsMetadata`, `ClockSkewSeconds` (30). With none set (the cluster today) protected endpoints answer 401 and public ones work; setting only some stops startup with "half configured". `Diagnostics:WhoAmI` (off by default, on in Compose) maps `GET /api/v1/whoami`.
+  - **Secure by default:** every endpoint requires a signed-in user unless it is marked `.AllowAnonymous()`. The public list is `/api/v1/status`, `/health/live`, `/health/ready` (plus future passenger reads); a test fails if anything else is anonymous. Policies `Operator`, `Controller`, `Caterer` come from the flat `roles` claim.
 
 ## Architecture rules
 - Dependencies point inward: Api and Infrastructure may use Application; Application may use Domain; Domain uses nothing.

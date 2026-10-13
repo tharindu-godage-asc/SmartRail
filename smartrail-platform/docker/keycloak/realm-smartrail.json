@@ -1,0 +1,170 @@
+{
+  "realm": "smartrail",
+  "displayName": "SmartRail (development realm)",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 28800,
+  "ssoSessionMaxLifespan": 28800,
+  "roles": {
+    "realm": [
+      { "name": "passenger", "description": "Anonymous in the MVP; kept so the realm matches the fixed role list" },
+      { "name": "operator", "description": "Train operator: reports events on the assigned journey" },
+      { "name": "controller", "description": "Operations controller" },
+      { "name": "caterer", "description": "Catering provider (system client)" },
+      { "name": "system-admin", "description": "System administrator: works in the Keycloak console" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "smartrail-api",
+      "name": "SmartRail API (token audience)",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "smartrail-operator-app",
+      "name": "Operator app (Flutter)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["com.smartrail.operator:/oauth2redirect"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocolMappers": [
+        {
+          "name": "audience-smartrail-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": { "included.client.audience": "smartrail-api", "id.token.claim": "false", "access.token.claim": "true" }
+        },
+        {
+          "name": "realm-roles-flat",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": { "claim.name": "roles", "multivalued": "true", "jsonType.label": "String", "id.token.claim": "false", "access.token.claim": "true", "userinfo.token.claim": "false" }
+        }
+      ]
+    },
+    {
+      "clientId": "smartrail-ops-web",
+      "name": "Operations dashboard (React)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocolMappers": [
+        {
+          "name": "audience-smartrail-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": { "included.client.audience": "smartrail-api", "id.token.claim": "false", "access.token.claim": "true" }
+        },
+        {
+          "name": "realm-roles-flat",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": { "claim.name": "roles", "multivalued": "true", "jsonType.label": "String", "id.token.claim": "false", "access.token.claim": "true", "userinfo.token.claim": "false" }
+        }
+      ]
+    },
+    {
+      "clientId": "smartrail-caterer",
+      "name": "Catering provider (system client)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "caterer-dev-only-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "audience-smartrail-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": { "included.client.audience": "smartrail-api", "id.token.claim": "false", "access.token.claim": "true" }
+        },
+        {
+          "name": "realm-roles-flat",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": { "claim.name": "roles", "multivalued": "true", "jsonType.label": "String", "id.token.claim": "false", "access.token.claim": "true", "userinfo.token.claim": "false" }
+        }
+      ]
+    },
+    {
+      "clientId": "smartrail-dev-token",
+      "name": "DEV ONLY: token helper for curl (Compose realm only, never in test, staging or prod)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "audience-smartrail-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": { "included.client.audience": "smartrail-api", "id.token.claim": "false", "access.token.claim": "true" }
+        },
+        {
+          "name": "realm-roles-flat",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": { "claim.name": "roles", "multivalued": "true", "jsonType.label": "String", "id.token.claim": "false", "access.token.claim": "true", "userinfo.token.claim": "false" }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "d0d0d0d0-0000-4000-8000-000000000001",
+      "username": "nimal",
+      "firstName": "Nimal",
+      "lastName": "Operator",
+      "email": "nimal@smartrail.example",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "nimal-dev-only", "temporary": false }],
+      "realmRoles": ["operator"]
+    },
+    {
+      "id": "d0d0d0d0-0000-4000-8000-000000000002",
+      "username": "operator2",
+      "firstName": "Second",
+      "lastName": "Operator",
+      "email": "operator2@smartrail.example",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "operator2-dev-only", "temporary": false }],
+      "realmRoles": ["operator"]
+    },
+    {
+      "id": "d0d0d0d0-0000-4000-8000-000000000003",
+      "username": "jayasinghe",
+      "firstName": "Jayasinghe",
+      "lastName": "Controller",
+      "email": "jayasinghe@smartrail.example",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "jayasinghe-dev-only", "temporary": false }],
+      "realmRoles": ["controller"]
+    },
+    {
+      "username": "service-account-smartrail-caterer",
+      "enabled": true,
+      "serviceAccountClientId": "smartrail-caterer",
+      "realmRoles": ["caterer"]
+    }
+  ]
+}
