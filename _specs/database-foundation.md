@@ -4,7 +4,7 @@ branch: claude/feature/database-foundation
 spec: _specs/database-foundation.md
 owner: tharindu
 date: 2026-10-13
-status: in review (revised 2026-10-13 after an independent review; waiting for the owner to read it and approve. On approval set: ready, approved YYYY-MM-DD)
+status: ready, approved 2026-10-13 (owner approval given in chat after the independent review)
 
 ---
 

@@ -7,13 +7,34 @@ services:
       DEPLOYMENT_ENVIRONMENT: local
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      # Runtime connection: the smartrail_app role (DML only). Migrations use the admin user. Development-only passwords.
+      ConnectionStrings__Smartrail: "Host=postgres;Port=5432;Database=smartrail;Username=smartrail_app;Password=smartrail-app-dev-only"
+      ConnectionStrings__SmartrailMigrations: "Host=postgres;Port=5432;Database=smartrail;Username=smartrail;Password=smartrail-dev-only"
+      # Only this stack applies migrations and loads the demo journey on startup; the cluster and prod never set these.
+      Database__ApplyMigrationsOnStartup: "true"
+      Seeding__DemoData: "true"
     ports: ["8080:8080"]
-    depends_on: [postgres, otel-collector]
+    # If the database is still unreachable the API exits and is restarted (no retry loop in the code).
+    restart: on-failure
+    depends_on:
+      postgres: { condition: service_healthy }
+      otel-collector: { condition: service_started }
   postgres:
+    # PostgreSQL 13 or later is required (gen_random_uuid() is built in from 13).
     image: postgres:17
     environment: { POSTGRES_USER: smartrail, POSTGRES_PASSWORD: smartrail-dev-only, POSTGRES_DB: smartrail }
-    volumes: [pgdata:/var/lib/postgresql/data]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs only on a brand-new volume: creates the roles, the keycloak database and the default privileges.
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     ports: ["5432:5432"]
+    healthcheck:
+      # -h 127.0.0.1 forces TCP: the temporary server used while the init scripts run listens on the socket only,
+      # so the check passes only once the real server is up and the scripts are done.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U smartrail -d smartrail"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otel/config.yaml"]
