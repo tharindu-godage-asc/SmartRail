@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SmartRail.Application.Features.Journeys;
 using SmartRail.Infrastructure.Persistence;
 
 namespace SmartRail.Infrastructure;
@@ -20,6 +21,7 @@ public static class DependencyInjection
         if (!string.IsNullOrWhiteSpace(runtimeConnection))
         {
             services.AddDbContext<SmartrailDbContext>(options => SmartrailDbContextOptions.Configure(options, runtimeConnection));
+            services.AddScoped<IJourneyRepository, JourneyRepository>();
             services.AddHealthChecks().AddCheck<DatabaseReadinessCheck>("database", tags: ["ready"]);
             services.AddHostedService<DatabaseStartupService>();
         }

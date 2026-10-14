@@ -15,7 +15,12 @@ namespace SmartRail.IntegrationTests.Authentication;
 /// The real API with token validation pointed at <see cref="TestTokenIssuer"/>. It also maps throw-away endpoints, one per
 /// policy, so 401 and 403 are proved without shipping any such endpoint in production code (spec decision Q5).
 /// </summary>
-public sealed class AuthApiFactory(TestTokenIssuer issuer, bool whoAmI = false, ILoggerProvider? logs = null)
+public sealed class AuthApiFactory(
+    TestTokenIssuer issuer,
+    bool whoAmI = false,
+    ILoggerProvider? logs = null,
+    string? databaseConnection = null,
+    TimeProvider? clock = null)
     : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -23,6 +28,11 @@ public sealed class AuthApiFactory(TestTokenIssuer issuer, bool whoAmI = false, 
         builder.UseSetting("Authentication:Authority", TestTokenIssuer.Issuer);
         builder.UseSetting("Authentication:Audience", TestTokenIssuer.Audience);
         builder.UseSetting("Diagnostics:WhoAmI", whoAmI ? "true" : "false");
+        if (databaseConnection is not null)
+        {
+            // A database switches the journey endpoints on (R14); the connection is the smartrail_app role.
+            builder.UseSetting("ConnectionStrings:Smartrail", databaseConnection);
+        }
 
         builder.ConfigureServices(services =>
         {
@@ -38,6 +48,11 @@ public sealed class AuthApiFactory(TestTokenIssuer issuer, bool whoAmI = false, 
             });
 
             services.AddSingleton<IStartupFilter>(new TestEndpointsFilter());
+
+            if (clock is not null)
+            {
+                services.AddSingleton(clock);
+            }
 
             if (logs is not null)
             {

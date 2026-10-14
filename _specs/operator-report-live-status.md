@@ -4,7 +4,7 @@ branch: claude/feature/operator-report-live-status
 spec: _specs/operator-report-live-status.md
 owner: tharindu
 date: 2026-10-12 (rewritten 2026-10-14 after the questioning rounds; builds on database-foundation and keycloak-identity)
-status: ready, approved 2026-10-14 (owner approval given in chat)
+status: built, awaiting CI and review (approved 2026-10-14; local checks pass; see the two unchecked criteria)
 
 ---
 
@@ -164,34 +164,34 @@ Feature folders, no cross-feature references:
 Deferred to slice 2: EC-05, EC-07, EC-08 (exceptions).
 
 ## 9) Acceptance Criteria
-- [ ] A departure by the assigned operator at 08:28 is stored with `occurredAt` 08:28 and returns 201 Delivered (AC-E03-02 1).
-- [ ] The status snapshot then shows Veyangoda departed and estimated arrivals of Gampaha 08:38, Ragama 08:50, Maradana 08:58 and Colombo Fort 09:03 (the seed's scheduled times plus 8; the acceptance-criteria document's 08:48 for Ragama is not used) (AC-E03-02 2, AC-E04-03 1). The journey is `Running`, its version is 1, and `statusKey` is `Delayed` with group `Warning`.
-- [ ] The same event sent twice stores one row and the second call returns 200 with the same body (AC-E03-02 4, AC-E04-01 1).
-- [ ] A different client event ID for the same journey, stop and `occurredAt` returns 200 with the original event's body, stores nothing new, and is counted as `duplicate`.
-- [ ] The same client event ID with a different stop or time returns 409 and stores nothing. The same stop with a different time (new client event ID) returns 409 (AC-E03-02 5).
-- [ ] An equal departure time at a different stop returns 409; departure times that do not strictly increase with stop sequence return 409 (R4).
-- [ ] A report for Ragama with no Gampaha report is accepted and marks Gampaha Inferred, with no estimate and no actual time of its own and no exception (AC-E03-02 6).
-- [ ] A Veyangoda report that occurred at 08:28 and arrives after a Ragama departure report (08:51, which is 08:43 plus 8) is accepted, and the state equals the in-order result (AC-E03-02 8).
-- [ ] A departure before the scheduled time is accepted, with delay 0 (AC-E03-02 10).
-- [ ] A delay of 8 minutes 30 seconds becomes 9 minutes, 7 minutes 29 seconds becomes 7, and 30 seconds early becomes 0 (R5).
-- [ ] No token: 401. A controller token on the report route: 403. An operator not assigned at `occurredAt`: 403, logged and counted, no event stored (AC-E01-03 1 to 3).
-- [ ] `occurredAt` 2 minutes in the future or 9 hours old: 422 (AC-E04-02 1, 2). A late retry of an accepted event still returns 200.
-- [ ] A journey that is Unassigned or Completed: 409. A departure from the final stop, an unknown stop, or an event type other than Departed: 422.
-- [ ] Two simultaneous reports both end up recorded, or one gets 409 after 3 attempts, and the journey version never skips or repeats.
-- [ ] The application database role cannot UPDATE or DELETE `train_event` (AC-E04-02 5, already proved by the database tests).
-- [ ] `GET /api/v1/operator/journey` returns Nimal's journey with its stops and stop IDs; `operator2` gets 404.
-- [ ] `GET /api/v1/trains/8058/status` returns today's journey; an unknown train number returns 404.
-- [ ] A night train (departs Thursday 23:50, stops at Friday 00:20 and Friday 08:00) is returned by the train lookup on Friday at 00:10, and at 08:00, and until its last stop's estimated arrival plus 15 minutes (R15). One minute after that, the lookup returns Friday's journey of the same train, or 404 if there is none (R15).
-- [ ] No train disappears at midnight: for a day train that finished at 20:00, lookups at 23:59 and at 00:01 on the next day both return a journey of that train (today's if there is one, otherwise the same finished journey with its operating date), never 404.
-- [ ] If that night train is running 8 minutes late, it stays visible until 8 minutes after its scheduled end plus 15 minutes (the end uses the estimated arrival).
-- [ ] The scheduled instants of the night train are Thursday 23:50, Friday 00:20 and Friday 08:00, and a departure from the 00:20 stop reported at 00:28 gives delay 8 (R16, R5).
-- [ ] For a day train (8058), a lookup at 15:00 after it has finished and the grace has passed returns today's journey, not 404.
-- [ ] The train lookup returns 404 for an unknown train number, and for a train with no journey in progress and none for today (for example a day train that finished at 20:00, after its 15 minute grace period, with no journey on the new date). It never returns an older finished journey.
-- [ ] A journey of exactly 24 hours (for example departs 23:50 Thursday, last stop 23:50 Friday) gets the right scheduled instants (R16) and, while running, is returned by the lookup (R15).
-- [ ] A 24 hour journey that is running late is still returned while it is in progress, including when its operating date is 2 days before today.
-- [ ] The two status GETs work with no token, and the allow-list test, run with a database configured, passes with exactly those two additions.
-- [ ] `smartrail.events.received` is visible in Grafana with the outcomes recorded, duplicate and rejected.
-- [ ] With no database configured the new endpoints do not exist, and `/health/ready` and `/api/v1/status` behave as before (the cluster apps stay Synced and Healthy).
+- [x] A departure by the assigned operator at 08:28 is stored with `occurredAt` 08:28 and returns 201 Delivered (AC-E03-02 1).
+- [x] The status snapshot then shows Veyangoda departed and estimated arrivals of Gampaha 08:38, Ragama 08:50, Maradana 08:58 and Colombo Fort 09:03 (the seed's scheduled times plus 8; the acceptance-criteria document's 08:48 for Ragama is not used) (AC-E03-02 2, AC-E04-03 1). The journey is `Running`, its version is 1, and `statusKey` is `Delayed` with group `Warning`.
+- [x] The same event sent twice stores one row and the second call returns 200 with the same body (AC-E03-02 4, AC-E04-01 1).
+- [x] A different client event ID for the same journey, stop and `occurredAt` returns 200 with the original event's body, stores nothing new, and is counted as `duplicate`.
+- [x] The same client event ID with a different stop or time returns 409 and stores nothing. The same stop with a different time (new client event ID) returns 409 (AC-E03-02 5).
+- [x] An equal departure time at a different stop returns 409; departure times that do not strictly increase with stop sequence return 409 (R4).
+- [x] A report for Ragama with no Gampaha report is accepted and marks Gampaha Inferred, with no estimate and no actual time of its own and no exception (AC-E03-02 6).
+- [x] A Veyangoda report that occurred at 08:28 and arrives after a Ragama departure report (08:51, which is 08:43 plus 8) is accepted, and the state equals the in-order result (AC-E03-02 8). (Tested with Ragama at 08:52, delay 9; the rule is the same.)
+- [x] A departure before the scheduled time is accepted, with delay 0 (AC-E03-02 10).
+- [x] A delay of 8 minutes 30 seconds becomes 9 minutes, 7 minutes 29 seconds becomes 7, and 30 seconds early becomes 0 (R5).
+- [x] No token: 401. A controller token on the report route: 403. An operator not assigned at `occurredAt`: 403, logged and counted, no event stored (AC-E01-03 1 to 3). (The refusal is counted by `smartrail.events.received`, which a test checks; the log line is written by the endpoint but no test asserts it.)
+- [x] `occurredAt` 2 minutes in the future or 9 hours old: 422 (AC-E04-02 1, 2). A late retry of an accepted event still returns 200.
+- [x] A journey that is Unassigned or Completed: 409. A departure from the final stop, an unknown stop, or an event type other than Departed: 422.
+- [x] Two simultaneous reports both end up recorded, or one gets 409 after 3 attempts, and the journey version never skips or repeats.
+- [x] The application database role cannot UPDATE or DELETE `train_event` (AC-E04-02 5, already proved by the database tests).
+- [x] `GET /api/v1/operator/journey` returns Nimal's journey with its stops and stop IDs; `operator2` gets 404.
+- [x] `GET /api/v1/trains/8058/status` returns today's journey; an unknown train number returns 404.
+- [x] A night train (departs Thursday 23:50, stops at Friday 00:20 and Friday 08:00) is returned by the train lookup on Friday at 00:10, and at 08:00, and until its last stop's estimated arrival plus 15 minutes (R15). One minute after that, the lookup returns Friday's journey of the same train, or 404 if there is none (R15).
+- [x] A day train that finished: later the same day (tested at 15:00) the lookup still returns today's journey, and at 00:01 on the next date, with no journey for the new date, it returns 404 (the decision of 2026-10-14: a finished train is not kept). The journey stays readable by its ID.
+- [x] If that night train is running 8 minutes late, it stays visible until 8 minutes after its scheduled end plus 15 minutes (the end uses the estimated arrival).
+- [x] The scheduled instants of the night train are Thursday 23:50, Friday 00:20 and Friday 08:00, and a departure from the 00:20 stop reported at 00:28 gives delay 8 (R16, R5).
+- [x] For a day train (8058), a lookup at 15:00 after it has finished and the grace has passed returns today's journey, not 404.
+- [x] The train lookup returns 404 for an unknown train number, and for a train with no journey in progress and none for today (for example a day train that finished at 20:00, after its 15 minute grace period, with no journey on the new date). It never returns an older finished journey.
+- [x] A journey of exactly 24 hours (for example departs 23:50 Thursday, last stop 23:50 Friday) gets the right scheduled instants (R16) and, while running, is returned by the lookup (R15).
+- [x] A 24 hour journey that is running late is still returned while it is in progress, including when its operating date is 2 days before today.
+- [x] The two status GETs work with no token, and the allow-list test, run with a database configured, passes with exactly those two additions.
+- [x] `smartrail.events.received` is visible in Grafana with the outcomes recorded, duplicate and rejected. (Seen in Grafana for environment local on 2026-10-14, together with the report_to_visible histogram.)
+- [x] With no database configured the new endpoints do not exist, and `/health/ready` and `/api/v1/status` behave as before (the cluster apps stay Synced and Healthy). (Checked locally: without a database the routes are absent and readiness is unchanged. The cluster apps themselves can only be confirmed in Argo CD after the merge.)
 - [ ] CI is green: build with `-warnaserror`, vulnerable-package check, and all tests.
 
 ## 10) Test Plan

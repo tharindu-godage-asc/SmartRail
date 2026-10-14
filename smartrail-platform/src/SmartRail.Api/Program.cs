@@ -6,6 +6,8 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using SmartRail.Api.Authentication;
 using SmartRail.Api.Features.Diagnostics;
+using SmartRail.Api.Features.Journeys;
+using SmartRail.Application.Features.Events.ReportDeparture;
 using SmartRail.Api.Features.Status;
 using SmartRail.Infrastructure;
 
@@ -14,6 +16,14 @@ var env = builder.Configuration["DEPLOYMENT_ENVIRONMENT"] ?? builder.Environment
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSmartRailAuthentication(builder.Configuration);
+
+// The journey endpoints need a database. Without one (the cluster today) they are not registered or mapped at all (R14).
+var databaseConfigured = !string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Smartrail"));
+if (databaseConfigured)
+{
+    builder.Services.AddJourneyFeatures(builder.Configuration);
+}
+
 builder.Services.AddHealthChecks();
 
 // One instrumentation (OpenTelemetry) for metrics, traces and logs. The environment name is a resource
@@ -21,7 +31,7 @@ builder.Services.AddHealthChecks();
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService("smartrail-api").AddAttributes(new Dictionary<string, object>
         { ["deployment.environment"] = env }))
-    .WithMetrics(m => m.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddRuntimeInstrumentation().AddMeter(AuthMetrics.MeterName).AddOtlpExporter())
+    .WithMetrics(m => m.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddRuntimeInstrumentation().AddMeter(AuthMetrics.MeterName).AddMeter(EventMetrics.MeterName).AddOtlpExporter())
     .WithTracing(t => t.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddNpgsql().AddOtlpExporter());
 builder.Logging.AddOpenTelemetry(o => { o.IncludeScopes = true; o.AddOtlpExporter(); });
 
@@ -35,6 +45,11 @@ app.UseAuthorization();
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false }).AllowAnonymous();
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") }).AllowAnonymous();
 app.MapStatus();
+if (databaseConfigured)
+{
+    app.MapJourneyFeatures();
+}
+
 if (app.Configuration.GetValue<bool>("Diagnostics:WhoAmI"))
 {
     app.MapWhoAmI();

@@ -10,12 +10,14 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SmartRail.Api.Features.Diagnostics;
+using SmartRail.IntegrationTests.Database;
 using Xunit;
 
 namespace SmartRail.IntegrationTests.Authentication;
 
 /// <summary>Rules R1, R6, R7, R9 and the metric (spec sections 6, 9 and 10.3).</summary>
-public sealed class AuthConfigurationTests : IDisposable
+[Collection(PostgresCollection.Name)]
+public sealed class AuthConfigurationTests(PostgresFixture postgres) : IDisposable
 {
     private readonly TestTokenIssuer _issuer = new();
 
@@ -23,6 +25,14 @@ public sealed class AuthConfigurationTests : IDisposable
 
     /// <summary>The only endpoints that may be anonymous. Adding one is a conscious decision made by editing this list.</summary>
     private static readonly string[] PublicEndpoints = ["/api/v1/status", "/health/live", "/health/ready"];
+
+    /// <summary>The journey slice adds two public passenger reads, and they exist only when a database is configured (R14).</summary>
+    private static readonly string[] PublicEndpointsWithDatabase =
+    [
+        .. PublicEndpoints,
+        "/api/v1/journeys/{journeyId:guid}/status",
+        "/api/v1/trains/{trainNumber}/status",
+    ];
 
     [Fact]
     public async Task Every_endpoint_is_protected_unless_it_is_on_the_public_list()
@@ -42,6 +52,48 @@ public sealed class AuthConfigurationTests : IDisposable
             .ToArray();
 
         Assert.Equal(PublicEndpoints.Order().ToArray(), anonymous);
+    }
+
+    [Fact]
+    public async Task With_a_database_exactly_two_more_endpoints_are_public_and_the_rest_stay_protected()
+    {
+        // The journey endpoints exist only when a database is configured, so this check must run with one (R14).
+        var database = await postgres.CreateDatabaseAsync();
+        await using var api = new AuthApiFactory(_issuer, whoAmI: true, databaseConnection: database.AppConnection);
+
+        var endpoints = api.Services.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>().ToList();
+        var anonymous = endpoints
+            .Where(endpoint => endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null)
+            .Select(endpoint => "/" + endpoint.RoutePattern.RawText!.TrimStart('/'))
+            .Order()
+            .ToArray();
+
+        Assert.Equal(PublicEndpointsWithDatabase.Order().ToArray(), anonymous);
+
+        // The two staff routes are present and demand a policy, not just a signed-in user.
+        foreach (var route in new[] { "/api/v1/operator/journey", "/api/v1/journeys/{journeyId:guid}/events" })
+        {
+            var endpoint = endpoints.Single(e => "/" + e.RoutePattern.RawText!.TrimStart('/') == route);
+            Assert.Contains(endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>(), data => data.Policy == "Operator");
+        }
+    }
+
+    [Fact]
+    public async Task Without_a_database_the_journey_endpoints_do_not_exist_and_readiness_is_unchanged()
+    {
+        await using var api = new AuthApiFactory(_issuer);
+        var client = api.CreateClient();
+
+        var routes = api.Services.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>()
+            .Select(e => e.RoutePattern.RawText).ToList();
+        Assert.DoesNotContain(routes, route => route!.Contains("/journeys/", StringComparison.Ordinal) || route.Contains("/trains/", StringComparison.Ordinal) || route.Contains("/operator/", StringComparison.Ordinal));
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/ready")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/status")).StatusCode);
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/operator/journey");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _issuer.Operator());
+        Assert.Equal(HttpStatusCode.NotFound, (await client.SendAsync(request)).StatusCode);
     }
 
     [Fact]
