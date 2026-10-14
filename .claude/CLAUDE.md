@@ -23,7 +23,7 @@ SmartRail is a public railway passenger and operations platform (individual asse
   - Epics, thin slices and decisions (D-xx): section 14. MoSCoW: section 15. Build order: section 17.
   - Architecture and ADR references: section 18. UX wireframes: section 19. Design system and status groups: section 20.
   - **Edge cases and open questions: section 23.** Anything marked *Assumption* or *Open* there is not confirmed; ask before relying on it.
-  - Not in the repo yet: the user-story document with the full acceptance criteria (the discovery doc refers to it), and a standalone FR/NFR list (FR-xx, NFR-xx). Specs must quote the acceptance criteria they use. If a spec needs one that is missing, stop and ask.
+  - The requirements (FR-/NFR-), acceptance criteria (AC-) and edge cases (EC-) are in `docs/`: `smartrail-refined-requirements.md`, `smartrail-acceptance-criteria.md`, `smartrail-edge-cases.md` (also `smartrail-assumptions.md`, `smartrail-discovery-register.md`). Specs must quote the criteria they use; if one a spec needs is missing, stop and ask.
 - `smartrail-platform/` the .NET platform. Everything below is relative to it:
   - `src/` (Domain, Application, Infrastructure, Api), `tests/` (UnitTests, IntegrationTests), `SmartRail.sln`
   - `docs/` ADRs (ADR-15 delivery, ADR-16 mobile), `workflows.md`, `branch-protection.md`
