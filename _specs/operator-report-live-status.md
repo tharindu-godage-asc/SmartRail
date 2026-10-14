@@ -18,7 +18,7 @@ status: built, awaiting CI and review (approved 2026-10-14; local checks pass; s
 - The acceptance criteria below pass as automated integration tests, and `smartrail.events.received` is visible in Grafana.
 
 ## 1) Traceability
-Requirement, acceptance-criterion and edge-case numbers below come from the owner's earlier draft. The owner will add the three documents that define them under `docs/` (`smartrail-refined-requirements.md`, `smartrail-acceptance-criteria.md`, `smartrail-edge-cases.md`). Until then the numbers are not checked against their source; this note is removed once they are.
+The numbers below were checked on 2026-10-14 against `docs/smartrail-refined-requirements.md` (v1.13), `docs/smartrail-acceptance-criteria.md` and `docs/smartrail-edge-cases.md`, which are now in the repo. Every FR, NFR, AC and EC cited in this section matches its source text. The one numeric difference found: AC-E04-03 (1) gives Ragama 08:48 for a +8 delay, while the seed's Ragama arrival is 08:42, so +8 gives 08:50 (this spec and its tests use the seed).
 - Requirements: FR-03, FR-05, FR-21, FR-35, FR-36 (accepted cases only), FR-38, FR-39, FR-40 (without its exception part), FR-43, FR-44, NFR-04, NFR-10, NFR-17
 - Acceptance criteria: AC-E03-02 (1, 2, 4, 5, 6, 8), plus (7) refused with 409 and stored nowhere, and (10) accepted with delay 0 (its High exception waits for slice 2); AC-E04-01 (1); AC-E04-02 (1, 2, 5), and (3) **partial** (the expected next event time and the handover exception are not built); AC-E04-03 (1, 3), and (5) **partial** (the Level 1 content key and the expected next event time are not built); AC-E01-03 (1, 2, 3); AC-E06-02 (1)
 - Edge cases: EC-02, EC-04, EC-06, EC-10, EC-15, EC-20, EC-27, EC-132, and EC-25 only for an operator calling a controller-only route. A controller calling the report route gets 403 as a design choice of the `Operator` policy, not because of EC-25.
@@ -204,7 +204,7 @@ Happy path; duplicate; duplicate by content (different client event ID, same sto
 
 ## 11) References
 - `database-foundation.md` (tables, `DemoIds`, privileges), `keycloak-identity.md` (policies, test token issuer, allow-list), `android-signin-spike.md` and its RESULT.md (the operator app's sign-in), ADR-06, ADR-08, ADR-09, ADR-15, CLAUDE.md.
-- To be added by the owner under `docs/`: `smartrail-refined-requirements.md`, `smartrail-acceptance-criteria.md`, `smartrail-edge-cases.md`. Their numbers are used above and will be checked then.
+- The requirements, acceptance-criteria and edge-case documents under `docs/` (`smartrail-refined-requirements.md`, `smartrail-acceptance-criteria.md`, `smartrail-edge-cases.md`): their numbers were checked against this spec on 2026-10-14.
 - Existing code reused: `Features/Status` (endpoint pattern), `TimeProvider`, `OperatingTime`, the entities in `Domain/Journeys`, the auth policies.
 
 ## 12) Open Questions and Decisions
