@@ -110,7 +110,16 @@ public static class AuthenticationExtensions
     {
         var logger = http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(LoggerCategory);
         logger.LogWarning("{Message}: reason={Reason} subject={Subject} {Method} {Path}",
-            message, reason, http.User.FindFirst("sub")?.Value ?? "-", http.Request.Method, http.Request.Path.Value);
+            message,
+            reason,
+            SanitizeForLog(http.User.FindFirst("sub")?.Value) ?? "-",
+            SanitizeForLog(http.Request.Method),
+            SanitizeForLog(http.Request.Path.Value));
+    }
+
+    private static string? SanitizeForLog(string? value)
+    {
+        return value?.Replace("\r", string.Empty).Replace("\n", string.Empty);
     }
 
     private static Task WriteProblem(HttpContext http, int status, string title)
