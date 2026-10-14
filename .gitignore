@@ -2,3 +2,16 @@
 tools/stakeholder-sim/output/
 tools/stakeholder-sim/node_modules/
 tools/stakeholder-sim/dist/
+
+# Flutter and Android build output, generated files and IDE settings (mobile/). Only source and settings that a person edits are committed.
+mobile/**/build/
+mobile/**/.dart_tool/
+mobile/**/.flutter-plugins-dependencies
+mobile/**/.idea/
+mobile/**/*.iml
+mobile/**/.gradle/
+mobile/**/local.properties
+mobile/**/GeneratedPluginRegistrant.java
+mobile/**/gradle-wrapper.jar
+mobile/**/android/gradlew
+mobile/**/android/gradlew.bat

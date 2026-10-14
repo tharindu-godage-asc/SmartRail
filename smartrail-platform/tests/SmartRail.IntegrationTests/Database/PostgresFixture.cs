@@ -54,12 +54,12 @@ public sealed class PostgresFixture : IAsyncLifetime
     }
 
     public string AdminConnection(string database) =>
-        new NpgsqlConnectionStringBuilder(_container.GetConnectionString()) { Database = database }.ConnectionString;
+        new NpgsqlConnectionStringBuilder(_container.GetConnectionString()) { Database = database, MaxPoolSize = 8 }.ConnectionString;
 
     public string RoleConnection(string database, string user, string password) =>
         new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
         {
-            Database = database, Username = user, Password = password,
+            Database = database, Username = user, Password = password, MaxPoolSize = 8,
         }.ConnectionString;
 
     public static async Task Execute(string connectionString, string sql)

@@ -40,14 +40,18 @@ public sealed class DemoSeeder(SmartrailDbContext db, TimeProvider clock)
                 .OrderBy(s => s.Sequence)
                 .ToListAsync(cancellationToken);
 
+            // R16: the same rule the API uses to place stop times on calendar days (correct for overnight trains too).
+            var schedule = ScheduleInstants.For(today, stops.Select(s => new StopTimes(s.Id, s.Sequence, s.ScheduledArrival, s.ScheduledDeparture)))
+                .ToDictionary(s => s.ServiceStopId);
+
             foreach (var stop in stops)
             {
                 db.JourneyStopStates.Add(new JourneyStopState
                 {
                     JourneyId = journey.Id,
                     ServiceStopId = stop.Id,
-                    EstimatedArrival = stop.ScheduledArrival is { } arrival ? OperatingTime.ToInstant(today, arrival) : null,
-                    EstimatedDeparture = stop.ScheduledDeparture is { } departure ? OperatingTime.ToInstant(today, departure) : null,
+                    EstimatedArrival = schedule[stop.Id].Arrival,
+                    EstimatedDeparture = schedule[stop.Id].Departure,
                     Confirmation = StopConfirmation.Pending,
                 });
             }
