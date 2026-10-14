@@ -12,5 +12,8 @@ public static class DemoIds
     /// <summary>A second operator with no assignment, for the "not assigned" tests.</summary>
     public static readonly Guid UnassignedOperator = new("d0d0d0d0-0000-4000-8000-000000000002");
 
+    /// <summary>"Jayasinghe", the demo controller (used by the Keycloak realm; no SmartRail table refers to him yet).</summary>
+    public static readonly Guid Controller = new("d0d0d0d0-0000-4000-8000-000000000003");
+
     public const string AssignedBy = "demo-seed";
 }
