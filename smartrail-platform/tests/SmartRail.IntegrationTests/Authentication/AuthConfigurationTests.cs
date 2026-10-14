@@ -26,12 +26,15 @@ public sealed class AuthConfigurationTests(PostgresFixture postgres) : IDisposab
     /// <summary>The only endpoints that may be anonymous. Adding one is a conscious decision made by editing this list.</summary>
     private static readonly string[] PublicEndpoints = ["/api/v1/status", "/health/live", "/health/ready"];
 
-    /// <summary>The journey slice adds two public passenger reads, and they exist only when a database is configured (R14).</summary>
+    /// <summary>The journey slice adds two public passenger reads and the passenger slice three more; all exist only when a database is configured (R14, R11).</summary>
     private static readonly string[] PublicEndpointsWithDatabase =
     [
         .. PublicEndpoints,
         "/api/v1/journeys/{journeyId:guid}/status",
         "/api/v1/trains/{trainNumber}/status",
+        "/api/v1/stations",
+        "/api/v1/trains",
+        "/api/v1/lines/{code}/status",
     ];
 
     [Fact]
@@ -55,7 +58,7 @@ public sealed class AuthConfigurationTests(PostgresFixture postgres) : IDisposab
     }
 
     [Fact]
-    public async Task With_a_database_exactly_two_more_endpoints_are_public_and_the_rest_stay_protected()
+    public async Task With_a_database_exactly_five_more_endpoints_are_public_and_the_rest_stay_protected()
     {
         // The journey endpoints exist only when a database is configured, so this check must run with one (R14).
         var database = await postgres.CreateDatabaseAsync();
@@ -86,7 +89,7 @@ public sealed class AuthConfigurationTests(PostgresFixture postgres) : IDisposab
 
         var routes = api.Services.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>()
             .Select(e => e.RoutePattern.RawText).ToList();
-        Assert.DoesNotContain(routes, route => route!.Contains("/journeys/", StringComparison.Ordinal) || route.Contains("/trains/", StringComparison.Ordinal) || route.Contains("/operator/", StringComparison.Ordinal));
+        Assert.DoesNotContain(routes, route => route!.Contains("/journeys/", StringComparison.Ordinal) || route.Contains("/trains", StringComparison.Ordinal) || route.Contains("/operator/", StringComparison.Ordinal) || route.Contains("/stations", StringComparison.Ordinal) || route.Contains("/lines/", StringComparison.Ordinal));
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/ready")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/status")).StatusCode);
