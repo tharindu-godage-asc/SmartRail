@@ -4,7 +4,7 @@ branch: claude/feature/passenger-find-trains
 spec: _specs/passenger-find-trains.md
 owner: tharindu
 date: 2026-10-14
-status: in review (revised 2026-10-14 after the owner's review; waiting for the owner to read it and approve. On approval set: ready, approved YYYY-MM-DD)
+status: ready, approved 2026-10-14 (owner approval given in chat)
 
 ---
 
@@ -20,8 +20,17 @@ status: in review (revised 2026-10-14 after the owner's review; waiting for the 
 - All acceptance criteria pass as automated tests, and `smartrail.trains.searches` is visible in Grafana.
 
 ## 1) Traceability
-The requirement numbers below come from the owner's review of the requirements file **v1.13**. That file is not in the repo yet (the owner will add it under `docs/`), so Claude could not check them against their source; the wording of each is the owner's.
-- Requirements: **FR-65** (find trains between two stations; the origin is remembered on the device: this feature), **FR-14 and FR-69** (station names in three languages; the passenger chooses the language), **FR-05** (passengers need no account), **NFR-04** (30 second update target; the data returned here is current to the last report), **NFR-13** (every endpoint is rate-limited, 429 with `Retry-After`): **a Must that this spec deliberately defers (D2). Nothing in this feature, or in any endpoint built so far, is rate-limited.**
+The numbers below were checked on 2026-10-14 against `docs/smartrail-refined-requirements.md` (v1.13), `docs/smartrail-acceptance-criteria.md` and `docs/smartrail-edge-cases.md`, which are now in the repo. Where a requirement asks for more than this spec builds, the gap is named, not hidden.
+- Requirements (wording checked in `docs/smartrail-refined-requirements.md`):
+  - **FR-65** (Must): find upcoming trains between two stations, with scheduled time, status and live ETA; the origin is remembered on the device (the remembering is client work).
+  - **FR-14** (Must): every station and line shown to passengers has an English name and Sinhala and Tamil translations. **FR-69** (Must): the passenger chooses Sinhala, Tamil or English (client work; the API returns all three).
+  - **FR-05** (Must): passengers use the app and displays without an account.
+  - **FR-10 and FR-11**: the model of lines, stations, services, stopping patterns and direction (FR-10) and journeys generated one per service per day, at least 7 days ahead (FR-11, assumption A-07i). FR-11 is not built yet, which is why future dates here are answered from the timetable (R4); once it exists, journey rows (status Unassigned) replace that path and the 7 day limit of this search already matches the generation horizon.
+  - **NFR-04** (Must): an accepted event reaches the passenger app within 30 seconds, and journey status shown as live is never more than 90 seconds old, otherwise it is shown as not current. This spec returns `lastEventAt` and `serverTime` so a client can judge age, but it does **not** build the 90 second "not current" rule, which belongs to the staleness slice (D4).
+  - **NFR-13** (Must): every endpoint is rate-limited (OWASP API4), keyed on device identity, with 429 and `Retry-After`, an IP backstop, and cached snapshots to absorb repeated reads (OPS-10). **This spec deliberately defers it (D2): nothing in this feature, or in any endpoint built so far, is rate-limited.** The 5 second public cache (R10) is the only part of NFR-13's design that is in place.
+  - NFR-30 (Must, status never by colour alone): this API returns a status key, group and no colour; showing an icon and text is client work.
+- Acceptance criteria (checked in `docs/smartrail-acceptance-criteria.md`): **AC-E06-01** (find trains). (1) upcoming trains with scheduled time, status and live ETA: built. (2) 8058 running +8 shows 08:38 beside the scheduled 08:30: built (see the acceptance criterion below). (3) a cancelled or suspended train shows its status with text and an icon: **not built**, because the Disrupted status comes with the overrides slice (D4). (4) the origin is remembered on the device: client work. Also AC-E04-03 (1) and (3) are reused through slice 1 (delay and ETAs, on time at 2 minutes, delayed at 3).
+- Edge cases (checked in `docs/smartrail-edge-cases.md`): **EC-78** (a station name missing a translation falls back to English, and a test enforces completeness for stations shown to passengers): built (R2). **EC-120** (anonymous endpoint flood: per-device limits, 429 with Retry-After, cached snapshots): **deferred, as NFR-13**. EC-71 and EC-70 (search first when nothing is followed; language chosen first) are client work. EC-140 and EC-141 (one journey per service per date; none on a day it does not run) belong to journey generation and match R4's rule that a service with a journey row is never also shown from the timetable.
 - Discovery document: section 19.1 (home screen, search), 19.2 (live status; only the delay and status parts), 11.3 (three languages), 6.5 (confidence and staleness: not built here), 14 and MoSCoW ("Find trains between stations": Must), product rules in `CLAUDE.md` (status never colour alone, old data is labelled with its time).
 - Decisions and assumptions: A-TZ (Asia/Colombo), A-07 (configurable thresholds), ADR-06 (the server is the authority on time), ADR-09 (version in every snapshot), D-71 and D-72 (no ordering, no caterer events), and the rules of slice 1 reused here: R5 and R6 (delay and status), R15 (in progress and the grace period), R16 (stop times across midnight).
 - Design: passenger app Home and Trains screens (From, To, "Find trains", the station list).
@@ -67,21 +76,22 @@ All three are public (no token) and read-only. Errors are RFC 9457 ProblemDetail
 ### GET /api/v1/trains?from={code}&to={code}&date={yyyy-MM-dd}
 - Parameters: `from` and `to` are station codes (case-insensitive, for example `VYG`, `CF`); `date` is an operating date in Asia/Colombo and is optional (default today).
 - 200: `{ from: StationRef, to: StationRef, date, serverTime, trains: [Train] }`, where `StationRef = { code, name: { en, si, ta } }`.
-- `Train`: `{ trainNumber, serviceType: "Slow"|"Express", operatingDate, destination: StationRef, live, journeyId, departure: { scheduled, estimated }, arrival: { scheduled, estimated }, delayMinutes, statusGroup, statusKey, version, lastEventAt }`.
+- `Train`: `{ trainNumber, serviceType: "Slow"|"Express", operatingDate, destination: StationRef, live, journeyId, atFrom: { arrival: { scheduled, estimated } | null, departure: { scheduled, estimated } | null }, atTo: { arrival: { scheduled, estimated } }, delayMinutes, statusGroup, statusKey, version, lastEventAt }`.
+  - `atFrom.arrival` is when the train reaches the boarding station and is the one a waiting passenger needs (FR-66, AC-E06-01 1 and 2); it is null when From is the service's first stop (nothing arrives there). `atFrom.departure` is when it leaves From. `atTo.arrival` is when it reaches the destination of the search. Each pair holds `scheduled` and `estimated` (estimated is null for a timetable-only train).
   - Times are UTC instants. For a train that crosses midnight they are on the right calendar day (R16 of slice 1).
   - `live: true` for a journey that exists; `journeyId` is its ID and `estimated` times, `delayMinutes` (0 when nothing was reported yet), `statusGroup` (`Normal` or `Warning`), `statusKey` (`Scheduled`, `OnTime` or `Delayed`) `version` and `lastEventAt` (the time the server received the journey's latest report, or null when nothing has been reported yet) come from it.
-  - `live: false` for a timetable-only train: `journeyId`, both `estimated` times, `delayMinutes`, `version` and `lastEventAt` are null; `statusKey` is `Scheduled` and `statusGroup` is `Normal`.
+  - `live: false` for a timetable-only train: `journeyId`, the `estimated` times, `delayMinutes`, `version` and `lastEventAt` are null; `statusKey` is `Scheduled` and `statusGroup` is `Normal`.
   - `destination` is the service's final stop.
 - Sorted by the estimated departure from From (the scheduled one when there is no estimate), then by train number. At most `Search:MaxResults` (50) trains are returned.
 - 200 with `trains: []` when nothing matches (also for the opposite direction, because the seeded trains run one way).
 - 404 `station_not_found` when `from` or `to` is not a station code. 422: `from` or `to` missing (`invalid_request`), `from` equals `to` (`same_station`), `date` is not a valid `yyyy-MM-dd` (`invalid_date`), before today or after today plus `Search:MaxDaysAhead` (7) (`date_out_of_range`).
-- Header `Cache-Control: no-store`.
+- Header `Cache-Control: public, max-age=5`: short-lived caching of public snapshots absorbs repeated polls (an approximation of OPS-10, see R10: it bounds staleness, it does not invalidate on a version change) and costs at most 5 of the 30 seconds in NFR-04.
 
 ### GET /api/v1/lines/{code}/status
 - 200: `{ lineCode, lineName: { en, si, ta }, statusGroup, statusKey, journeysInProgress, delayedJourneys, lastEventAt, serverTime }`.
 - `statusKey` is `Normal` when no journey in progress is delayed, otherwise `SomeDelayed` (group `Warning`). No English text is returned; the app words it in the chosen language. `serverTime` is when the answer was computed; **`lastEventAt` is how fresh the data is**: the latest time the server received a report from any journey in progress, or null when none is in progress or none has reported. The banner must show age from `lastEventAt`, never present `serverTime` as "Updated" (a line whose last report was hours ago would otherwise read "Updated just now"). **Zero trains:** `journeysInProgress: 0` keeps `statusKey: Normal`, but the client must word that case differently ("No trains running now"), not "running normally".
 - 404 `line_not_found` for an unknown line code.
-- Header `Cache-Control: no-store`. The existing `GET /api/v1/status` is left as it is.
+- Header `Cache-Control: public, max-age=5` (same reason). The existing `GET /api/v1/status` is left as it is.
 
 ## 5) Data Contract
 No schema change, no migration. All data already exists: `station`, `station_translation`, `line`, `line_translation`, `line_station`, `train_service`, `service_stop`, `journey`, `journey_stop_state` (see [smartrail-schema.sql](smartrail-schema.sql)). The API role already reads them.
@@ -101,9 +111,9 @@ No schema change, no migration. All data already exists: `station`, `station_tra
 5. R5 (calendar): `ServiceCalendar` decides whether a service runs on a date from `runs_on`, case-insensitive and trimmed: `Daily` every day; `Weekdays` Monday to Friday; `Weekends` Saturday and Sunday, using the weekday of the operating date. Holidays and special timetables are not modelled (deferred decision D1), and a timetable-only result is always marked `live: false` so a client can say so.
 6. R6 (unsupported calendar): a service whose `runs_on` is none of those values never appears from the timetable and a warning is logged (service train number only); its journey rows still appear, because a journey is a fact.
 7. R7 (limits): `date` defaults to today; a date before today or after today plus `Search:MaxDaysAhead` (default 7) is refused with 422. At most `Search:MaxResults` (default 50) trains are returned, after sorting.
-8. R8 (times and status): estimates, delay and status of a live result are those of slice 1 (R5 and R6 there), using the stored stop states, with the scheduled time plus the journey's delay when a stop has no stored estimate. Arrival is at To; departure is from From. Results carry no more status groups than slice 1 can produce. `lastEventAt` of a live result is the latest `received_at` among that journey's events (null if none).
+8. R8 (times and status): estimates, delay and status of a live result are those of slice 1 (R5 and R6 there), using the stored stop states, with the scheduled time plus the journey's delay when a stop has no stored estimate. The result carries the arrival and the departure at From and the arrival at To (see `atFrom` and `atTo`). Results carry no more status groups than slice 1 can produce. `lastEventAt` of a live result is the latest `received_at` among that journey's events (null if none).
 9. R9 (line status): journeys in progress are the journeys of that line, with operating dates from two days ago to today, that are not Completed, have started (first scheduled departure not later than now) and are not over (R15 definition, including the grace period). `delayedJourneys` counts those whose status group is Warning (delay above `Journeys:OnTimeToleranceMinutes`). `statusKey` is `Normal` when that count is 0, else `SomeDelayed`. A line with no journey in progress is `Normal` with `journeysInProgress: 0`. `lastEventAt` is the latest `received_at` among the `train_event` rows of those journeys (null if none).
-10. R10 (public and cheap): no token is needed and a bad token on these routes never blocks them. Queries read a handful of rows; there is no per-user data.
+10. R10 (public and cheap): no token is needed and a bad token on these routes never blocks them. Queries read a handful of rows; there is no per-user data. **OPS-10 is only approximated.** OPS-10 says to cache snapshots and invalidate a journey's cache when its version changes. `Cache-Control: public, max-age=5` cannot invalidate: it only bounds how stale a cached answer can be to 5 seconds. This is a deliberate simplification (deferred decision D10); nothing is ever cached for overrides, verification or authentication, and none of those exist here yet.
 11. R11 (no database): the routes are mapped only when a database is configured (as slice 1's R14).
 
 ## 7) Architecture (follow CLAUDE.md and ADR-15)
@@ -150,7 +160,8 @@ Feature folders, no cross-feature references:
 - [ ] The same request with `If-None-Match` equal to that version returns 304 with no body; so do a list of several tags that contains it, a weak `W/"…"` form of it, and `*`; a list that does not contain it returns 200. The version is the same after a restart and changes when a station name changes.
 - [ ] Every seeded station has a Sinhala and a Tamil name (a test fails if one is missing); a station with a missing translation would return its English name.
 - [ ] `GET /api/v1/trains?from=VYG&to=CF` on the seed (clock 08:10 on the seeded Tuesday) returns 8058 and 8061 with the scheduled times at both stations, destination Colombo Fort, `live: true`, and the estimated times equal to the scheduled ones.
-- [ ] After slice 1 records Veyangoda departing 08:28 (8 minutes late), a search from Gampaha to Colombo Fort shows 8058 with departure estimated 08:39 and arrival estimated 09:03, delay 8, `Warning`, `Delayed`.
+- [ ] After slice 1 records Veyangoda departing 08:28 (8 minutes late), a search from Gampaha to Colombo Fort shows 8058 arriving at Gampaha at an estimated 08:38 beside the scheduled 08:30 (AC-E06-01 2), departing Gampaha at an estimated 08:39 (scheduled 08:31), and arriving at Colombo Fort at an estimated 09:03 (scheduled 08:55), delay 8, `Warning`, `Delayed`.
+- [ ] A search from Veyangoda (the first stop of 8058) returns `atFrom.arrival` as null and the departure times at Veyangoda.
 - [ ] After the Veyangoda report, a search from Veyangoda to Colombo Fort no longer returns 8058 (it left From); a search from Gampaha still does until Gampaha is reported.
 - [ ] A search from Ragama to Colombo Fort does not return 8061 (it does not stop at Ragama).
 - [ ] A search from Gampaha to Veyangoda returns 200 with an empty list.
@@ -182,7 +193,7 @@ The acceptance criteria above, plus: 304 handling (single, several, weak and `*`
 ## 11) References
 - `operator-report-live-status.md` (R5, R6, R15, R16 and the journey data), `database-foundation.md` (tables, seed), `keycloak-identity.md` (allow-list), [smartrail-schema.sql](smartrail-schema.sql), discovery sections 19.1, 19.2, 11.3 and 6.5, CLAUDE.md.
 - Existing code reused: `ScheduleInstants`, `JourneySelection`, `JourneyProgress`, `SnapshotBuilder`, `OperatingTime`, the slice-1 test base.
-- To be added by the owner under `docs/`: the requirements, acceptance-criteria and edge-case documents; their numbers are not used here.
+- The requirements, acceptance-criteria and edge-case documents under `docs/` (`smartrail-refined-requirements.md`, `smartrail-acceptance-criteria.md`, `smartrail-edge-cases.md`), checked on 2026-10-14.
 
 ## 12) Open Questions and Decisions
 ### Open questions
@@ -215,7 +226,7 @@ None. (Required empty before approval.)
 | Honest freshness | `lastEventAt` on the line status and on each live train result; `serverTime` is not "updated" | section 4, R8, R9 |
 | Zero trains | `statusKey` stays `Normal`; the client words it "No trains running now" | section 4 |
 | NFR-13 | A Must, deliberately deferred; nothing is rate-limited yet; said in the spec, the report and the Sheet | section 1, D2 |
-| Real numbers | FR-65, FR-14, FR-69, FR-05, NFR-04, NFR-13 from the owner's v1.13 review (file not in the repo) | section 1 |
+| Real numbers | FR-65, FR-14, FR-69, FR-05, NFR-04, NFR-13 and the acceptance and edge-case numbers, checked against `docs/` on 2026-10-14; gaps named (AC-E06-01 3 not built, NFR-04 90 second rule and NFR-13 deferred) | section 1 |
 | `If-None-Match` | Several, weak and `*` values are understood; one test | R12 |
 | Translations | The seed has Sinhala and Tamil for all five stations; a test guards it; English is only a safety net | R2 |
 ### Deferred decisions
@@ -230,10 +241,11 @@ None. (Required empty before approval.)
 | D7 | Search without a database in the cluster | Routes absent | The `cluster-databases` spec |
 | D8 | Telling "no train in this direction" apart from "no trains today" in an empty result | Both are an empty list; the empty-state copy must be neutral | When the app's empty states are designed, or when outbound trains are seeded |
 | D9 | `lastEventAt` on the slice-1 journey status snapshot | Not added there; this feature adds it to line status and to train results only | The staleness slice (section 6.5), which needs it everywhere |
+| D10 | Invalidating a cached snapshot when its journey version changes (the full OPS-10) | `max-age=5` only: a cached answer is at most 5 seconds stale and is never invalidated early | When there is a shared cache or a load problem, together with NFR-13 |
 ### Proposed additions to confirm on review
 - Route and parameter names: `GET /api/v1/trains?from=&to=&date=` (a query on the trains collection; it does not clash with `/api/v1/trains/{trainNumber}/status`) and `GET /api/v1/lines/{code}/status`.
 - Station and line identity in the API is the `code` column; codes are matched case-insensitively. The station object carries `lines` (code and sequence) so a second line does not change the shape.
-- The cap of 50 results and the header choices: `Cache-Control: no-cache` plus an ETag for stations, `no-store` for the other two.
+- The cap of 50 results and the header choices: `no-cache` plus an ETag for stations, `public, max-age=5` for the other two (owner decision, 2026-10-14).
 - `delayMinutes` is 0 for a live journey with no report, and null for a timetable-only train.
 - Station codes in logs are used only after they have been matched to a station (never the raw query value), because CodeQL flags logging of request input.
 - The version hash is a SHA-256 of a canonical text, shortened to 16 hex characters.

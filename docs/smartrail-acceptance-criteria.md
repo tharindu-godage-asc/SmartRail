@@ -5,7 +5,7 @@
 
 Every **Must** story in `smartrail-user-stories.md` has a section here, referenced by its **AC ref**. Should and Could stories get criteria when they are built. Criteria are written as *Given / When / Then*, are testable, and use one shared timeline so they double as test data:
 
-- **Train 8058:** Veyangoda 08:20 (dep) → Gampaha 08:30 → Ragama 08:40 → Maradana 08:50 → Colombo Fort 08:55, Main Line, weekdays. Gampaha is a designated arrival station.
+- **Train 8058:** Veyangoda 08:20 (dep) → Gampaha 08:30 → Ragama 08:42 → Maradana 08:50 → Colombo Fort 08:55, Main Line, weekdays. Gampaha is a designated arrival station.
 - **Long-distance service:** Colombo Fort → Badulla, collection at Badulla (destination).
 - **Defaults (configurable):** on-time ±2 min; overdue grace 3 min; push threshold 5 min regional / 10 min long-distance; recovery pause 10 min; duplicate window 5 min; unpaid-order expiry 15 min.
 
@@ -123,7 +123,7 @@ Each criterion carries a **Trace** to the decision or requirement it verifies (D
 6. **Given** a journey's events, **when** its state is rebuilt from them in occurrence order, **then** the result equals the live state (checked by an automated test, Should). *Trace: NFR-46*
 
 ### AC-E04-03 ETA calculation
-1. **Given** a +8 min delay after Veyangoda, **when** ETAs are calculated, **then** every remaining stop is its scheduled time plus 8 minutes (Gampaha 08:38, Ragama 08:48, Maradana 08:58, Colombo Fort 09:03). *Trace: FR-39, D-05*
+1. **Given** a +8 min delay after Veyangoda, **when** ETAs are calculated, **then** every remaining stop is its scheduled time plus 8 minutes (Gampaha 08:38, Ragama 08:50, Maradana 08:58, Colombo Fort 09:03). *Trace: FR-39, D-05*
 2. **Given** a train arrives at Gampaha at 08:28 and the scheduled departure is 08:30, **when** downstream times are calculated, **then** the departure remains 08:30 and no negative delay is carried forward. *Trace: D-48*
 3. **Given** a train is within ±2 minutes of schedule, **when** its status is derived, **then** it is "On time"; at +3 it is "Delayed". *Trace: FR-40*
 4. **Given** the operator estimates a ~10 minute total delay, **when** the estimate is applied, **then** the delay equals 10 minutes in total, not 10 minutes added to the current delay. *Trace: D-07*
@@ -487,3 +487,9 @@ Timeline for these criteria: **Metro** Veyangoda → Colombo Fort (train 8058, 0
 3. **Given** an update that is older than the stored menu version, **when** it arrives, **then** it is ignored. *Trace: FR-90*
 4. **Given** the caterer marks an item sold out, **when** the update is accepted, **then** the passenger list shows Sold out at the next refresh. *Trace: FR-90*
 *Added 12 October 2026 (D-72): this is the working integration with the simulated caterer.*
+
+---
+
+## Change log
+
+- **14 October 2026:** Ragama time in the shared timeline changed from 08:40 to 08:42 to match the seed data (`database-foundation.md`, accepted 13 October), and AC-E04-03 (1) changed from Ragama 08:48 to 08:50 (08:42 plus 8 minutes). Gampaha 08:38, Maradana 08:58 and Colombo Fort 09:03 are unchanged.
