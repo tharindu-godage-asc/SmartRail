@@ -59,6 +59,12 @@ Run from `smartrail-platform/` unless noted.
   - API settings (section `Authentication`): `Authority`, `Audience`, `MetadataAddress`, `RequireHttpsMetadata`, `ClockSkewSeconds` (30). With none set (the cluster today) protected endpoints answer 401 and public ones work; setting only some stops startup with "half configured". `Diagnostics:WhoAmI` (off by default, on in Compose) maps `GET /api/v1/whoami`.
   - **Secure by default:** every endpoint requires a signed-in user unless it is marked `.AllowAnonymous()`. The public list is `/api/v1/status`, `/health/live`, `/health/ready` (plus future passenger reads); a test fails if anything else is anonymous. Policies `Operator`, `Controller`, `Caterer` come from the flat `roles` claim.
 
+- Android sign-in spike (spec `_specs/android-signin-spike.md`, result `mobile/spikes/android-signin/RESULT.md`): a throw-away Flutter app that proved Keycloak sign-in on the `Pixel_6` emulator. Do not import its code into the operator app; copy the settings listed in RESULT.md.
+  - Run: `docker compose up -d` in `smartrail-platform/`, start the emulator, then `adb reverse tcp:8180 tcp:8180` and `adb reverse tcp:8080 tcp:8080` (needed after every emulator restart; inside the emulator `localhost` then reaches the PC, so the issuer stays `http://localhost:8180/realms/smartrail`), then `flutter run` in `mobile/spikes/android-signin`. Demo login: `nimal` / `nimal-dev-only`.
+  - **Remove `android:taskAffinity=""` from `MainActivity` in any Flutter app that uses `flutter_appauth`.** Flutter's template adds it and it makes the redirect from Keycloak fail with "No stored state".
+  - The Android redirect scheme is `com.smartrail.operator` (matches the realm's `smartrail-operator-app` client). Cleartext HTTP is allowed to `localhost` in debug builds only, via a network security config.
+  - If Android kills the app while the user is on Keycloak's page, the sign-in result is lost and the app restarts signed out. The operator app must detect that and ask the user to sign in again.
+
 ## Architecture rules
 - Dependencies point inward: Api and Infrastructure may use Application; Application may use Domain; Domain uses nothing.
 - One folder per feature (for example `Features/Reports/SubmitReport`) containing its endpoint, handler, validator and tests. Features do not reference each other's internals.

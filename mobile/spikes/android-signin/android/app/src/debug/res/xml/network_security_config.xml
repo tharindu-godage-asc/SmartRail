@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPIKE, DEBUG BUILDS ONLY (spec android-signin-spike, rule S4).
+  Keycloak and the API run on plain HTTP in Docker Compose. This lets the debug app talk cleartext to localhost
+  (which reaches the PC through "adb reverse") and nowhere else. The release build has no such file, so it stays strict.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

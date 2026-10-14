@@ -4,7 +4,7 @@ branch: claude/feature/android-signin-spike
 spec: _specs/android-signin-spike.md
 owner: tharindu
 date: 2026-10-14
-status: ready, approved 2026-10-14 (owner approval given in chat)
+status: done (spike finished 2026-10-14, result: GO with one condition; see mobile/spikes/android-signin/RESULT.md)
 
 ---
 
@@ -105,19 +105,19 @@ No new endpoints. The app uses:
 | Clock difference between emulator and PC | If sign-in or `whoami` fails with a time error, it is recorded (the API allows 30 seconds of skew) |
 
 ## 9) Acceptance Criteria
-- [ ] The spike app builds and installs on the `Pixel_6` emulator.
-- [ ] Nimal signs in through Keycloak's login page with Authorization Code + PKCE and returns to the app.
-- [ ] The app shows Nimal's subject `d0d0d0d0-0000-4000-8000-000000000001`, the role `operator`, and an expiry about 15 minutes ahead.
-- [ ] `GET /api/v1/whoami` with the app's token returns 200 with that subject and role.
-- [ ] One refresh returns a new expiry, and `whoami` still returns 200.
-- [ ] Cancelling the login leaves the app in a clear signed-out state.
-- [ ] A wrong password stays on Keycloak's page and shows no detail about which field was wrong.
-- [ ] No token, refresh token or Authorization header appears in the screen text, the app log output, or any committed file.
-- [ ] Cleartext HTTP is allowed in debug builds for `localhost` only (checked in the manifest and config; the release config has no exception).
-- [ ] `RESULT.md` records start and stop times, the working settings, problems and fixes, screenshots, and a go or no-go.
-- [ ] If the spike failed: the fallback was demonstrated and `RESULT.md` says so.
-- [ ] Existing tests still pass: build with `-warnaserror`, vulnerable-package check, and the full suite (24 unit, 70 integration), plus the realm tests if the realm file changed.
-- [ ] `CLAUDE.md` describes how to run the spike and the `adb reverse` rule.
+- [x] The spike app builds and installs on the `Pixel_6` emulator.
+- [x] Nimal signs in through Keycloak's login page with Authorization Code + PKCE and returns to the app.
+- [x] The app shows Nimal's subject `d0d0d0d0-0000-4000-8000-000000000001`, the role `operator`, and an expiry about 15 minutes ahead.
+- [x] `GET /api/v1/whoami` with the app's token returns 200 with that subject and role.
+- [x] One refresh returns a new expiry, and `whoami` still returns 200.
+- [x] Cancelling the login leaves the app in a clear signed-out state.
+- [x] A wrong password stays on Keycloak's page and shows no detail about which field was wrong.
+- [x] No token, refresh token or Authorization header appears in the screen text, the app log output, or any committed file. (The device log holds 12 token-like strings from a different app on the emulator; none from this app.)
+- [x] Cleartext HTTP is allowed in debug builds for `localhost` only (checked in the manifest and config; the release config has no exception).
+- [x] `RESULT.md` records start and stop times, the working settings, problems and fixes, screenshots, and a go or no-go. (Stop time 10:25, 56 minutes after the 09:29 start.)
+- [x] If the spike failed: the fallback was demonstrated and `RESULT.md` says so. (Not applicable: the spike succeeded, so the fallback was not needed or demonstrated.)
+- [x] Existing tests still pass: build with `-warnaserror`, vulnerable-package check, and the full suite (24 unit, 70 integration), plus the realm tests if the realm file changed.
+- [x] `CLAUDE.md` describes how to run the spike and the `adb reverse` rule.
 
 ## 10) Test Plan
 ### 10.1 Fixture data
