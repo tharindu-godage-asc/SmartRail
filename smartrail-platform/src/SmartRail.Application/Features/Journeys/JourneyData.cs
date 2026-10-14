@@ -1,0 +1,95 @@
+using SmartRail.Domain.Journeys;
+
+namespace SmartRail.Application.Features.Journeys;
+
+/// <summary>A stop of the journey's service with its station, scheduled local times of day, and whether it is the last one.</summary>
+public sealed record StopInfo(
+    Guid ServiceStopId,
+    int Sequence,
+    string StationCode,
+    string StationName,
+    TimeOnly? ScheduledArrival,
+    TimeOnly? ScheduledDeparture,
+    bool IsFinalStop);
+
+/// <summary>The stored state of one stop of one journey (the result of the last rebuild, R10).</summary>
+public sealed record StopStateInfo(
+    Guid ServiceStopId,
+    StopConfirmation Confirmation,
+    DateTimeOffset? EstimatedArrival,
+    DateTimeOffset? EstimatedDeparture,
+    DateTimeOffset? ActualDeparture);
+
+/// <summary>An accepted "departed" event, as stored (append-only).</summary>
+public sealed record RecordedEvent(Guid EventId, Guid ClientEventId, Guid ServiceStopId, DateTimeOffset OccurredAt, int JourneyVersionAfter);
+
+public sealed record AssignmentInfo(string OperatorUserId, DateTimeOffset ValidFrom, DateTimeOffset? ValidTo);
+
+/// <summary>Everything the slice-1 handlers need to know about one journey.</summary>
+public sealed record JourneyData(
+    Guid JourneyId,
+    string TrainNumber,
+    DateOnly OperatingDate,
+    JourneyStatus Status,
+    int Version,
+    int DelayMinutes,
+    IReadOnlyList<StopInfo> Stops,
+    IReadOnlyList<StopStateInfo> StopStates,
+    IReadOnlyList<RecordedEvent> Events,
+    IReadOnlyList<AssignmentInfo> Assignments)
+{
+    public IReadOnlyList<StopSchedule> Schedule() =>
+        ScheduleInstants.For(OperatingDate, Stops.Select(s => new StopTimes(s.ServiceStopId, s.Sequence, s.ScheduledArrival, s.ScheduledDeparture)));
+}
+
+/// <summary>The write of one accepted departure: the event, the rebuilt stop states and the journey, guarded by the version.</summary>
+public sealed record DepartureChange(
+    Guid JourneyId,
+    int ExpectedVersion,
+    Guid EventId,
+    Guid ClientEventId,
+    Guid ServiceStopId,
+    DateTimeOffset OccurredAt,
+    DateTimeOffset ReceivedAt,
+    string CreatedBy,
+    JourneyStatus NewStatus,
+    int NewDelayMinutes,
+    IReadOnlyList<StopProgress> NewStopStates);
+
+public enum SaveOutcome { Saved, Conflict }
+
+/// <summary>Persistence for the journey slice. Implemented in Infrastructure with EF Core.</summary>
+public interface IJourneyRepository
+{
+    /// <summary>One journey with its stops, stored stop states, accepted departures and assignments; null when unknown.</summary>
+    Task<JourneyData?> GetAsync(Guid journeyId, CancellationToken cancellationToken);
+
+    /// <summary>The train's journeys with operating dates from <paramref name="fromDate"/> to <paramref name="toDate"/> (stops and stop states, no events).</summary>
+    Task<IReadOnlyList<JourneyData>> GetForTrainAsync(string trainNumber, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken);
+
+    /// <summary>The journey the operator is assigned to at <paramref name="now"/> (the latest valid_from wins), or null.</summary>
+    Task<JourneyData?> GetAssignedAsync(string operatorUserId, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>Saves the change in one transaction. Conflict means the journey version moved or the client event ID was taken meanwhile.</summary>
+    Task<SaveOutcome> SaveDepartureAsync(DepartureChange change, CancellationToken cancellationToken);
+}
+
+/// <summary>Events:* settings (FR-38). The defaults are the values in the spec.</summary>
+public sealed class EventLimits
+{
+    public const string Section = "Events";
+
+    public int MaxFutureMinutes { get; set; } = 1;
+    public int MaxAgeHours { get; set; } = 8;
+}
+
+/// <summary>Journeys:* settings (A-07: thresholds are configurable).</summary>
+public sealed class JourneySettings
+{
+    public const string Section = "Journeys";
+
+    public int OnTimeToleranceMinutes { get; set; } = 2;
+
+    /// <summary>How long a journey stays visible after its expected end (R15). Becomes 0 when the arrival slice sets Completed.</summary>
+    public int VisibleAfterEndMinutes { get; set; } = 15;
+}
