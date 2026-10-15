@@ -11,20 +11,32 @@ class DriftReportQueue implements ReportQueue {
 
   @override
   Future<QueuedReport> enqueue(QueuedReport report) async {
-    final existing =
-        await (_db.select(_db.reports)..where(
-              (r) =>
-                  // Stop ids are the same every day, so the journey must match too.
-                  r.journeyId.equals(report.journeyId) &
-                  r.serviceStopId.equals(report.serviceStopId) &
-                  r.state.isNotValue(ReportState.rejected.index),
-            ))
-            .getSingleOrNull();
-    if (existing != null) {
-      return _toReport(existing);
+    if (!report.isDelay) {
+      final existing =
+          await (_db.select(_db.reports)..where(
+                (r) =>
+                    // Stop ids are the same every day, so the journey must match too.
+                    r.journeyId.equals(report.journeyId) &
+                    r.serviceStopId.equals(report.serviceStopId!) &
+                    r.kind.equals(report.kind.index) &
+                    r.state.isNotValue(ReportState.rejected.index),
+              ))
+              .getSingleOrNull();
+      if (existing != null) {
+        return _toReport(existing);
+      }
     }
     await _db.into(_db.reports).insert(_toRow(report));
     return report;
+  }
+
+  @override
+  Future<DateTime?> latestOccurredAt(String journeyId) async {
+    final latest = _db.reports.occurredAt.max();
+    final query = _db.selectOnly(_db.reports)
+      ..addColumns([latest])
+      ..where(_db.reports.journeyId.equals(journeyId));
+    return (await query.map((row) => row.read(latest)).getSingle())?.toUtc();
   }
 
   @override
@@ -61,9 +73,12 @@ class DriftReportQueue implements ReportQueue {
   static QueuedReport _toReport(Report row) => QueuedReport(
     clientEventId: row.clientEventId,
     journeyId: row.journeyId,
+    kind: row.kind,
     serviceStopId: row.serviceStopId,
     stationName: row.stationName,
     occurredAt: row.occurredAt.toUtc(),
+    delayReason: DelayReason.fromCode(row.delayReason),
+    totalDelayMinutes: row.totalDelayMinutes,
     state: row.state,
     attempts: row.attempts,
     nextTryAt: row.nextTryAt?.toUtc(),
@@ -73,9 +88,12 @@ class DriftReportQueue implements ReportQueue {
   static ReportsCompanion _toRow(QueuedReport r) => ReportsCompanion.insert(
     clientEventId: r.clientEventId,
     journeyId: r.journeyId,
-    serviceStopId: r.serviceStopId,
-    stationName: r.stationName,
+    kind: Value(r.kind),
+    serviceStopId: Value(r.serviceStopId),
+    stationName: Value(r.stationName),
     occurredAt: r.occurredAt,
+    delayReason: Value(r.delayReason?.code),
+    totalDelayMinutes: Value(r.totalDelayMinutes),
     state: r.state,
     attempts: Value(r.attempts),
     nextTryAt: Value(r.nextTryAt),

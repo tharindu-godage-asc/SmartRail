@@ -15,6 +15,7 @@ import '../../reports/presentation/delivery_chip.dart';
 import '../../reports/presentation/report_dispatcher.dart';
 import '../domain/models.dart';
 import '../domain/progress.dart';
+import '../../reports/presentation/report_label.dart';
 import 'help_screen.dart';
 import 'journey_controller.dart';
 
@@ -132,13 +133,14 @@ class _JourneyBodyState extends ConsumerState<_JourneyBody> {
   /// True from the tap until the report is saved on the phone, so a double tap cannot make two reports (spec rule 9).
   bool _saving = false;
 
-  Future<void> _depart(OperatorJourney journey, OperatorStop stop) async {
+  /// Runs one report action once: the buttons stay off until it is saved, so a double tap cannot make two reports.
+  Future<void> _act(Future<void> Function(ReportActions actions) action) async {
     if (_saving) {
       return;
     }
     setState(() => _saving = true);
     try {
-      await ref.read(reportActionsProvider).departed(journey, stop);
+      await action(ref.read(reportActionsProvider));
     } finally {
       if (mounted) {
         setState(() => _saving = false);
@@ -157,6 +159,25 @@ class _JourneyBodyState extends ConsumerState<_JourneyBody> {
     final offline = widget.view.offline || !online;
     final lastReport = reports.isEmpty ? null : reports.first;
 
+    // The arrival at the final stop is reported: the journey is complete (AC-E03-03 4). "Done" puts it away.
+    final next = progress?.next;
+    if (next is JourneyFinished) {
+      if (ref.watch(completedDismissedProvider) == journey.journeyId) {
+        return const _Message(
+          title: Strings.noJourneyTitle,
+          body: Strings.noJourneyBody,
+          icon: Icons.train,
+        );
+      }
+      return _CompletedView(
+        finished: next,
+        reports: reports,
+        onDone: () => ref
+            .read(completedDismissedProvider.notifier)
+            .dismiss(journey.journeyId),
+      );
+    }
+
     return Column(
       children: [
         if (offline) _OfflineBanner(lastUpdated: widget.view.fetchedAt),
@@ -170,7 +191,8 @@ class _JourneyBodyState extends ConsumerState<_JourneyBody> {
               _ActionCard(
                 action: progress?.next,
                 saving: _saving,
-                onDepart: (stop) => _depart(journey, stop),
+                onDepart: (stop) => _act((a) => a.departed(journey, stop)),
+                onArrive: (stop) => _act((a) => a.arrived(journey, stop)),
               ),
               const SizedBox(height: 12),
               SecondaryButton(
@@ -283,11 +305,13 @@ class _ActionCard extends StatelessWidget {
     required this.action,
     required this.saving,
     required this.onDepart,
+    required this.onArrive,
   });
 
   final NextAction? action;
   final bool saving;
   final ValueChanged<OperatorStop> onDepart;
+  final ValueChanged<OperatorStop> onArrive;
 
   @override
   Widget build(BuildContext context) {
@@ -304,17 +328,14 @@ class _ActionCard extends StatelessWidget {
             onPressed: saving ? null : () => onDepart(stop),
           ),
         ],
-        NoMoreReports(:final finalStop) => [
-          Text(
-            Strings.noMoreReports,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          Text(
-            Strings.noMoreReportsDetail(finalStop.stationName),
-            style: secondary,
+        ArriveAt(:final stop) => [
+          Text(Strings.nextArrival(stop.stationName), style: secondary),
+          PrimaryButton(
+            label: Strings.arrivedButton(stop.stationName),
+            onPressed: saving ? null : () => onArrive(stop),
           ),
         ],
-        null => const [SizedBox.shrink()],
+        JourneyFinished() || null => const [SizedBox.shrink()],
       },
     );
   }
@@ -336,7 +357,7 @@ class _LastReportCard extends StatelessWidget {
           children: [
             Flexible(
               child: Text(
-                Strings.departedLabel(report.stationName),
+                reportLabel(report),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -437,6 +458,147 @@ class _StopsCard extends StatelessWidget {
               );
             },
           ),
+      ],
+    );
+  }
+}
+
+/// Remembers, for this run of the app, that the operator pressed Done on the completed screen.
+class CompletedDismissed extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void dismiss(String journeyId) => state = journeyId;
+}
+
+final completedDismissedProvider =
+    NotifierProvider<CompletedDismissed, String?>(CompletedDismissed.new);
+
+/// The journey is complete (`Nimal-Completed`): where the train arrived, and how this operator's reports went.
+class _CompletedView extends StatelessWidget {
+  const _CompletedView({
+    required this.finished,
+    required this.reports,
+    required this.onDone,
+  });
+
+  final JourneyFinished finished;
+  final List<QueuedReport> reports;
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    int count(ReportState state) =>
+        reports.where((r) => r.state == state).length;
+
+    Widget tile(int value, String label) => Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colors.bgPage,
+          border: Border.all(color: colors.borderDefault),
+          borderRadius: BorderRadius.circular(Radii.lg),
+        ),
+        child: Column(
+          spacing: 2,
+          children: [
+            Text(
+              '$value',
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                height: 1.1,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: colors.textSecondary),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(Space.md),
+      children: [
+        const SizedBox(height: Space.xl),
+        Center(
+          child: Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colors.bgPage,
+              border: Border.all(color: colors.borderDefault, width: 1.5),
+            ),
+            child: Icon(
+              TokenIcons.deliveryDelivered,
+              size: 40,
+              color: colors.textPrimary,
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Semantics(
+          header: true,
+          child: Text(
+            Strings.completedTitle,
+            textAlign: TextAlign.center,
+            style: context.text.headlineMedium,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text.rich(
+          TextSpan(
+            text: '${Strings.completedBody(finished.finalStop.stationName)} ',
+            children: [
+              if (finished.arrivedAt != null)
+                TextSpan(
+                  text: formatTime(finished.arrivedAt!),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+            ],
+          ),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 17,
+            height: 1.5,
+            color: colors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: Space.lg),
+        Semantics(
+          header: true,
+          child: Text(
+            Strings.yourReports.toUpperCase(),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .6,
+              color: colors.textSecondary,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          spacing: 10,
+          children: [
+            tile(count(ReportState.delivered), Strings.countSent),
+            tile(count(ReportState.pending), Strings.countWaiting),
+            tile(count(ReportState.rejected), Strings.countRejected),
+          ],
+        ),
+        const SizedBox(height: Space.lg),
+        PrimaryButton(label: Strings.done, onPressed: onDone),
       ],
     );
   }

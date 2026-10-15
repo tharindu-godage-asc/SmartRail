@@ -9,6 +9,7 @@ import '../../auth/presentation/auth_controller.dart';
 import '../../journey/domain/models.dart';
 import '../../journey/presentation/journey_controller.dart';
 import '../domain/report.dart';
+import '../domain/report_queue.dart';
 import '../domain/report_sender.dart';
 
 /// Runs the [ReportSender] whenever there may be something to send: after a tap, when the network comes back, after
@@ -96,10 +97,49 @@ class ReportActions {
   final Ref _ref;
 
   /// `Departed <stop>`: save the report with the moment of the tap (spec rule 1), then send it when possible.
-  Future<void> departed(OperatorJourney journey, OperatorStop stop) async {
+  Future<QueuedReport> departed(OperatorJourney journey, OperatorStop stop) =>
+      _save(journey, ReportKind.departed, stop: stop);
+
+  /// `Arrived <stop>` at a designated stop or the final stop (AC-E03-03).
+  Future<QueuedReport> arrived(OperatorJourney journey, OperatorStop stop) =>
+      _save(journey, ReportKind.arrived, stop: stop);
+
+  /// A delay: why, and the TOTAL delay in minutes against the timetable, or null for "unknown" (AC-E03-04).
+  Future<QueuedReport> delayed(
+    OperatorJourney journey, {
+    required DelayReason reason,
+    int? totalMinutes,
+  }) => _save(journey, ReportKind.delay, reason: reason, total: totalMinutes);
+
+  Future<QueuedReport> _save(
+    OperatorJourney journey,
+    ReportKind kind, {
+    OperatorStop? stop,
+    DelayReason? reason,
+    int? total,
+  }) async {
+    final queue = _ref.read(reportQueueProvider);
+    final report = await queue.enqueue(
+      QueuedReport(
+        clientEventId: const Uuid().v4(),
+        journeyId: journey.journeyId,
+        kind: kind,
+        serviceStopId: stop?.serviceStopId,
+        stationName: stop?.stationName ?? '',
+        occurredAt: await _stamp(queue, journey.journeyId),
+        delayReason: reason,
+        totalDelayMinutes: total,
+      ),
+    );
+    unawaited(_ref.read(reportDispatcherProvider.notifier).kick());
+    return report;
+  }
+
+  /// The moment of the tap (spec rule 1), in whole seconds so a retry sends exactly what is stored. The server refuses two
+  /// reports of one journey at the same moment, so it is never earlier than one second after the previous report.
+  Future<DateTime> _stamp(ReportQueue queue, String journeyId) async {
     final now = _ref.read(clockOffsetProvider).now();
-    // Whole seconds: what is stored is exactly what is sent again on every retry.
-    final occurredAt = DateTime.utc(
+    final tap = DateTime.utc(
       now.year,
       now.month,
       now.day,
@@ -107,19 +147,10 @@ class ReportActions {
       now.minute,
       now.second,
     );
-
-    await _ref
-        .read(reportQueueProvider)
-        .enqueue(
-          QueuedReport(
-            clientEventId: const Uuid().v4(),
-            journeyId: journey.journeyId,
-            serviceStopId: stop.serviceStopId,
-            stationName: stop.stationName,
-            occurredAt: occurredAt,
-          ),
-        );
-    unawaited(_ref.read(reportDispatcherProvider.notifier).kick());
+    final previous = await queue.latestOccurredAt(journeyId);
+    return previous != null && !tap.isAfter(previous)
+        ? previous.add(const Duration(seconds: 1))
+        : tap;
   }
 }
 

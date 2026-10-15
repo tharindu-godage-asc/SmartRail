@@ -6,6 +6,7 @@ class OperatorStop {
     required this.stationCode,
     required this.stationName,
     required this.isFinalStop,
+    this.isArrivalStation = false,
     this.scheduledArrival,
     this.scheduledDeparture,
   });
@@ -16,6 +17,7 @@ class OperatorStop {
     stationCode: json['stationCode'] as String,
     stationName: json['stationName'] as String,
     isFinalStop: json['isFinalStop'] as bool,
+    isArrivalStation: json['isArrivalStation'] as bool? ?? false,
     scheduledArrival: _instant(json['scheduledArrival']),
     scheduledDeparture: _instant(json['scheduledDeparture']),
   );
@@ -25,6 +27,9 @@ class OperatorStop {
   final String stationCode;
   final String stationName;
   final bool isFinalStop;
+
+  /// An arrival can be reported here: a designated stop, or the final stop (D-08, spec 06).
+  final bool isArrivalStation;
   final DateTime? scheduledArrival;
   final DateTime? scheduledDeparture;
 
@@ -34,6 +39,7 @@ class OperatorStop {
     'stationCode': stationCode,
     'stationName': stationName,
     'isFinalStop': isFinalStop,
+    'isArrivalStation': isArrivalStation,
     'scheduledArrival': scheduledArrival?.toUtc().toIso8601String(),
     'scheduledDeparture': scheduledDeparture?.toUtc().toIso8601String(),
   };
@@ -91,6 +97,7 @@ class StopProgress {
     required this.serviceStopId,
     required this.sequence,
     required this.confirmation,
+    this.actualArrival,
     this.actualDeparture,
   });
 
@@ -98,6 +105,7 @@ class StopProgress {
     serviceStopId: json['serviceStopId'] as String,
     sequence: json['sequence'] as int,
     confirmation: json['confirmation'] as String,
+    actualArrival: _instant(json['actualArrival']),
     actualDeparture: _instant(json['actualDeparture']),
   );
 
@@ -106,10 +114,12 @@ class StopProgress {
 
   /// Pending, Reported or Inferred (a later stop was reported, so this one was passed).
   final String confirmation;
+  final DateTime? actualArrival;
   final DateTime? actualDeparture;
 
-  bool get hasDeparted =>
-      confirmation == 'Reported' || confirmation == 'Inferred';
+  /// The train has left this stop: its departure was reported, or a later stop was reported so it was passed.
+  /// A stop with only an arrival is `Reported` but not left, so the confirmation alone is not enough.
+  bool get hasDeparted => actualDeparture != null || confirmation == 'Inferred';
 }
 
 /// What `GET /api/v1/trains/{trainNumber}/status` returns, reduced to what the operator app uses.
@@ -120,6 +130,8 @@ class TrainStatus {
     required this.serverTime,
     required this.delayMinutes,
     required this.stops,
+    this.statusKey = '',
+    this.delayKnown = true,
   });
 
   factory TrainStatus.fromJson(Map<String, dynamic> json) => TrainStatus(
@@ -127,6 +139,8 @@ class TrainStatus {
     version: json['version'] as int,
     serverTime: DateTime.parse(json['serverTime'] as String).toUtc(),
     delayMinutes: json['delayMinutes'] as int,
+    statusKey: json['statusKey'] as String? ?? '',
+    delayKnown: json['delayKnown'] as bool? ?? true,
     stops: (json['stops'] as List<dynamic>)
         .map((s) => StopProgress.fromJson(s as Map<String, dynamic>))
         .toList(),
@@ -138,6 +152,12 @@ class TrainStatus {
   final DateTime serverTime;
   final int delayMinutes;
   final List<StopProgress> stops;
+
+  /// `Completed` once the arrival at the final stop is accepted (AC-E03-03 4); other values are not used by the app.
+  final String statusKey;
+
+  /// False after an operator reported "unknown": the number is the last known one, not a promise.
+  final bool delayKnown;
 }
 
 DateTime? _instant(Object? value) =>
