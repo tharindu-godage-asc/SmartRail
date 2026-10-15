@@ -126,7 +126,7 @@ Location: `mobile/operator_app` (new Flutter project; nothing copied from the sp
 - [x] AC-E03-05 (1), (2), (3), (4): chips Delivered, Not sent yet, Rejected.
 - [x] AC-E03-05 (5), (6): backoff 5 s to 5 min with jitter, never discards, queue survives a restart.
 - [x] AC-E01-03 (1) (2): a call without a token gets 401 and a refresh or sign-in; a 403 for an unassigned report shows Rejected and stores nothing.
-- [ ] FR-21 (unit-tested; not yet tried with a real wrong phone clock): with the phone clock 3 minutes fast, the departure is still accepted (server offset applied).
+- [x] FR-21: with the phone clock 3 minutes fast, the departure is still accepted (server offset applied). Verified on the emulator 15 Oct: phone 03:53:15, server 03:50:15, the server recorded Maradana at 03:50:08. This run also found and fixed a bug: stop ids repeat every day, so the "one report per stop" check blocked today's tap because of yesterday's report; it now matches the journey as well (test `the same stop on another day is a new report`).
 - [x] A 409 caused by a version conflict is retried; other 409 and 422 answers show Rejected.
 - [x] Sign out on the emulator (15 Oct): the confirmation said "1 report is still waiting to send from this phone" and the app returned to the sign-in screen. The queue is kept (widget- and drift-tested). The waiting report was sent after the next sign-in (see AC-E01-01 4).
 - [x] Screens match the designs (`Nimal-Login`, `Nimal-SessionExpired`, `Nimal-NoJourney`, `Nimal-Journey-Departure`, `Nimal-Offline`, `Nimal-PhoneFallback`, `Nimal-SignOut-Confirm`; `Nimal-Suspended`, `Nimal-DelayReason` and `Nimal-DelayEstimate` as tested widgets), with icon and text for status, 44 px targets, and the text scale at 200 % not clipped.

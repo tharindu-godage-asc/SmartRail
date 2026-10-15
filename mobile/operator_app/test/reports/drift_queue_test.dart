@@ -70,6 +70,30 @@ void main() {
     await db.close();
   });
 
+  test('the same stop on another day is a new report: stop ids repeat every day, journeys do not', () async {
+    final db = open();
+    final queue = DriftReportQueue(db);
+
+    // Yesterday's journey: Maradana was reported and delivered.
+    await queue.enqueue(
+      QueuedReport(
+        clientEventId: 'old',
+        journeyId: 'journey-yesterday',
+        serviceStopId: stopId(4),
+        stationName: 'Maradana',
+        occurredAt: DateTime.utc(2026, 10, 14, 14, 15),
+        state: ReportState.delivered,
+      ),
+    );
+
+    // Today's journey has the same stop id. The tap must make a real report.
+    final today = await queue.enqueue(reportFor(4, id: 'new'));
+
+    expect(today.clientEventId, 'new');
+    expect(await queue.pendingCount(), 1);
+    await db.close();
+  });
+
   test('update changes state without losing the report; delivered reports leave the pending list', () async {
     final db = open();
     final queue = DriftReportQueue(db);

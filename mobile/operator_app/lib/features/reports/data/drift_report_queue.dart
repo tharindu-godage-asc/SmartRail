@@ -14,6 +14,8 @@ class DriftReportQueue implements ReportQueue {
     final existing =
         await (_db.select(_db.reports)..where(
               (r) =>
+                  // Stop ids are the same every day, so the journey must match too.
+                  r.journeyId.equals(report.journeyId) &
                   r.serviceStopId.equals(report.serviceStopId) &
                   r.state.isNotValue(ReportState.rejected.index),
             ))

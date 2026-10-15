@@ -85,6 +85,7 @@ class InMemoryReportQueue implements ReportQueue {
   Future<QueuedReport> enqueue(QueuedReport report) async {
     final existing = items.where(
       (r) =>
+          r.journeyId == report.journeyId &&
           r.serviceStopId == report.serviceStopId &&
           r.state != ReportState.rejected,
     );
