@@ -4,7 +4,7 @@
   "tags": ["smartrail"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": { "from": "now-30m", "to": "now" },
   "templating": {
@@ -61,8 +61,35 @@
       ]
     },
     {
+      "id": 7, "type": "timeseries", "title": "Reports received (total, by outcome)",
+      "description": "Counter smartrail.events.received. Every operator report the API handled: recorded, repeat or a refusal reason.",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (deployment_environment, event_type, outcome) (smartrail_events_received_total{deployment_environment=~\"$env\"})", "legendFormat": "{{deployment_environment}} {{event_type}} {{outcome}}" }
+      ]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Report to visible (average, s)",
+      "description": "Histogram smartrail.events.report_to_visible_seconds, average since the API started. NFR-04 target: 30 s from report to passenger screen (the red line).",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "thresholdsStyle": { "mode": "line" } },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 30 } ] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "sum by (deployment_environment) (smartrail_events_report_to_visible_seconds_sum{deployment_environment=~\"$env\"}) / sum by (deployment_environment) (smartrail_events_report_to_visible_seconds_count{deployment_environment=~\"$env\"})", "legendFormat": "{{deployment_environment}}" }
+      ]
+    },
+    {
       "id": 5, "type": "logs", "title": "Logs",
-      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 9 },
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 9 },
       "datasource": { "type": "loki", "uid": "loki" },
       "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending" },
       "targets": [
@@ -71,7 +98,7 @@
     },
     {
       "id": 6, "type": "table", "title": "Recent traces",
-      "gridPos": { "x": 0, "y": 25, "w": 24, "h": 9 },
+      "gridPos": { "x": 0, "y": 33, "w": 24, "h": 9 },
       "datasource": { "type": "tempo", "uid": "tempo" },
       "targets": [
         { "refId": "A", "queryType": "traceql", "query": "{ resource.deployment.environment =~ \"$env\" }", "limit": 20 }
