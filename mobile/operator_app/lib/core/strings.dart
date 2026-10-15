@@ -46,7 +46,13 @@ abstract final class Strings {
   static String arrivedLabel(String station) => 'Arrived $station';
   static String delayLabel(String reason, String total) =>
       'Delay: $reason, $total';
-  static String delayTotalShort(int minutes) => '~$minutes min';
+
+  /// A length of time as the operator reads it: 60 minutes is "1 hour", everything else is "N min".
+  static String minutesShort(int minutes) =>
+      minutes == 60 ? '1 hour' : '$minutes min';
+  static String minutesLong(int minutes) =>
+      minutes == 60 ? '1 hour' : '$minutes minutes';
+  static String delayTotalShort(int minutes) => '~${minutesShort(minutes)}';
   static const delayDurationUnknownShort = 'duration unknown';
 
   // Journey completed (AC-E03-03 4)
@@ -82,17 +88,18 @@ abstract final class Strings {
       'Total delay against the timetable, not extra minutes. Options below your current delay are not offered.';
   static String runningLate(int minutes) => 'Running +$minutes min late now';
   static const runningLateUnknown = 'The length of the delay is unknown now';
-  static String plusMinutes(int minutes) => '+$minutes min';
+  static String plusMinutes(int minutes) => '+${minutesShort(minutes)}';
   static const delaySentTitle = 'Delay reported';
   static const delaySavedTitle = 'Delay saved on this phone';
   static const delayRejectedTitle = 'Delay not accepted';
   static String delaySummary(String reason, String total) => '$reason · $total';
   static String aboutLate(int minutes) =>
-      'about $minutes minutes late in total';
+      'about ${minutesLong(minutes)} late in total';
   static const durationUnknown = 'how late is not known yet';
   static String delaySentDetail(String shown) =>
       'Passengers now see $shown. The reason appears after Operations verifies it.';
-  static String delayShownKnown(int minutes) => 'Delayed (~$minutes min)';
+  static String delayShownKnown(int minutes) =>
+      'Delayed (~${minutesShort(minutes)})';
   static const delayShownUnknown = 'Delayed, duration unknown';
   static const delaySavedDetail =
       'It will send as soon as the connection returns. If it is urgent, phone your line desk.';

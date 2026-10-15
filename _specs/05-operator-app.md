@@ -174,13 +174,13 @@ Requested by the owner after spec 06 A1 (arrival and Completed) and A2 (delay) w
 - A report is now one of three kinds: `departed`, `arrived`, `delay`. The queue stores the kind, the reason code and the total (null total means "unknown"). A delay has no stop.
 - The phone database moves from version 1 to 2 (three new columns, the stop becomes optional). Reports waiting on a phone with the old app are kept (tested against a version 1 file).
 - At a designated stop the next action is the arrival, then the departure. At the final stop only the arrival. A stop with only an arrival reported counts as "reported" on the server but not as left, so the app no longer reads every `Reported` stop as departed.
-- The estimate screen offers +10, +15, +20, +30, +45 and Unknown, only above the delay running; with an unknown delay it says so instead of showing a number.
+- The estimate screen offers +10, +15, +20, +30, +45, +1 hour and Unknown, only above the delay running (60 reads "1 hour"; longer totals are not offered, decided by the owner on 15 Oct after the first emulator run showed that a train already hours late has no sensible button); with an unknown delay it says so instead of showing a number.
 - The server's times: a new report is stamped after the journey's previous report by at least one second, because the server refuses two reports at the same moment.
 
 **Criteria**
 - [x] AC-E03-03 (1) (2) (3): arrive at a designated stop, no arrival elsewhere, an arrival taken offline is kept and the departure is offered at once (widget and unit tests).
 - [x] AC-E03-03 (4): an arrival at the final stop shows `Nimal-Completed` with the counts.
-- [x] AC-E03-04 (1) (5) (6): a delay is sent with the chosen reason and total, Unknown sends no total, and with +8 running +10 to +45 and Unknown are offered; with +25 running only +30, +45 and Unknown.
+- [x] AC-E03-04 (1) (5) (6): a delay is sent with the chosen reason and total, Unknown sends no total, and with +8 running +10 to +1 hour and Unknown are offered; with +25 running only +30, +45, +1 hour and Unknown; with a delay of 1 hour or more only Unknown.
 - [x] AC-E03-01 (4): "Report delay" is always available, now with a working send.
 - [x] Delay confirmation: delivered, saved on the phone (offline, with the desk phone), and refused are three different screens; a saved delay changes to delivered by itself.
 - [x] The database migration keeps waiting reports (test with a version 1 file).

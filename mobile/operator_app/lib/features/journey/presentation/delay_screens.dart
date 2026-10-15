@@ -28,9 +28,9 @@ final delayReasons = [
   for (final reason in delayReasonOrder) reasonLabel(reason),
 ];
 
-/// "Total delay" choices decided with the owner (spec 06, Q6): +10, +15, +20, +30, +45 and Unknown. A choice at or below
+/// "Total delay" choices decided with the owner (spec 06, Q6 and 15 Oct): +10, +15, +20, +30, +45, +1 hour and Unknown. A choice at or below
 /// the delay already running is not offered (AC-E03-04 6). The server accepts 1 to 240, so no server change is needed.
-const delayChoices = [10, 15, 20, 30, 45];
+const delayChoices = [10, 15, 20, 30, 45, 60];
 
 List<int> offeredDelays(int runningLate) =>
     delayChoices.where((m) => m > runningLate).toList();

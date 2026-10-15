@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:operator_app/core/strings.dart';
 import 'package:operator_app/features/journey/presentation/delay_screens.dart';
 import 'package:operator_app/features/reports/domain/report.dart';
 import 'package:operator_app/features/reports/domain/send_result.dart';
@@ -139,6 +140,7 @@ void main() {
           '+20 min',
           '+30 min',
           '+45 min',
+          '+1 hour',
           'Unknown',
         ]) {
           expect(find.text(option), findsOneWidget, reason: option);
@@ -147,29 +149,30 @@ void main() {
       },
     );
 
-    testWidgets('with +25 running only +30, +45 and Unknown are offered', (
-      tester,
-    ) async {
-      final api = FakeJourneyApi(
-        journey: demoJourney(),
-        status: statusWith(departed: {1}, delay: 25, version: 1),
-      );
-      final app = TestApp(api: api);
-      await app.pump(tester);
+    testWidgets(
+      'with +25 running only +30, +45, +1 hour and Unknown are offered',
+      (tester) async {
+        final api = FakeJourneyApi(
+          journey: demoJourney(),
+          status: statusWith(departed: {1}, delay: 25, version: 1),
+        );
+        final app = TestApp(api: api);
+        await app.pump(tester);
 
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Report delay'));
-      await settle(tester);
-      await tester.tap(find.widgetWithText(FilledButton, 'Next'));
-      await settle(tester);
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Report delay'));
+        await settle(tester);
+        await tester.tap(find.widgetWithText(FilledButton, 'Next'));
+        await settle(tester);
 
-      for (final gone in ['+10 min', '+15 min', '+20 min']) {
-        expect(find.text(gone), findsNothing, reason: gone);
-      }
-      for (final option in ['+30 min', '+45 min', 'Unknown']) {
-        expect(find.text(option), findsOneWidget, reason: option);
-      }
-      await app.close(tester);
-    });
+        for (final gone in ['+10 min', '+15 min', '+20 min']) {
+          expect(find.text(gone), findsNothing, reason: gone);
+        }
+        for (final option in ['+30 min', '+45 min', '+1 hour', 'Unknown']) {
+          expect(find.text(option), findsOneWidget, reason: option);
+        }
+        await app.close(tester);
+      },
+    );
 
     testWidgets('after an unknown delay the screen does not claim a number', (
       tester,
@@ -200,11 +203,85 @@ void main() {
     });
 
     test('offeredDelays hides options at or below the current delay', () {
-      expect(offeredDelays(0), [10, 15, 20, 30, 45]);
-      expect(offeredDelays(10), [15, 20, 30, 45]);
-      expect(offeredDelays(25), [30, 45]);
-      expect(offeredDelays(45), isEmpty);
+      expect(offeredDelays(0), [10, 15, 20, 30, 45, 60]);
+      expect(offeredDelays(10), [15, 20, 30, 45, 60]);
+      expect(offeredDelays(25), [30, 45, 60]);
+      expect(offeredDelays(45), [60]);
+      expect(offeredDelays(60), isEmpty, reason: 'the buttons stop at 1 hour');
+      expect(offeredDelays(213), isEmpty);
     });
+
+    testWidgets(
+      'with a delay of an hour or more only Unknown is offered, as there is no longer total to choose',
+      (tester) async {
+        final api = FakeJourneyApi(
+          journey: demoJourney(),
+          status: statusWith(departed: {1}, delay: 213, version: 1),
+        );
+        final app = TestApp(api: api);
+        await app.pump(tester);
+
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Report delay'));
+        await settle(tester);
+        await tester.tap(find.widgetWithText(FilledButton, 'Next'));
+        await settle(tester);
+
+        expect(find.text('Running +213 min late now'), findsOneWidget);
+        expect(find.text('Unknown'), findsOneWidget);
+        for (final gone in ['+10 min', '+45 min', '+1 hour']) {
+          expect(find.text(gone), findsNothing, reason: gone);
+        }
+        await app.close(tester);
+      },
+    );
+
+    test(
+      '60 minutes is worded as 1 hour everywhere, other lengths in minutes',
+      () {
+        expect(Strings.plusMinutes(60), '+1 hour');
+        expect(Strings.plusMinutes(45), '+45 min');
+        expect(Strings.aboutLate(60), 'about 1 hour late in total');
+        expect(Strings.aboutLate(30), 'about 30 minutes late in total');
+        expect(Strings.delayTotalShort(60), '~1 hour');
+        expect(Strings.delayTotalShort(10), '~10 min');
+        expect(Strings.delayShownKnown(60), 'Delayed (~1 hour)');
+        expect(Strings.delayShownKnown(15), 'Delayed (~15 min)');
+      },
+    );
+
+    testWidgets(
+      'choosing +1 hour sends a total of 60 and the confirmation says 1 hour',
+      (tester) async {
+        final reportApi = ScriptedReportApi([const Delivered()]);
+        final app = TestApp(reportApi: reportApi);
+        await app.pump(tester);
+
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Report delay'));
+        await settle(tester);
+        await tester.tap(find.widgetWithText(FilledButton, 'Next'));
+        await settle(tester);
+        await tester.tap(find.text('+1 hour'));
+        await tester.pump();
+        await tester.tap(find.widgetWithText(FilledButton, 'Send report'));
+        await settle(tester);
+
+        expect(
+          (app.queue as InMemoryReportQueue).items.single.totalDelayMinutes,
+          60,
+        );
+        expect(
+          find.text('Signal issue · about 1 hour late in total'),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Passengers now see Delayed (~1 hour). The reason appears after Operations verifies it.',
+          ),
+          findsOneWidget,
+        );
+        await app.close(tester);
+      },
+    );
 
     Future<void> openEstimate(
       WidgetTester tester, {
