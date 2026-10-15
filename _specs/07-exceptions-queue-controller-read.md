@@ -9,7 +9,7 @@ status: ready, approved 2026-10-15 (owner approved the corrected spec in chat: Q
 ---
 
 ## 0) Summary
-**One-liner:** Raise an exception record whenever a stored operator report needs a controller's attention (early departure, delay with a reason, operator flag), and give the controller two read endpoints: the open-exceptions queue and a network overview of active journeys. Controller can also resolve an exception.
+**One-liner:** Raise an exception record whenever a stored operator report needs a controller's attention (early departure, delay with a reason; the operator flag is a later slice), and give the controller two read endpoints: the open-exceptions queue and a network overview of active journeys. Controller can also resolve an exception.
 **Why now:** The demo flow needs Jayasinghe to see "8058 · Gampaha · Reason awaiting verification · 3 min" after Nimal reports a delay (slice A). Without this the delay reason has nowhere to go. It is a Must (FR-50, FR-51).
 **Who is this for:** Controller (reads, resolves). Operator reports create the records but see nothing new.
 **Success looks like:** After Nimal reports a delay with reason Technical fault on 8058, the controller queue returns one Critical exception for it within 5 s; resolving removes it; the passenger status read is unchanged.

@@ -1,5 +1,6 @@
 using System.Diagnostics.Metrics;
 using System.Text.Json;
+using SmartRail.Application.Features.Exceptions;
 using SmartRail.Application.Features.Journeys;
 using SmartRail.Domain.Journeys;
 
@@ -317,6 +318,9 @@ public sealed class ReportEventHandler(IJourneyRepository repository, TimeProvid
                 ? JourneyStatus.Completed
                 : data.Status == JourneyStatus.Scheduled && kind != ReportKind.DelayReported ? JourneyStatus.Running : data.Status;
 
+            // Spec 07: does this report need a controller's attention? At most one exception per report (D-44).
+            var raised = WhatThisReportRaises(data, schedule, kind, stopId, delay, occurredAt, existingStops);
+
             var change = new ReportChange(
                 data.JourneyId,
                 data.Version,
@@ -330,7 +334,8 @@ public sealed class ReportEventHandler(IJourneyRepository repository, TimeProvid
                 newStatus,
                 progress.DelayMinutes,
                 progress.Stops,
-                delay is null ? null : EventRules.ToJson(delay));
+                delay is null ? null : EventRules.ToJson(delay),
+                raised);
 
             if (await repository.SaveReportAsync(change, cancellationToken) == SaveOutcome.Saved)
             {
@@ -340,6 +345,11 @@ public sealed class ReportEventHandler(IJourneyRepository repository, TimeProvid
                     EventMetrics.JourneyCompleted();
                 }
 
+                if (raised is { } exception)
+                {
+                    ExceptionMetrics.Raised(exception.Exception);
+                }
+
                 return ReportEventResult.Recorded(change.EventId, data.Version + 1);
             }
 
@@ -347,5 +357,41 @@ public sealed class ReportEventHandler(IJourneyRepository repository, TimeProvid
         }
 
         return ReportEventResult.Reject(RejectReason.VersionConflict);
+    }
+
+    /// <summary>
+    /// A delay report asks for its reason to be verified (Critical or High by the reason). A departure that left at least 30
+    /// seconds early is an early departure (High). Nothing else raises one (AC-E05-02 5). The station is where the train was:
+    /// the departing stop, or the last reported stop before a delay report (it has no stop of its own).
+    /// </summary>
+    private static RaisedAt? WhatThisReportRaises(
+        JourneyData data,
+        IReadOnlyList<StopSchedule> schedule,
+        ReportKind kind,
+        Guid? stopId,
+        DelayPayload? delay,
+        DateTimeOffset occurredAt,
+        IReadOnlyList<ReportedStopEvent> existingStops)
+    {
+        switch (kind)
+        {
+            case ReportKind.DelayReported:
+                var lastStop = existingStops
+                    .Where(e => e.OccurredAt < occurredAt)
+                    .OrderBy(e => e.OccurredAt)
+                    .Select(e => e.ServiceStopId)
+                    .LastOrDefault();
+                var station = lastStop == Guid.Empty ? (Guid?)null : data.Stops.First(s => s.ServiceStopId == lastStop).StationId;
+                return new RaisedAt(ExceptionPolicy.ForDelay(delay!.Reason), station);
+
+            case ReportKind.Departed:
+                var scheduled = schedule.First(s => s.ServiceStopId == stopId).Departure;
+                return ExceptionPolicy.ForDeparture(occurredAt, scheduled) is { } early
+                    ? new RaisedAt(early, data.Stops.First(s => s.ServiceStopId == stopId).StationId)
+                    : null;
+
+            default:
+                return null;
+        }
     }
 }

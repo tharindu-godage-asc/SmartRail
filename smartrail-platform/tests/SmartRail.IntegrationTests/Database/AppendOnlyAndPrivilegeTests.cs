@@ -43,8 +43,17 @@ public sealed class AppendOnlyAndPrivilegeTests(PostgresFixture postgres) : IAsy
     {
         var error = await Assert.ThrowsAsync<PostgresException>(() => _db.ExecuteAsync(statement));
 
-        Assert.Equal("23001", error.SqlState); // restrict_violation, raised by train_event_block_change()
-        Assert.Contains("append-only", error.MessageText);
+        if (statement.StartsWith("truncate", StringComparison.Ordinal))
+        {
+            // Since journey_exception points at train_event, Postgres refuses TRUNCATE itself (0A000) before the trigger can.
+            Assert.Contains(error.SqlState, new[] { "23001", "0A000" });
+        }
+        else
+        {
+            Assert.Equal("23001", error.SqlState); // restrict_violation, raised by train_event_block_change()
+            Assert.Contains("append-only", error.MessageText);
+        }
+
         Assert.Equal(1, await _db.ScalarAsync<long>("select count(*) from train_event"));
     }
 

@@ -78,6 +78,11 @@ Run from `smartrail-platform/` unless noted.
   - Which trains: live journeys not Completed, not over (expected end plus the grace period) and not yet departed From (a report at From or any later stop means it left); a service with no journey row for the date comes from the timetable (`runs_on` of Daily, Weekdays or Weekends; anything else is never offered and is logged); today's timetable-only trains only while the scheduled departure from From is not in the past. Holidays are not modelled.
   - **Not rate-limited.** NFR-13 (a Must) is deliberately deferred for every endpoint: no 429, no `Retry-After`. FR-11 (journeys generated 7 days ahead) is not built either, which is why future dates come from the timetable.
 
+- Exceptions queue (slice B1, spec `_specs/07-exceptions-queue-controller-read.md`), controller role only, mapped only when a database is configured:
+  - A delay report raises `ReasonAwaitingVerification` (Critical for TechnicalFault, Obstruction, Weather; High for SignalIssue, Unknown); a departure at least 30 seconds before its scheduled time raises `EarlyDeparture` (High). One report, one exception (unique `related_event_id` + `type`), saved in the same transaction as the event. The rules are `ExceptionPolicy` in Domain.
+  - `GET /api/v1/exceptions?status=open` (Critical first, then oldest; 422 for any other `status`) returns `{ items, openCount }`, each item with `trainNumber`, `stationName` (null when nothing was reported yet), `type`, `severity`, `createdAt`, `ageSeconds`. `POST /api/v1/exceptions/{id}/resolve` with `{ action: "Acknowledged" | "NoActionNeeded" | "Escalated" }`: 204, 404 `exception_not_found`, 409 `already_resolved`, 422 `invalid_request`. Who resolved it is stored in `resolved_by` and logged.
+  - Not built: the operator flag (`OperatorCorrectionRequested`), the network overview (B2), backward and same-station conflicts. Metrics `smartrail.exceptions.raised` and `.resolved` (Grafana panel "Exceptions raised and resolved").
+
 ## Architecture rules
 - Dependencies point inward: Api and Infrastructure may use Application; Application may use Domain; Domain uses nothing.
 - One folder per feature (for example `Features/Reports/SubmitReport`) containing its endpoint, handler, validator and tests. Features do not reference each other's internals.

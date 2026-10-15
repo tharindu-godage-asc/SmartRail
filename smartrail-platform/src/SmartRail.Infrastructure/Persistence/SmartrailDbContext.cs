@@ -23,6 +23,7 @@ public sealed class SmartrailDbContext(DbContextOptions<SmartrailDbContext> opti
     public DbSet<OperatorAssignment> OperatorAssignments => Set<OperatorAssignment>();
     public DbSet<JourneyStopState> JourneyStopStates => Set<JourneyStopState>();
     public DbSet<TrainEvent> TrainEvents => Set<TrainEvent>();
+    public DbSet<JourneyException> JourneyExceptions => Set<JourneyException>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SmartrailDbContext).Assembly);

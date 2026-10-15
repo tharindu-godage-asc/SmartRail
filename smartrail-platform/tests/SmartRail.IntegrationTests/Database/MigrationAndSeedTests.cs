@@ -21,7 +21,7 @@ public sealed class MigrationAndSeedTests(PostgresFixture postgres) : IAsyncLife
     public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
-    public async Task Migration_creates_exactly_the_13_core_tables_and_no_others()
+    public async Task Migration_creates_exactly_the_core_tables_and_the_exception_table_and_no_others()
     {
         var tables = await _db.ColumnAsync(
             "select table_name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE'");
@@ -30,6 +30,7 @@ public sealed class MigrationAndSeedTests(PostgresFixture postgres) : IAsyncLife
         [
             "__EFMigrationsHistory", "language", "line", "line_translation", "station", "station_translation", "platform",
             "line_station", "train_service", "service_stop", "journey", "operator_assignment", "journey_stop_state", "train_event",
+            "journey_exception",
         ];
         Assert.Equal(expected.Order(StringComparer.Ordinal), tables.Order(StringComparer.Ordinal));
         Assert.DoesNotContain("controller_assignment", tables);

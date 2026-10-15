@@ -87,6 +87,83 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SmartRail.Domain.Journeys.JourneyException", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("JourneyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("journey_id");
+
+                    b.Property<Guid?>("RelatedEventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("related_event_id");
+
+                    b.Property<string>("Resolution")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("resolution");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<string>("ResolvedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("resolved_by");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("severity");
+
+                    b.Property<Guid?>("StationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("station_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_journey_exception");
+
+                    b.HasIndex("JourneyId")
+                        .HasDatabaseName("ix_journey_exception_journey_id");
+
+                    b.HasIndex("StationId")
+                        .HasDatabaseName("ix_journey_exception_station_id");
+
+                    b.HasIndex("RelatedEventId", "Type")
+                        .IsUnique()
+                        .HasDatabaseName("ux_exception_event_type");
+
+                    b.HasIndex("Severity", "CreatedAt")
+                        .HasDatabaseName("ix_exception_open")
+                        .HasFilter("resolved_at IS NULL");
+
+                    b.ToTable("journey_exception", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_journey_exception_severity", "severity IN ('Critical', 'High')");
+
+                            t.HasCheckConstraint("ck_journey_exception_type", "type IN ('ReasonAwaitingVerification', 'EarlyDeparture')");
+                        });
+                });
+
             modelBuilder.Entity("SmartRail.Domain.Journeys.JourneyStopState", b =>
                 {
                     b.Property<Guid>("JourneyId")
@@ -988,6 +1065,28 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("fk_journey_train_services_service_id");
+                });
+
+            modelBuilder.Entity("SmartRail.Domain.Journeys.JourneyException", b =>
+                {
+                    b.HasOne("SmartRail.Domain.Journeys.Journey", null)
+                        .WithMany()
+                        .HasForeignKey("JourneyId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_journey_exception_journey_journey_id");
+
+                    b.HasOne("SmartRail.Domain.Journeys.TrainEvent", null)
+                        .WithMany()
+                        .HasForeignKey("RelatedEventId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_journey_exception_train_events_related_event_id");
+
+                    b.HasOne("SmartRail.Domain.Reference.Station", null)
+                        .WithMany()
+                        .HasForeignKey("StationId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_journey_exception_stations_station_id");
                 });
 
             modelBuilder.Entity("SmartRail.Domain.Journeys.JourneyStopState", b =>
