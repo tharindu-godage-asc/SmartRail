@@ -92,7 +92,7 @@ public sealed class PassengerQueries(SmartrailDbContext db) : IPassengerQueries
         return journeys.Select(j => new JourneyRecord(
             j.Id, j.ServiceId, j.OperatingDate, j.Status, j.Version, j.CurrentDelayMinutes,
             states.Where(s => s.JourneyId == j.Id)
-                .Select(s => new StopStateInfo(s.ServiceStopId, s.Confirmation, s.EstimatedArrival, s.EstimatedDeparture, s.ActualDeparture))
+                .Select(s => new StopStateInfo(s.ServiceStopId, s.Confirmation, s.EstimatedArrival, s.EstimatedDeparture, s.ActualDeparture, s.ActualArrival))
                 .ToList(),
             lastReceived.TryGetValue(j.Id, out var at) ? at : null))
             .ToList();

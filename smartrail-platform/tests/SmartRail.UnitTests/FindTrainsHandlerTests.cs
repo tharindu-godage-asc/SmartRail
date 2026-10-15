@@ -268,6 +268,17 @@ public class FindTrainsHandlerTests
     }
 
     [Fact]
+    public async Task A_train_that_has_only_arrived_at_the_boarding_station_is_still_offered()
+    {
+        // Spec 06: an arrival report is not a departure. The train is standing at Gampaha, so a passenger can still board it there.
+        _queries.AddJourney(Journey8058, Service8058, Tuesday);
+        _queries.ReportArrival(Journey8058, 2, At(8, 40), 10, At(8, 40));
+
+        Assert.Equal(["8058"], Numbers(await Find("GPH", "CF", hour: 8, minute: 41)));
+        Assert.Empty((await Find("VYG", "CF", hour: 8, minute: 41)).Response!.Trains); // it left Veyangoda
+    }
+
+    [Fact]
     public async Task A_skipped_boarding_stop_counts_as_left()
     {
         _queries.AddJourney(Journey8058, Service8058, Tuesday);

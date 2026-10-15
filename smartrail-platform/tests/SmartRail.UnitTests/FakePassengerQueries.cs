@@ -90,6 +90,30 @@ public sealed class FakePassengerQueries : IPassengerQueries
         return updated;
     }
 
+    /// <summary>The train has only ARRIVED at the stop (spec 06): the stop is Reported with an arrival time and no departure.</summary>
+    public JourneyRecord ReportArrival(Guid journeyId, int stopSequence, DateTimeOffset arrivedAt, int delayMinutes, DateTimeOffset lastEventAt)
+    {
+        var journey = Journeys.Single(j => j.JourneyId == journeyId);
+        var service = Services.Single(s => s.ServiceId == journey.ServiceId);
+        var delay = TimeSpan.FromMinutes(delayMinutes);
+        var states = journey.StopStates.Select(state =>
+        {
+            var stop = service.Stops.Single(s => s.ServiceStopId == state.ServiceStopId);
+            if (stop.Sequence == stopSequence)
+            {
+                return state with { Confirmation = StopConfirmation.Reported, ActualArrival = arrivedAt, EstimatedArrival = null };
+            }
+
+            return stop.Sequence < stopSequence
+                ? state with { Confirmation = StopConfirmation.Inferred }
+                : state with { EstimatedArrival = state.EstimatedArrival + delay, EstimatedDeparture = state.EstimatedDeparture + delay };
+        }).ToList();
+
+        var updated = journey with { StopStates = states, DelayMinutes = delayMinutes, Version = journey.Version + 1, LastEventAt = lastEventAt };
+        Journeys[Journeys.IndexOf(journey)] = updated;
+        return updated;
+    }
+
     public Task<IReadOnlyList<StationRecord>> GetStationsAsync(CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<StationRecord>>(_stations.ToList());
 

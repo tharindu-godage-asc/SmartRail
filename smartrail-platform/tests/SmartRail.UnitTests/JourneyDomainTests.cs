@@ -27,7 +27,9 @@ public class JourneyDomainTests
     private static DateTimeOffset Local(int hour, int minute, int second = 0, DateOnly? date = null) =>
         OperatingTime.ToInstant(date ?? Tuesday, new TimeOnly(hour, minute, second));
 
-    private static ReportedDeparture Departed(Guid stop, DateTimeOffset at) => new(stop, at);
+    private static ReportedStopEvent Departed(Guid stop, DateTimeOffset at) => new(stop, ReportKind.Departed, at);
+
+    private static ReportedStopEvent Arrived(Guid stop, DateTimeOffset at) => new(stop, ReportKind.Arrived, at);
 
     // ---- R16 scheduled instants ----
 
@@ -211,7 +213,7 @@ public class JourneyDomainTests
     {
         var existing = new[] { Departed(Ragama, Local(8, 52)) };
 
-        Assert.Equal(DepartureOrderResult.Ok, JourneyProgress.CheckOrder(Train8058(), existing, Departed(Veyangoda, Local(8, 28))));
+        Assert.Equal(ReportOrderResult.Ok, JourneyProgress.CheckOrder(Train8058(), existing, Departed(Veyangoda, Local(8, 28))));
     }
 
     [Fact]
@@ -219,7 +221,7 @@ public class JourneyDomainTests
     {
         var existing = new[] { Departed(Veyangoda, Local(8, 28)) };
 
-        Assert.Equal(DepartureOrderResult.ConflictingTimeForStop,
+        Assert.Equal(ReportOrderResult.ConflictingTimeForStop,
             JourneyProgress.CheckOrder(Train8058(), existing, Departed(Veyangoda, Local(8, 29))));
     }
 
@@ -228,7 +230,7 @@ public class JourneyDomainTests
     {
         var existing = new[] { Departed(Veyangoda, Local(8, 28)) };
 
-        Assert.Equal(DepartureOrderResult.NotStrictlyIncreasing,
+        Assert.Equal(ReportOrderResult.NotStrictlyIncreasing,
             JourneyProgress.CheckOrder(Train8058(), existing, Departed(Gampaha, Local(8, 28))));
     }
 
@@ -237,7 +239,7 @@ public class JourneyDomainTests
     {
         var existing = new[] { Departed(Gampaha, Local(8, 35)) };
 
-        Assert.Equal(DepartureOrderResult.NotStrictlyIncreasing,
+        Assert.Equal(ReportOrderResult.NotStrictlyIncreasing,
             JourneyProgress.CheckOrder(Train8058(), existing, Departed(Ragama, Local(8, 34))));
     }
 
@@ -246,7 +248,7 @@ public class JourneyDomainTests
     {
         var existing = new[] { Departed(Ragama, Local(8, 44)) };
 
-        Assert.Equal(DepartureOrderResult.NotStrictlyIncreasing,
+        Assert.Equal(ReportOrderResult.NotStrictlyIncreasing,
             JourneyProgress.CheckOrder(Train8058(), existing, Departed(Veyangoda, Local(8, 50))));
     }
 

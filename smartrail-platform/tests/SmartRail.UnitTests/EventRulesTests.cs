@@ -1,4 +1,4 @@
-using SmartRail.Application.Features.Events.ReportDeparture;
+using SmartRail.Application.Features.Events.ReportEvent;
 using SmartRail.Application.Features.Journeys;
 using Xunit;
 

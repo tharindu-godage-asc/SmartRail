@@ -9,7 +9,7 @@ using SmartRail.Api.Features.Diagnostics;
 using SmartRail.Api.Features.Journeys;
 using SmartRail.Api.Features.Passenger;
 using SmartRail.Application.Features.Passenger;
-using SmartRail.Application.Features.Events.ReportDeparture;
+using SmartRail.Application.Features.Events.ReportEvent;
 using SmartRail.Api.Features.Status;
 using SmartRail.Infrastructure;
 

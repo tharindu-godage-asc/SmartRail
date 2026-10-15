@@ -4,7 +4,7 @@
   "tags": ["smartrail"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "30s",
   "time": { "from": "now-30m", "to": "now" },
   "templating": {
@@ -88,8 +88,18 @@
       ]
     },
     {
+      "id": 9, "type": "timeseries", "title": "Journeys completed (total)",
+      "description": "Counter smartrail.journeys.completed. A journey is completed when an arrival at the final stop is accepted (spec 06).",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (deployment_environment) (smartrail_journeys_completed_total{deployment_environment=~\"$env\"})", "legendFormat": "{{deployment_environment}}" }
+      ]
+    },
+    {
       "id": 5, "type": "logs", "title": "Logs",
-      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 9 },
+      "gridPos": { "x": 0, "y": 32, "w": 24, "h": 9 },
       "datasource": { "type": "loki", "uid": "loki" },
       "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending" },
       "targets": [
@@ -98,7 +108,7 @@
     },
     {
       "id": 6, "type": "table", "title": "Recent traces",
-      "gridPos": { "x": 0, "y": 33, "w": 24, "h": 9 },
+      "gridPos": { "x": 0, "y": 41, "w": 24, "h": 9 },
       "datasource": { "type": "tempo", "uid": "tempo" },
       "targets": [
         { "refId": "A", "queryType": "traceql", "query": "{ resource.deployment.environment =~ \"$env\" }", "limit": 20 }

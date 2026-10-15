@@ -10,7 +10,15 @@ public sealed record StopInfo(
     string StationName,
     TimeOnly? ScheduledArrival,
     TimeOnly? ScheduledDeparture,
-    bool IsFinalStop);
+    bool IsFinalStop,
+    bool ArrivalReportRequired = false)
+{
+    /// <summary>
+    /// D-08, FR-22: an arrival is reported at a stop flagged for it and at the final stop, and only where the stop has a
+    /// scheduled arrival (the first stop has none).
+    /// </summary>
+    public bool IsArrivalStation => (ArrivalReportRequired || IsFinalStop) && ScheduledArrival is not null;
+}
 
 /// <summary>The stored state of one stop of one journey (the result of the last rebuild, R10).</summary>
 public sealed record StopStateInfo(
@@ -18,10 +26,17 @@ public sealed record StopStateInfo(
     StopConfirmation Confirmation,
     DateTimeOffset? EstimatedArrival,
     DateTimeOffset? EstimatedDeparture,
-    DateTimeOffset? ActualDeparture);
+    DateTimeOffset? ActualDeparture,
+    DateTimeOffset? ActualArrival = null);
 
-/// <summary>An accepted "departed" event, as stored (append-only).</summary>
-public sealed record RecordedEvent(Guid EventId, Guid ClientEventId, Guid ServiceStopId, DateTimeOffset OccurredAt, int JourneyVersionAfter);
+/// <summary>An accepted "arrived" or "departed" event, as stored (append-only).</summary>
+public sealed record RecordedEvent(
+    Guid EventId,
+    Guid ClientEventId,
+    Guid ServiceStopId,
+    DateTimeOffset OccurredAt,
+    int JourneyVersionAfter,
+    ReportKind Kind = ReportKind.Departed);
 
 public sealed record AssignmentInfo(string OperatorUserId, DateTimeOffset ValidFrom, DateTimeOffset? ValidTo);
 
@@ -42,12 +57,13 @@ public sealed record JourneyData(
         ScheduleInstants.For(OperatingDate, Stops.Select(s => new StopTimes(s.ServiceStopId, s.Sequence, s.ScheduledArrival, s.ScheduledDeparture)));
 }
 
-/// <summary>The write of one accepted departure: the event, the rebuilt stop states and the journey, guarded by the version.</summary>
-public sealed record DepartureChange(
+/// <summary>The write of one accepted report: the event, the rebuilt stop states and the journey, guarded by the version.</summary>
+public sealed record ReportChange(
     Guid JourneyId,
     int ExpectedVersion,
     Guid EventId,
     Guid ClientEventId,
+    ReportKind Kind,
     Guid ServiceStopId,
     DateTimeOffset OccurredAt,
     DateTimeOffset ReceivedAt,
@@ -71,7 +87,7 @@ public interface IJourneyRepository
     Task<JourneyData?> GetAssignedAsync(string operatorUserId, DateTimeOffset now, CancellationToken cancellationToken);
 
     /// <summary>Saves the change in one transaction. Conflict means the journey version moved or the client event ID was taken meanwhile.</summary>
-    Task<SaveOutcome> SaveDepartureAsync(DepartureChange change, CancellationToken cancellationToken);
+    Task<SaveOutcome> SaveReportAsync(ReportChange change, CancellationToken cancellationToken);
 }
 
 /// <summary>Events:* settings (FR-38). The defaults are the values in the spec.</summary>
@@ -90,6 +106,9 @@ public sealed class JourneySettings
 
     public int OnTimeToleranceMinutes { get; set; } = 2;
 
-    /// <summary>How long a journey stays visible after its expected end (R15). Becomes 0 when the arrival slice sets Completed.</summary>
+    /// <summary>
+    /// How long a journey that is not Completed stays visible after its expected end (R15). Stays 15 when the arrival slice sets
+    /// Completed: a Completed journey leaves "in progress" by its status (spec 06 R11), and 0 would hide a train that runs late.
+    /// </summary>
     public int VisibleAfterEndMinutes { get; set; } = 15;
 }

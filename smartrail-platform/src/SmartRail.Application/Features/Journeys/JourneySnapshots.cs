@@ -12,11 +12,21 @@ public sealed record StopSnapshot(
     DateTimeOffset? EstimatedArrival,
     DateTimeOffset? EstimatedDeparture,
     DateTimeOffset? ActualDeparture,
-    string Confirmation);
+    string Confirmation,
+    DateTimeOffset? ActualArrival = null);
 
 public sealed record EtaSnapshot(string StationCode, string StationName, DateTimeOffset Time);
 
-public sealed record PositionSnapshot(string StationCode, string StationName, DateTimeOffset DepartedAt);
+/// <summary>
+/// Where the train was last reported. <c>State</c> is "Arrived" while the train is at the station (DepartedAt is null) and
+/// "Departed" after it left.
+/// </summary>
+public sealed record PositionSnapshot(
+    string StationCode,
+    string StationName,
+    DateTimeOffset? DepartedAt,
+    string State = "Departed",
+    DateTimeOffset? ArrivedAt = null);
 
 /// <summary>The public status of one journey (AC-E04-03 5, partly). The version lets clients ignore older snapshots (ADR-09).</summary>
 public sealed record JourneyStatusSnapshot(
@@ -48,20 +58,27 @@ public static class SnapshotBuilder
                 stop.ServiceStopId, stop.Sequence, stop.StationCode, stop.StationName,
                 times.Arrival, times.Departure,
                 state?.EstimatedArrival, state?.EstimatedDeparture, state?.ActualDeparture,
-                (state?.Confirmation ?? StopConfirmation.Pending).ToString());
+                (state?.Confirmation ?? StopConfirmation.Pending).ToString(),
+                state?.ActualArrival);
         }).ToList();
 
         var lastReported = stopsInOrder.LastOrDefault(s => states.TryGetValue(s.ServiceStopId, out var st) && st.Confirmation == StopConfirmation.Reported);
-        var (key, group) = JourneyProgress.StatusFor(lastReported is not null, data.DelayMinutes, onTimeToleranceMinutes);
+        var (key, group) = data.Status == JourneyStatus.Completed
+            ? (JourneyStatusKey.Completed, SmartRail.Domain.StatusGroup.Normal)
+            : JourneyProgress.StatusFor(lastReported is not null, data.DelayMinutes, onTimeToleranceMinutes);
 
         EtaSnapshot? eta = null;
         PositionSnapshot? position = null;
         if (lastReported is not null)
         {
-            var departedAt = states[lastReported.ServiceStopId].ActualDeparture;
-            if (departedAt is { } at)
+            var lastState = states[lastReported.ServiceStopId];
+            if (lastState.ActualDeparture is { } departedAt)
             {
-                position = new PositionSnapshot(lastReported.StationCode, lastReported.StationName, at);
+                position = new PositionSnapshot(lastReported.StationCode, lastReported.StationName, departedAt, "Departed", lastState.ActualArrival);
+            }
+            else if (lastState.ActualArrival is { } arrivedAt)
+            {
+                position = new PositionSnapshot(lastReported.StationCode, lastReported.StationName, null, "Arrived", arrivedAt);
             }
 
             var next = stopsInOrder.FirstOrDefault(s => s.Sequence > lastReported.Sequence);
@@ -108,7 +125,7 @@ public sealed class GetTrainStatusHandler(IJourneyRepository repository, TimePro
                 var schedule = c.Schedule();
                 var start = schedule[0].Departure ?? schedule[0].Arrival ?? DateTimeOffset.MinValue;
                 var end = (schedule[^1].Arrival ?? schedule[^1].Departure ?? start) + TimeSpan.FromMinutes(c.DelayMinutes);
-                return new JourneyWindow(c.JourneyId, c.OperatingDate, start, end);
+                return new JourneyWindow(c.JourneyId, c.OperatingDate, start, end, c.Status == JourneyStatus.Completed);
             })
             .ToList();
 
@@ -125,7 +142,8 @@ public sealed record OperatorStop(
     string StationName,
     DateTimeOffset? ScheduledArrival,
     DateTimeOffset? ScheduledDeparture,
-    bool IsFinalStop);
+    bool IsFinalStop,
+    bool IsArrivalStation = false);
 
 public sealed record OperatorJourneyResponse(
     Guid JourneyId,
@@ -150,7 +168,7 @@ public sealed class GetOperatorJourneyHandler(IJourneyRepository repository, Tim
         var stops = data.Stops.OrderBy(s => s.Sequence)
             .Select(s => new OperatorStop(
                 s.ServiceStopId, s.Sequence, s.StationCode, s.StationName,
-                schedule[s.ServiceStopId].Arrival, schedule[s.ServiceStopId].Departure, s.IsFinalStop))
+                schedule[s.ServiceStopId].Arrival, schedule[s.ServiceStopId].Departure, s.IsFinalStop, s.IsArrivalStation))
             .ToList();
 
         return new OperatorJourneyResponse(data.JourneyId, data.TrainNumber, data.OperatingDate, data.Status.ToString(), data.Version, stops);

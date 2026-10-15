@@ -1,10 +1,10 @@
 using SmartRail.Api.Authentication;
-using SmartRail.Application.Features.Events.ReportDeparture;
+using SmartRail.Application.Features.Events.ReportEvent;
 using SmartRail.Application.Features.Journeys;
 
 namespace SmartRail.Api.Features.Journeys;
 
-public sealed record ReportDepartureResponse(Guid EventId, int JourneyVersion, string Status);
+public sealed record ReportEventResponse(Guid EventId, int JourneyVersion, string Status);
 
 /// <summary>Removes line breaks from a value that came from a request or a token before it goes into a log line (log forging).</summary>
 internal static class LogSafe
@@ -22,7 +22,7 @@ public static class JourneyFeatures
     {
         services.AddSingleton(configuration.GetSection(EventLimits.Section).Get<EventLimits>() ?? new EventLimits());
         services.AddSingleton(configuration.GetSection(JourneySettings.Section).Get<JourneySettings>() ?? new JourneySettings());
-        services.AddScoped<ReportDepartureHandler>();
+        services.AddScoped<ReportEventHandler>();
         services.AddScoped<GetJourneyStatusHandler>();
         services.AddScoped<GetTrainStatusHandler>();
         services.AddScoped<GetOperatorJourneyHandler>();
@@ -35,8 +35,8 @@ public static class JourneyFeatures
            .WithName("GetOperatorJourney")
            .RequireAuthorization(Policies.Operator);
 
-        app.MapPost("/api/v1/journeys/{journeyId:guid}/events", ReportDeparture)
-           .WithName("ReportDeparture")
+        app.MapPost("/api/v1/journeys/{journeyId:guid}/events", ReportEvent)
+           .WithName("ReportEvent")
            .RequireAuthorization(Policies.Operator);
 
         // Public: passengers have no account (FR-05). Listed on the allow-list in AuthConfigurationTests.
@@ -65,11 +65,11 @@ public static class JourneyFeatures
             : TypedResults.Ok(journey);
     }
 
-    private static async Task<IResult> ReportDeparture(
+    private static async Task<IResult> ReportEvent(
         Guid journeyId,
-        ReportDepartureRequest body,
+        ReportEventRequest body,
         HttpContext http,
-        ReportDepartureHandler handler,
+        ReportEventHandler handler,
         ILoggerFactory loggers,
         CancellationToken cancellationToken)
     {
@@ -91,7 +91,7 @@ public static class JourneyFeatures
             return Problem(status, title, code);
         }
 
-        var response = new ReportDepartureResponse(result.EventId!.Value, result.JourneyVersion!.Value, "Delivered");
+        var response = new ReportEventResponse(result.EventId!.Value, result.JourneyVersion!.Value, "Delivered");
         return result.Outcome == ReportOutcome.Recorded
             ? TypedResults.Json(response, statusCode: StatusCodes.Status201Created)
             : TypedResults.Ok(response);
@@ -125,9 +125,10 @@ public static class JourneyFeatures
         RejectReason.TimeOutOfRange => (StatusCodes.Status422UnprocessableEntity, "Reported time is outside the allowed range", "time_out_of_range"),
         RejectReason.StopNotInService => (StatusCodes.Status422UnprocessableEntity, "Stop is not part of this journey", "stop_not_in_service"),
         RejectReason.FinalStop => (StatusCodes.Status422UnprocessableEntity, "No departure from the final stop", "final_stop"),
+        RejectReason.NotArrivalStation => (StatusCodes.Status422UnprocessableEntity, "No arrival report at this stop", "not_arrival_station"),
         RejectReason.JourneyNotReportable => (StatusCodes.Status409Conflict, "Journey cannot take reports now", "journey_not_reportable"),
         RejectReason.ClientEventIdReusedWithDifferentContent => (StatusCodes.Status409Conflict, "Client event ID already used", "client_event_id_reused"),
-        RejectReason.StopAlreadyHasDifferentTime => (StatusCodes.Status409Conflict, "Stop already has a different departure time", "stop_has_different_time"),
+        RejectReason.StopAlreadyHasDifferentTime => (StatusCodes.Status409Conflict, "Stop already has a different time for this report", "stop_has_different_time"),
         RejectReason.OrderConflict => (StatusCodes.Status409Conflict, "Report is impossible in the stop order", "order_conflict"),
         RejectReason.VersionConflict => (StatusCodes.Status409Conflict, "Journey changed, try again", "version_conflict"),
         _ => (StatusCodes.Status500InternalServerError, "Error", "error"),
