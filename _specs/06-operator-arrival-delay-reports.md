@@ -4,7 +4,7 @@ branch: claude/feature/operator-arrival-delay-reports
 spec: _specs/06-operator-arrival-delay-reports.md
 owner: tharindu
 date: 2026-10-15
-status: draft (not approved, do not build)
+status: ready, approved 2026-10-15 (owner approval given in chat with the recommended answers to Q2, Q3 and Q4). Built as A1 (arrival and Completed) then A2 (delay).
 
 ---
 
@@ -174,9 +174,9 @@ Happy paths for both types; duplicate by ID and by content; same ID with differe
 ## 12) Open Questions
 Decision owner: tharindu.
 - **Q1 (the freeze): decided 2026-10-15 by the owner, following the recommendation.** Slice A is allowed past the freeze, built as two pull requests: A1 arrival and Completed (can land on 15 Oct), A2 the delay report (the only part after the freeze). Everything else stays frozen. If A2 is not finished by the owner's cut-off, the delay report stays in the Non-Goals and FR-20 stays recorded as partly met.
-- **Q2 (designated stations):** The flag exists and the seed already marks Gampaha. Recommendation: Gampaha plus the final stop by rule, with no data change. The alternative, also flagging Colombo Fort in the seed, needs a data migration for no gain.
-- **Q3 (exceptions):** Recommendation: leave every exception, including the Critical one for a technical fault, to slice B. Here the reason is stored in the payload so slice B can read it.
-- **Q4 (Completed and visibility):** Completed comes in this slice (AC-E03-03 4 asks for it). Recommendation: Completed ends "in progress" but `VisibleAfterEndMinutes` stays 15, not 0 (R11), because 0 would hide a train that runs past its last estimate. This changes D8 and the CLAUDE.md note; do you agree?
+- **Q2 (designated stations): decided 2026-10-15 by the owner, following the recommendation.** The flag exists and the seed already marks Gampaha. Recommendation: Gampaha plus the final stop by rule, with no data change. The alternative, also flagging Colombo Fort in the seed, needs a data migration for no gain.
+- **Q3 (exceptions): decided 2026-10-15 by the owner, following the recommendation.** Recommendation: leave every exception, including the Critical one for a technical fault, to slice B. Here the reason is stored in the payload so slice B can read it.
+- **Q4 (Completed and visibility): decided 2026-10-15 by the owner, following the recommendation.** Completed comes in this slice (AC-E03-03 4 asks for it). Recommendation: Completed ends "in progress" but `VisibleAfterEndMinutes` stays 15, not 0 (R11), because 0 would hide a train that runs past its last estimate. This changes D8 and the CLAUDE.md note; do you agree?
 - **Q5 (EC-16): decided 2026-10-15 by the owner, following the recommendation.** The server refuses a numeric delay that is not greater than the delay in force (409 `delay_not_greater`, R6), because exceptions do not exist yet. Slice B may change this to "accept and flag" (EC-16).
 - **Q6 (options above +20): decided 2026-10-15 by the owner.** The app adds +30 and +45 to the design's +10, +15, +20 and Unknown. The server needs no change (1 to 240). The hi-fi board `Nimal-DelayEstimate` is redrawn to match.
 - **Q7 (Unknown delay): decided 2026-10-15 by the owner, following the recommendation.** An Unknown delay removes the estimated times and the primary ETA and sets `delayKnown` false (R7).
