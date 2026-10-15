@@ -111,8 +111,8 @@ All three require the Controller policy (secure by default; a Passenger or Opera
 - [x] Queue order is Critical then High, oldest first (AC-E05-02 3); rows carry journey, station, type, severity, age (AC-E05-02 4).
 - [x] Resolve removes the row and stores controller, time, action (AC-E05-02 6).
 - [x] Passenger and Operator tokens get 403 on all three endpoints; no token gets 401. (B1: two endpoints, list and resolve; the overview is B2.) Checked by integration tests and live on Compose, 15 Oct.
-- [ ] Overview (B2) returns last event, delay, next stop, seconds since update, source and open count (AC-E05-01 1, 3, 4).
-- [ ] A dashboard/queue read never changes passenger-visible status.
+- [x] Overview (B2) returns last event, delay, next stop, seconds since update, source and open count (AC-E05-01 1, 3, 4). Also the verification state (AC-E05-01 6). Integration tests, 15 Oct. AC-E05-01 2 (updates without refresh) is the client's job: it polls this endpoint; no push is built.
+- [x] A dashboard/queue read never changes passenger-visible status. (Test: two overview reads leave the status version, delay and event count unchanged.)
 
 ## 10) Test Plan
 ### 10.1 Seed and fixture data

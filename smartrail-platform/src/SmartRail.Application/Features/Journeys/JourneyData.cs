@@ -41,7 +41,8 @@ public sealed record RecordedEvent(
     DateTimeOffset OccurredAt,
     int JourneyVersionAfter,
     ReportKind Kind = ReportKind.Departed,
-    DelayPayload? Delay = null);
+    DelayPayload? Delay = null,
+    DateTimeOffset? ReceivedAt = null);
 
 public sealed record AssignmentInfo(string OperatorUserId, DateTimeOffset ValidFrom, DateTimeOffset? ValidTo);
 
@@ -93,6 +94,9 @@ public interface IJourneyRepository
 
     /// <summary>The train's journeys with operating dates from <paramref name="fromDate"/> to <paramref name="toDate"/> (stops and stop states, no events).</summary>
     Task<IReadOnlyList<JourneyData>> GetForTrainAsync(string trainNumber, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken);
+
+    /// <summary>Journeys with operating dates in the range that are not Completed, with stops, stop states and events (no assignments): the controller overview.</summary>
+    Task<IReadOnlyList<JourneyData>> GetUnfinishedAsync(DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken);
 
     /// <summary>The journey the operator is assigned to at <paramref name="now"/> (the latest valid_from wins), or null.</summary>
     Task<JourneyData?> GetAssignedAsync(string operatorUserId, DateTimeOffset now, CancellationToken cancellationToken);

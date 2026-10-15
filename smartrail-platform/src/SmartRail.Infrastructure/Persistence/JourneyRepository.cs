@@ -32,6 +32,23 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
         return result;
     }
 
+    public async Task<IReadOnlyList<JourneyData>> GetUnfinishedAsync(DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken)
+    {
+        var headers = await Header()
+            .Where(h => h.OperatingDate >= fromDate && h.OperatingDate <= toDate && h.Status != JourneyStatus.Completed)
+            .OrderBy(h => h.TrainNumber)
+            .ToListAsync(cancellationToken);
+
+        // One small group of queries per journey: fine for a few dozen journeys a day (a batch load can replace it if that grows).
+        var result = new List<JourneyData>(headers.Count);
+        foreach (var header in headers)
+        {
+            result.Add(await LoadAsync(header, includeEventsAndAssignments: false, cancellationToken));
+        }
+
+        return result;
+    }
+
     public async Task<JourneyData?> GetAssignedAsync(string operatorUserId, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var assignedJourney = await db.OperatorAssignments.AsNoTracking()
@@ -177,7 +194,7 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
             .Where(e => e.JourneyId == header.Id
                 && (e.EventType == EventType.Departed || e.EventType == EventType.Arrived || e.EventType == EventType.DelayReported))
             .OrderBy(e => e.OccurredAt)
-            .Select(e => new { e.Id, e.ClientEventId, e.ServiceStopId, e.OccurredAt, e.JourneyVersionAfter, e.EventType, e.Payload })
+            .Select(e => new { e.Id, e.ClientEventId, e.ServiceStopId, e.OccurredAt, e.JourneyVersionAfter, e.EventType, e.Payload, e.ReceivedAt })
             .ToListAsync(cancellationToken);
         IReadOnlyList<RecordedEvent> events = stored
             .Where(e => e.EventType == EventType.DelayReported || e.ServiceStopId is not null)
@@ -189,7 +206,8 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
                     EventType.DelayReported => ReportKind.DelayReported,
                     _ => ReportKind.Departed,
                 },
-                e.EventType == EventType.DelayReported ? EventRules.FromJson(e.Payload) : null))
+                e.EventType == EventType.DelayReported ? EventRules.FromJson(e.Payload) : null,
+                e.ReceivedAt))
             .ToList();
 
         IReadOnlyList<AssignmentInfo> assignments = [];
