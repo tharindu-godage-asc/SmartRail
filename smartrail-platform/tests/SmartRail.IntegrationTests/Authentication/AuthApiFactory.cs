@@ -20,7 +20,8 @@ public sealed class AuthApiFactory(
     bool whoAmI = false,
     ILoggerProvider? logs = null,
     string? databaseConnection = null,
-    TimeProvider? clock = null)
+    TimeProvider? clock = null,
+    IReadOnlyDictionary<string, string>? settings = null)
     : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -28,6 +29,11 @@ public sealed class AuthApiFactory(
         builder.UseSetting("Authentication:Authority", TestTokenIssuer.Issuer);
         builder.UseSetting("Authentication:Audience", TestTokenIssuer.Audience);
         builder.UseSetting("Diagnostics:WhoAmI", whoAmI ? "true" : "false");
+        foreach (var (key, value) in settings ?? new Dictionary<string, string>())
+        {
+            builder.UseSetting(key, value);
+        }
+
         if (databaseConnection is not null)
         {
             // A database switches the journey endpoints on (R14); the connection is the smartrail_app role.
