@@ -15,3 +15,6 @@ mobile/**/GeneratedPluginRegistrant.java
 mobile/**/gradle-wrapper.jar
 mobile/**/android/gradlew
 mobile/**/android/gradlew.bat
+
+# Emulator screenshots taken while testing (kept on disk, not in the repo)
+mobile/operator_app/screenshots/
