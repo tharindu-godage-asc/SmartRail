@@ -148,6 +148,8 @@ class FakeAuthGateway implements AuthGateway {
   Future<TokenSet> Function(String refreshToken)? onRefresh;
   int refreshCalls = 0;
   int endSessionCalls = 0;
+  String? endedWith;
+  Future<void> Function(String refreshToken)? onEndSession;
 
   @override
   Future<TokenSet> authorize() => onAuthorize!();
@@ -159,7 +161,11 @@ class FakeAuthGateway implements AuthGateway {
   }
 
   @override
-  Future<void> endSession(String? idToken) async => endSessionCalls++;
+  Future<void> endSession(String refreshToken) async {
+    endSessionCalls++;
+    endedWith = refreshToken;
+    await onEndSession?.call(refreshToken);
+  }
 }
 
 class FakeTokenStore implements TokenStore {

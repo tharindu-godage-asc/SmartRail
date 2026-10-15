@@ -167,10 +167,30 @@ void main() {
   });
 
   group('sign out', () {
-    test('ends the Keycloak session and forgets the tokens', () async {
+    test(
+      'ends the Keycloak session with the refresh token and forgets the tokens',
+      () async {
+        store.tokens = tokens(expiry: t0);
+        await repo.signOut();
+        expect(gateway.endSessionCalls, 1);
+        expect(gateway.endedWith, 'refresh-1');
+        expect(store.tokens, isNull);
+      },
+    );
+
+    test('the phone forgets the tokens first: a Keycloak call that fails or hangs cannot keep the operator signed in', () async {
       store.tokens = tokens(expiry: t0);
+      gateway.onEndSession = (_) async {
+        expect(
+          store.tokens,
+          isNull,
+          reason: 'tokens must already be gone when Keycloak is called',
+        );
+        throw StateError('network down');
+      };
+
       await repo.signOut();
-      expect(gateway.endSessionCalls, 1);
+
       expect(store.tokens, isNull);
     });
   });

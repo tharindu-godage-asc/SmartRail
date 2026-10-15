@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_appauth/flutter_appauth.dart';
@@ -8,10 +9,15 @@ import '../domain/auth_ports.dart';
 
 /// [AuthGateway] on top of flutter_appauth (spike: `authorizeAndExchangeCode` works with these settings).
 class AppAuthGateway implements AuthGateway {
-  AppAuthGateway(this._config, [this._appAuth = const FlutterAppAuth()]);
+  AppAuthGateway(
+    this._config, [
+    this._appAuth = const FlutterAppAuth(),
+    Dio? http,
+  ]) : _http = http ?? Dio();
 
   final AppConfig _config;
   final FlutterAppAuth _appAuth;
+  final Dio _http;
 
   @override
   Future<TokenSet> authorize() async {
@@ -73,16 +79,18 @@ class AppAuthGateway implements AuthGateway {
   }
 
   @override
-  Future<void> endSession(String? idToken) async {
-    if (idToken == null) {
-      return;
-    }
-    await _appAuth.endSession(
-      EndSessionRequest(
-        idTokenHint: idToken,
-        postLogoutRedirectUrl: AppConfig.redirectUrl,
-        discoveryUrl: _config.discoveryUrl,
-        allowInsecureConnections: _config.allowInsecure,
+  Future<void> endSession(String refreshToken) async {
+    // A direct call instead of flutter_appauth's endSession: that one opens a browser tab and fetches the server's
+    // configuration with a native connection that refuses plain HTTP, which crashed the app inside Android code
+    // where Dart cannot catch it (found on the emulator). Revoking the refresh token ends the Keycloak session.
+    await _http.post<void>(
+      '${_config.issuer}/protocol/openid-connect/logout',
+      data: {'client_id': AppConfig.clientId, 'refresh_token': refreshToken},
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        validateStatus: (_) => true,
+        sendTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 5),
       ),
     );
   }

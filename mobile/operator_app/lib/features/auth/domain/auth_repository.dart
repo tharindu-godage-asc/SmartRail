@@ -100,13 +100,18 @@ class AuthRepository {
 
   /// Ends the Keycloak session and forgets the tokens. Waiting reports stay on the phone.
   Future<void> signOut() async {
-    final idToken = (_tokens ?? await store.read())?.idToken;
-    try {
-      await gateway.endSession(idToken);
-    } on Object {
-      // Best effort: with no network the local sign-out still has to work.
-    }
+    final refreshToken = (_tokens ?? await store.read())?.refreshToken;
+    // The phone forgets the session first, so nothing the network does afterwards (a failure, a hang, the app being
+    // closed) can leave the operator signed in.
     await store.clear();
     _tokens = null;
+    if (refreshToken == null) {
+      return;
+    }
+    try {
+      await gateway.endSession(refreshToken);
+    } on Object {
+      // Best effort: with no network the local sign-out has already happened.
+    }
   }
 }

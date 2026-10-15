@@ -9,8 +9,8 @@ abstract interface class AuthGateway {
   /// Throws [RefreshRejected] when Keycloak refuses the refresh token, [RefreshUnavailable] for anything else.
   Future<TokenSet> refresh(String refreshToken);
 
-  /// Ends the Keycloak session. Best effort: failures are ignored by the caller.
-  Future<void> endSession(String? idToken);
+  /// Ends the Keycloak session by revoking the refresh token. Best effort: failures are ignored by the caller.
+  Future<void> endSession(String refreshToken);
 }
 
 /// Secure storage for the tokens, plus the "sign-in started" flag that detects a result lost to process death.

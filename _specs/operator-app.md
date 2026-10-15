@@ -114,7 +114,7 @@ Location: `mobile/operator_app` (new Flutter project; nothing copied from the sp
 
 ## 9) Acceptance Criteria
 - [x] AC-E01-01 (1): sign in with PKCE on the emulator shows the assigned journey.
-- [ ] AC-E01-01 (2) (shown in the spike; not repeated with this app): wrong password is refused with a generic message (Keycloak's).
+- [x] AC-E01-01 (2): wrong password is refused with a generic message (Keycloak's). Verified with this app on the emulator 15 Oct: "Invalid username or password." and nothing about which part was wrong. Testing sign-out in the same session found a crash (flutter_appauth's end-session refuses plain HTTP inside Android code); sign-out now clears the phone first and revokes the refresh token with a direct call, with a test.
 - [x] AC-E01-01 (3): an expired access token is refreshed without a prompt (unit test with a fake token endpoint).
 - [x] AC-E01-01 (4): reports waiting while the session ends are kept and sent after a new sign-in. Shown on the emulator on 15 Oct via sign-out: "Departed Gampaha" was queued with the API stopped, the operator signed out and back in, and it was delivered; the server recorded it at the tap time (08:50:14 Colombo), about 13 minutes before delivery. The expired-session screen was seen separately after the database reset; expiry with waiting reports is covered by the sender and widget tests.
 - [x] AC-E03-01 (1), (2), (3): train number, route, stops, done and next stop; only the next action.
