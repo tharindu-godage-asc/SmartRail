@@ -134,21 +134,21 @@ Slice 1 rules R1 (assignment at occurrence time), R2 (idempotency), R3 (time lim
 - Two reports at the same moment: version conflict retried up to 3 times (R11), then 409 `version_conflict`.
 
 ## 9) Acceptance Criteria
-- [ ] AC-E03-03 (1): Arrived at Gampaha 08:40 is recorded with that occurrence time; the status read shows `lastKnownPosition` state Arrived at 08:40.
-- [ ] AC-E03-03 (2): an arrival at Ragama (not designated) is 422 `not_arrival_station`; `GET /operator/journey` shows `isArrivalStation` true only for Gampaha and Colombo Fort.
-- [ ] AC-E03-03 (3): an arrival with an earlier occurrence time that arrives later is accepted and the state equals the in-order result.
-- [ ] AC-E03-03 (4): Arrived at Colombo Fort sets the journey Completed; `statusKey` is `Completed`; a further report is 409.
+- [x] AC-E03-03 (1): Arrived at Gampaha 08:40 is recorded with that occurrence time; the status read shows `lastKnownPosition` state Arrived at 08:40. **A1: ReportArrivalTests, and on the real stack.**
+- [x] AC-E03-03 (2): an arrival at Ragama (not designated) is 422 `not_arrival_station`; `GET /operator/journey` shows `isArrivalStation` true only for Gampaha and Colombo Fort. **A1: ReportArrivalTests (not_arrival_station at Veyangoda, Ragama and Maradana; isArrivalStation flags).**
+- [x] AC-E03-03 (3): an arrival with an earlier occurrence time that arrives later is accepted and the state equals the in-order result. **A1: ReportArrivalTests (a late arrival gives the in-order state).**
+- [x] AC-E03-03 (4): Arrived at Colombo Fort sets the journey Completed; `statusKey` is `Completed`; a further report is 409. **A1: unit and integration tests, and on the real stack (Arrived Colombo Fort gave Completed).**
 - [ ] AC-E03-04 (1): a delay with reason SignalIssue and total 10 is recorded; the status read shows delay 10 and `statusKey` Delayed.
 - [ ] AC-E03-04 (2) and AC-E04-03 (4): with a delay of 10 reported, Gampaha shows 08:40; a total of 10 after a measured delay of 8 gives 10, not 18.
 - [ ] AC-E03-04 (3): no read returns the reason (a test scans the JSON).
 - [ ] AC-E03-04 (5): `delayUnknown: true` gives `delayKnown` false, `statusKey` Delayed and no `primaryEta`; a later measured report clears it.
 - [ ] AC-E03-04 (6): with 8 running, a total of 8 or 5 is 409 `delay_not_greater`, 10 is accepted; after "Unknown", a total equal to the last numeric delay is accepted.
-- [ ] AC-E04-01 (1): a repeat of an arrival and of a delay report returns 200 and stores nothing twice; a different ID for the same stop and time is also 200.
-- [ ] AC-E04-02 (1) (2): times 2 minutes ahead and 9 hours back are 422 for the new types.
-- [ ] AC-E04-03 (2): an arrival at 08:28 against 08:30 gives delay 0 and keeps the departure at 08:31.
+- [x] AC-E04-01 (1): a repeat of an arrival and of a delay report returns 200 and stores nothing twice; a different ID for the same stop and time is also 200. **A1: arrival repeats by id and by content; the delay part is A2.**
+- [x] AC-E04-02 (1) (2): times 2 minutes ahead and 9 hours back are 422 for the new types. **A1: tested for Arrived; DelayReported is A2.**
+- [x] AC-E04-03 (2): an arrival at 08:28 against 08:30 gives delay 0 and keeps the departure at 08:31. **A1: ReportArrivalTests and ArrivalRulesTests.**
 - [ ] A delay report before any departure is accepted, the journey stays Scheduled and `statusKey` is Delayed (R8, R9).
-- [ ] The train lookup does not return a Completed journey as "in progress"; a finished night train does not hide the next day's journey; a running train later than its last estimate is still returned (R11).
-- [ ] The events counter shows `Arrived` and `DelayReported`; `smartrail.journeys.completed` moves; both are visible in Grafana.
+- [x] The train lookup does not return a Completed journey as "in progress"; a finished night train does not hide the next day's journey; a running train later than its last estimate is still returned (R11). **A1: ArrivalRulesTests (JourneySelection) and ReportArrivalTests.**
+- [x] The events counter shows `Arrived` and `DelayReported`; `smartrail.journeys.completed` moves; both are visible in Grafana. **A1: Arrived and smartrail.journeys.completed read in Grafana on the Compose stack; DelayReported is A2.**
 - [ ] `dotnet build -warnaserror` and `dotnet test` pass and CI is green. The slice 1 tests still pass unchanged apart from the renamed handler and the generalised order function.
 - [ ] End to end on the emulator after the app change: arrival, delay and completion from the app appear in `GET /api/v1/trains/8058/status`.
 - [ ] App (after the app change): with +8 running the estimate screen offers +10, +15, +20, +30, +45 and Unknown; with +25 running it offers +30, +45 and Unknown.
