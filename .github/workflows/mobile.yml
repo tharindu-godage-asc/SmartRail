@@ -1,6 +1,6 @@
 name: mobile
 # Operator app (Flutter): analyze and test whenever it changes. Separate from ci.yml so a .NET change does not wait for Flutter
-# and the other way round. Spec: _specs/operator-app.md.
+# and the other way round. Spec: _specs/05-operator-app.md.
 on:
   push:
     branches: [main, develop, dev]

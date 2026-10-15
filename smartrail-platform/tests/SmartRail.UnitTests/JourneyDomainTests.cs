@@ -4,7 +4,7 @@ using Xunit;
 
 namespace SmartRail.UnitTests;
 
-/// <summary>R4 to R6, R10, R15 and R16 of _specs/operator-report-live-status.md: pure rules, no database.</summary>
+/// <summary>R4 to R6, R10, R15 and R16 of _specs/03-operator-report-live-status.md: pure rules, no database.</summary>
 public class JourneyDomainTests
 {
     private static readonly DateOnly Tuesday = new(2026, 10, 6);
@@ -14,7 +14,7 @@ public class JourneyDomainTests
     private static readonly Guid Maradana = Guid.NewGuid();
     private static readonly Guid ColomboFort = Guid.NewGuid();
 
-    /// <summary>Train 8058 exactly as seeded (database-foundation section 7).</summary>
+    /// <summary>Train 8058 exactly as seeded (01-database-foundation section 7).</summary>
     private static IReadOnlyList<StopSchedule> Train8058() => ScheduleInstants.For(Tuesday,
     [
         new StopTimes(Veyangoda, 1, null, new(8, 20)),

@@ -1,7 +1,7 @@
 # Feature Spec: Keycloak identity (sign-in, roles, JWT validation in the API)
 
 branch: claude/feature/keycloak-identity
-spec: _specs/keycloak-identity.md
+spec: _specs/02-keycloak-identity.md
 owner: tharindu
 date: 2026-10-13
 status: ready, approved 2026-10-13 (owner approval given in chat, including R9 and the issuer fallback)
@@ -10,7 +10,7 @@ status: ready, approved 2026-10-13 (owner approval given in chat, including R9 a
 
 ## 0) Summary
 **One-liner:** Run Keycloak in Docker Compose with a repeatable realm (roles, clients, demo users with fixed IDs), and make the API require a valid token and the right role on every staff endpoint.
-**Why now:** `operator-report-live-status` cannot start without it: the report endpoint needs a real Operator token, and the demo operators in the seed (`DemoIds`) must exist as real Keycloak users with the same IDs. It also gives the security evidence the brief asks for (401 and 403 tests).
+**Why now:** `03-operator-report-live-status` cannot start without it: the report endpoint needs a real Operator token, and the demo operators in the seed (`DemoIds`) must exist as real Keycloak users with the same IDs. It also gives the security evidence the brief asks for (401 and 403 tests).
 **Who is this for:** Operator, Controller, Caterer (system client), System Administrator (uses the Keycloak console). Passengers stay anonymous (FR-05).
 **Success looks like:**
 - `docker compose up` brings up Keycloak on its own `keycloak` database with the `smartrail` realm imported, with no manual clicking.
@@ -26,7 +26,7 @@ status: ready, approved 2026-10-13 (owner approval given in chat, including R9 a
 
 ## 2) Goals and Non-Goals
 ### Goals
-- Keycloak container in Compose on host port **8180**, using the empty `keycloak` database and `keycloak` role created by `database-foundation`.
+- Keycloak container in Compose on host port **8180**, using the empty `keycloak` database and `keycloak` role created by `01-database-foundation`.
 - A realm file in the repo (`smartrail-platform/docker/keycloak/realm-smartrail.json`) imported on start, so any developer gets the same users, roles and clients.
 - All five fixed realm roles (`passenger`, `operator`, `controller`, `caterer`, `system-admin`), so the realm matches the fixed role list in CLAUDE.md. Fixed IDs for the demo users, equal to the GUIDs in `Seeding/DemoIds.cs`.
 - Token lifetimes from NFR-11: access token 15 minutes, refresh token 8 hours.
@@ -62,7 +62,7 @@ Behaviour changes, plus one flagged diagnostic endpoint:
 - `GET /api/v1/whoami` (any authenticated user) returns `{ subject, roles }`. It exists **only when `Diagnostics:WhoAmI` is true** (default false; Compose turns it on, via `Diagnostics__WhoAmI`); otherwise it is not mapped. There is no controller-only ping in production code: the integration tests register their own throw-away endpoints to prove 403 (decision Q5).
 
 ## 5) Data Contract
-- No SmartRail tables. Keycloak owns its own database (`keycloak`), created empty by `database-foundation`; SmartRail migrations never touch it and `smartrail_app` has no rights on it.
+- No SmartRail tables. Keycloak owns its own database (`keycloak`), created empty by `01-database-foundation`; SmartRail migrations never touch it and `smartrail_app` has no rights on it.
 - The Keycloak subject (`sub`, a GUID) is what SmartRail stores as `operator_user_id`, `assigned_by` and `created_by`.
 ### Realm contents (realm `smartrail`, Compose realm file)
 | Item | Value |
@@ -146,7 +146,7 @@ Use a **test token issuer** (a locally generated signing key and the same valida
 `scripts/smoke-auth.sh` as described in section 7. Run it once by hand before merging. CI has no Compose job (decision Q6), so it is not automated.
 
 ## 11) References
-- ADR-08 (`adr-08-identity-provider.md`), ADR-10, ADR-12, discovery sections 16 and 18, `database-foundation.md` (the `keycloak` database and `DemoIds`), `operator-report-live-status.md` (the next spec), CLAUDE.md.
+- ADR-08 (`adr-08-identity-provider.md`), ADR-10, ADR-12, discovery sections 16 and 18, `01-database-foundation.md` (the `keycloak` database and `DemoIds`), `03-operator-report-live-status.md` (the next spec), CLAUDE.md.
 - Keycloak documentation: realm import, client types, protocol mappers, hostname settings including the backchannel option (check the current version's pages when you build).
 
 ## 12) Open Questions and Decisions
@@ -175,5 +175,5 @@ None. (Required empty before approval.)
 - The issuer fallback (use `host.docker.internal:8180` as the single public hostname if `KC_HOSTNAME_BACKCHANNEL_DYNAMIC` does not work as expected): a technical fallback for the build; confirm or change it.
 - The real-stack smoke test cannot prove 403 (no controller-only endpoint exists in production code); 403 is proved in the integration tests only. This follows from decision Q5.
 ### Consequences for other specs (not edited here)
-- `operator-report-live-status.md` uses the `Operator` policy from this spec and test tokens in its tests; its "Keycloak, Operator role" authorisation rows already match. `database-foundation.md`'s `DemoIds` gains `Controller` (a code change made in this spec's build).
+- `03-operator-report-live-status.md` uses the `Operator` policy from this spec and test tokens in its tests; its "Keycloak, Operator role" authorisation rows already match. `01-database-foundation.md`'s `DemoIds` gains `Controller` (a code change made in this spec's build).
 - Decision owner: tharindu. Approval needed before the build starts.

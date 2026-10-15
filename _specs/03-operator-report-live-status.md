@@ -1,9 +1,9 @@
 # Feature Spec: Operator reports a departure, passengers see live status
 
 branch: claude/feature/operator-report-live-status
-spec: _specs/operator-report-live-status.md
+spec: _specs/03-operator-report-live-status.md
 owner: tharindu
-date: 2026-10-12 (rewritten 2026-10-14 after the questioning rounds; builds on database-foundation and keycloak-identity)
+date: 2026-10-12 (rewritten 2026-10-14 after the questioning rounds; builds on 01-database-foundation and 02-keycloak-identity)
 status: built, awaiting CI and review (approved 2026-10-14; local checks pass; see the two unchecked criteria)
 
 ---
@@ -34,7 +34,7 @@ The numbers below were checked on 2026-10-14 against `docs/smartrail-refined-req
 - Store events append-only (the database already refuses UPDATE and DELETE).
 - Let the operator app find its assigned journey and the stop IDs (`GET /api/v1/operator/journey`).
 - Let a passenger find a train's journey by train number (`GET /api/v1/trains/{trainNumber}/status`): the journey in progress now, otherwise today's (R15).
-- Support journeys that cross midnight and take at most 24 hours (the maximum travelling time), for example a train that leaves at 23:00 on Thursday and is still running at 08:00 on Friday (R16, R15). This lifts the midnight non-goal of `database-foundation` for the status logic only; the schema and the seed do not change.
+- Support journeys that cross midnight and take at most 24 hours (the maximum travelling time), for example a train that leaves at 23:00 on Thursday and is still running at 08:00 on Friday (R16, R15). This lifts the midnight non-goal of `01-database-foundation` for the status logic only; the schema and the seed do not change.
 ### Non-Goals (this slice)
 - Exceptions: slice 2 adds the `journey_exception` table. In this slice AC-E03-02 (5, 7) are refused with 409 and stored nowhere. AC-E03-02 (10), the early departure, is accepted with delay 0, and its High exception waits for slice 2. FR-40's exception part, and the handover exception in FR-38 and AC-E04-02 (3), are listed under D3.
 - SignalR push (ADR-09): slice 2. Clients poll every 10 seconds. The `version` field is returned now so clients can already ignore older snapshots.
@@ -62,7 +62,7 @@ The numbers below were checked on 2026-10-14 against `docs/smartrail-refined-req
 - Nimal leaves a stop early: accepted, the delay is 0.
 
 ## 4) API Surface
-All routes are under `/api/v1/`. Errors are RFC 9457 ProblemDetails with a short title and, where useful, a reason code, never more detail. The two status endpoints marked public are added to the public allow-list from `keycloak-identity`; every other endpoint stays protected by default.
+All routes are under `/api/v1/`. Errors are RFC 9457 ProblemDetails with a short title and, where useful, a reason code, never more detail. The two status endpoints marked public are added to the public allow-list from `02-keycloak-identity`; every other endpoint stays protected by default.
 
 ### GET /api/v1/operator/journey
 - Who: role `operator`.
@@ -93,7 +93,7 @@ All routes are under `/api/v1/`. Errors are RFC 9457 ProblemDetails with a short
 - The same 200 body as above, for the journey of that train that is in progress now, otherwise the journey whose operating date is today (R15). A train that left on Thursday at 23:00 is therefore still returned on Friday at 08:00. A train that is still running never disappears because the date changed at midnight. 404, with a clear "no journey for this train today" reason, when the train number does not exist or there is no journey in progress and none for today.
 
 ## 5) Data Contract
-No schema change and no new migration: all columns already exist (`database-foundation`). Names follow [smartrail-schema.sql](smartrail-schema.sql).
+No schema change and no new migration: all columns already exist (`01-database-foundation`). Names follow [smartrail-schema.sql](smartrail-schema.sql).
 - Reads: `journey`, `train_service`, `service_stop`, `station`, `operator_assignment`, `journey_stop_state`, `train_event`.
 - Writes: `train_event` (insert only), `journey_stop_state` (estimates, actual departure, confirmation), `journey` (`current_delay_minutes`, `status`, `version`).
 - Constraints that matter: `UNIQUE (journey_id, client_event_id)`; index `(journey_id, occurred_at)`; `journey.version` as the optimistic-concurrency token.
@@ -196,14 +196,14 @@ Deferred to slice 2: EC-05, EC-07, EC-08 (exceptions).
 
 ## 10) Test Plan
 ### 10.1 Seed and fixture data
-The clock is set per test, to the reported time or later: 08:28 on 2026-10-06 (a Tuesday) for the happy path, and never earlier than `occurredAt` minus the 1 minute allowance, or R3 would reject the report as coming from the future. A single clock fixed at 08:20 would reject the 08:28 report. Service 8058 uses the seed times in `database-foundation.md` (Veyangoda departs 08:20; Gampaha arrives 08:30, departs 08:31; Ragama 08:42 and 08:43; Maradana 08:50 and 08:51; Colombo Fort arrives 08:55). The demo seed assigns Nimal for the whole operating day. Tests that need a narrow window create their own assignment (for example 08:00 to 10:00). A second operator (`operator2`) has no assignment. The seed has no night train, so the tests create their own service: Veyangoda 23:50, a stop at 00:20 and a final stop at 08:00 the next day, with its own journey and an assignment that covers the night. The demo assignment (the operating date only) is not used for it. Tokens come from the test token issuer; Nimal's subject is `DemoIds.Nimal`.
+The clock is set per test, to the reported time or later: 08:28 on 2026-10-06 (a Tuesday) for the happy path, and never earlier than `occurredAt` minus the 1 minute allowance, or R3 would reject the report as coming from the future. A single clock fixed at 08:20 would reject the 08:28 report. Service 8058 uses the seed times in `01-database-foundation.md` (Veyangoda departs 08:20; Gampaha arrives 08:30, departs 08:31; Ragama 08:42 and 08:43; Maradana 08:50 and 08:51; Colombo Fort arrives 08:55). The demo seed assigns Nimal for the whole operating day. Tests that need a narrow window create their own assignment (for example 08:00 to 10:00). A second operator (`operator2`) has no assignment. The seed has no night train, so the tests create their own service: Veyangoda 23:50, a stop at 00:20 and a final stop at 08:00 the next day, with its own journey and an assignment that covers the night. The demo assignment (the operating date only) is not used for it. Tokens come from the test token issuer; Nimal's subject is `DemoIds.Nimal`.
 ### 10.2 Unit tests (Domain and Application, no database)
 R16 scheduled instants (a day train unchanged; 23:50, 00:20, 08:00 gives Thursday 23:50, Friday 00:20, Friday 08:00; a departure time earlier than its arrival at the same stop moves to the next day; the Asia/Colombo conversion). R15 selection with a fake clock (in progress, the grace boundary, two candidates, none in progress, no journey). `JourneyProgress`: delay and ETAs (+8 carried to every later stop; early departure gives 0); rounding at exactly 30 seconds (8 minutes 30 seconds gives 9, 7 minutes 29 seconds gives 7, 30 seconds early gives 0 after the clamp); on time at 2 and delayed at 3 minutes; forward skip marks the stops in between Inferred with no estimate; out-of-order arrival gives the same final state; a conflicting second time for a stop; an equal time at another stop; strict increase with stop sequence. Assignment window edges (equal to `valid_from`, equal to `valid_to`, `valid_to` null). Time limits at exactly +1 minute and −8 hours. Status group mapping.
 ### 10.3 Integration tests (WebApplicationFactory plus Postgres in Testcontainers)
 Happy path; duplicate; duplicate by content (different client event ID, same stop and time); same ID with different content; the train lookup for a night train that left the day before (at 00:10, at 08:00, at the end plus 15 minutes and one minute later, and when it runs 8 minutes late); the lookup for a day train after it has finished, and across midnight (23:59 and 00:01 with and without a journey on the new date); the 2 day limit (2 days old returned, 3 days old not); a 24 hour journey, on time and late; no token; wrong role; controller on the report route; not assigned; Unassigned and Completed journeys; invalid times; the late retry; late-arrival ordering; version conflict with two concurrent requests; the append-only trigger through the API role; status snapshot content and version increment; the operator journey and train number lookups; the allow-list test; the metric outcomes; no database configured.
 
 ## 11) References
-- `database-foundation.md` (tables, `DemoIds`, privileges), `keycloak-identity.md` (policies, test token issuer, allow-list), `android-signin-spike.md` and its RESULT.md (the operator app's sign-in), ADR-06, ADR-08, ADR-09, ADR-15, CLAUDE.md.
+- `01-database-foundation.md` (tables, `DemoIds`, privileges), `02-keycloak-identity.md` (policies, test token issuer, allow-list), `android-signin-spike.md` and its RESULT.md (the operator app's sign-in), ADR-06, ADR-08, ADR-09, ADR-15, CLAUDE.md.
 - The requirements, acceptance-criteria and edge-case documents under `docs/` (`smartrail-refined-requirements.md`, `smartrail-acceptance-criteria.md`, `smartrail-edge-cases.md`): their numbers were checked against this spec on 2026-10-14.
 - Existing code reused: `Features/Status` (endpoint pattern), `TimeProvider`, `OperatingTime`, the entities in `Domain/Journeys`, the auth policies.
 

@@ -1,7 +1,7 @@
 # SmartRail operator app
 
 Flutter app for train operators (Nimal): sign in, see the assigned journey, report `Departed <stop>`, and keep working
-without a network. Spec: [`_specs/operator-app.md`](../../_specs/operator-app.md). Android emulator only.
+without a network. Spec: [`_specs/05-operator-app.md`](../../_specs/05-operator-app.md). Android emulator only.
 
 ## Run it against the Compose stack
 

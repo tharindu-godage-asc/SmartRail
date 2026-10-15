@@ -1,7 +1,7 @@
 # Feature Spec: Operator app (Flutter), first slice
 
 branch: claude/feature/operator-app
-spec: _specs/operator-app.md
+spec: _specs/05-operator-app.md
 owner: tharindu
 date: 2026-10-14
 status: in progress (build started 2026-10-14 on the owner's go-ahead; open questions answered as recommended, see section 12)
@@ -61,7 +61,7 @@ status: in progress (build started 2026-10-14 on the owner's go-ahead; open ques
 - **Both tokens expired offline with queued reports**: the queue is kept; the app asks to sign in, then sends (AC-E01-01 (4)).
 
 ## 4) API Surface
-No new endpoints. The app calls existing ones (slice 1, spec `_specs/operator-report-live-status.md`):
+No new endpoints. The app calls existing ones (slice 1, spec `_specs/03-operator-report-live-status.md`):
 - `GET /api/v1/operator/journey` (role operator): journey, stops with `serviceStopId`, scheduled UTC instants; 404 when none.
 - `POST /api/v1/journeys/{journeyId}/events`: `{ clientEventId, eventType: "Departed", serviceStopId, occurredAt }`. 201 recorded, 200 repeat (both mean Delivered), 403 not assigned, 404 unknown journey, 409 conflict, 422 out of limits. Error body carries `reason`.
 - `GET /api/v1/trains/{trainNumber}/status` (public, slice 1): `version`, `serverTime`, `delayMinutes`, and per stop `actualDeparture`. This is where the app learns which stops are done (including departures reported by someone else or from another phone), the current delay, and the server time used for the clock offset (rule 1). Poll with the same 30 s rule.
@@ -142,7 +142,7 @@ Queue ordering, backoff schedule (5, 10, 20, ... 300 s, jitter bounds), next-act
 Widget tests with fake repositories for each state: normal, offline banner, Not sent yet chip, Delivered chip, Rejected chip, suspended, no journey, session lost, delay reason and estimate lists, sign-out confirm, end state after the last departure. Golden images are optional (Q8). One manual end-to-end run on the emulator against Compose, recorded in the PR (screenshots), as for the spike.
 
 ## 11) References
-- ADR-16 (mobile), ADR-08 (Keycloak), spec `_specs/operator-report-live-status.md`, spec `_specs/keycloak-identity.md`, spike findings in `mobile/spikes/android-signin`.
+- ADR-16 (mobile), ADR-08 (Keycloak), spec `_specs/03-operator-report-live-status.md`, spec `_specs/02-keycloak-identity.md`, spike findings in `mobile/spikes/android-signin`.
 - Design canvas listed in section 1.
 
 ## 12) Open Questions
