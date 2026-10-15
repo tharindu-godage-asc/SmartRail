@@ -138,15 +138,15 @@ Slice 1 rules R1 (assignment at occurrence time), R2 (idempotency), R3 (time lim
 - [x] AC-E03-03 (2): an arrival at Ragama (not designated) is 422 `not_arrival_station`; `GET /operator/journey` shows `isArrivalStation` true only for Gampaha and Colombo Fort. **A1: ReportArrivalTests (not_arrival_station at Veyangoda, Ragama and Maradana; isArrivalStation flags).**
 - [x] AC-E03-03 (3): an arrival with an earlier occurrence time that arrives later is accepted and the state equals the in-order result. **A1: ReportArrivalTests (a late arrival gives the in-order state).**
 - [x] AC-E03-03 (4): Arrived at Colombo Fort sets the journey Completed; `statusKey` is `Completed`; a further report is 409. **A1: unit and integration tests, and on the real stack (Arrived Colombo Fort gave Completed).**
-- [ ] AC-E03-04 (1): a delay with reason SignalIssue and total 10 is recorded; the status read shows delay 10 and `statusKey` Delayed.
-- [ ] AC-E03-04 (2) and AC-E04-03 (4): with a delay of 10 reported, Gampaha shows 08:40; a total of 10 after a measured delay of 8 gives 10, not 18.
-- [ ] AC-E03-04 (3): no read returns the reason (a test scans the JSON).
-- [ ] AC-E03-04 (5): `delayUnknown: true` gives `delayKnown` false, `statusKey` Delayed and no `primaryEta`; a later measured report clears it.
-- [ ] AC-E03-04 (6): with 8 running, a total of 8 or 5 is 409 `delay_not_greater`, 10 is accepted; after "Unknown", a total equal to the last numeric delay is accepted.
+- [x] AC-E03-04 (1): a delay with reason SignalIssue and total 10 is recorded; the status read shows delay 10 and `statusKey` Delayed. **A2: ReportDelayTests (A_delay_with_a_reason_and_a_total...).**
+- [x] AC-E03-04 (2) and AC-E04-03 (4): with a delay of 10 reported, Gampaha shows 08:40; a total of 10 after a measured delay of 8 gives 10, not 18. **A2: ReportDelayTests and DelayRulesTests: Gampaha 08:40, and 10 not 18.**
+- [x] AC-E03-04 (3): no read returns the reason (a test scans the JSON). **A2: ReportDelayTests scans the status, train, line, search, stations, operator journey and the report response.**
+- [x] AC-E03-04 (5): `delayUnknown: true` gives `delayKnown` false, `statusKey` Delayed and no `primaryEta`; a later measured report clears it. **A2: ReportDelayTests: delayKnown false, Delayed, no primaryEta, no estimates; a later measurement or total clears it.**
+- [x] AC-E03-04 (6): with 8 running, a total of 8 or 5 is 409 `delay_not_greater`, 10 is accepted; after "Unknown", a total equal to the last numeric delay is accepted. **A2: ReportDelayTests: 8 and 5 are 409, 10 accepted, after Unknown equal accepted and lower refused.**
 - [x] AC-E04-01 (1): a repeat of an arrival and of a delay report returns 200 and stores nothing twice; a different ID for the same stop and time is also 200. **A1: arrival repeats by id and by content; the delay part is A2.**
 - [x] AC-E04-02 (1) (2): times 2 minutes ahead and 9 hours back are 422 for the new types. **A1: tested for Arrived; DelayReported is A2.**
 - [x] AC-E04-03 (2): an arrival at 08:28 against 08:30 gives delay 0 and keeps the departure at 08:31. **A1: ReportArrivalTests and ArrivalRulesTests.**
-- [ ] A delay report before any departure is accepted, the journey stays Scheduled and `statusKey` is Delayed (R8, R9).
+- [x] A delay report before any departure is accepted, the journey stays Scheduled and `statusKey` is Delayed (R8, R9). **A2: ReportDelayTests and ReportDelayBeforeDepartureTests (the passenger search shows it as Delayed).**
 - [x] The train lookup does not return a Completed journey as "in progress"; a finished night train does not hide the next day's journey; a running train later than its last estimate is still returned (R11). **A1: ArrivalRulesTests (JourneySelection) and ReportArrivalTests.**
 - [x] The events counter shows `Arrived` and `DelayReported`; `smartrail.journeys.completed` moves; both are visible in Grafana. **A1: Arrived and smartrail.journeys.completed read in Grafana on the Compose stack; DelayReported is A2.**
 - [ ] `dotnet build -warnaserror` and `dotnet test` pass and CI is green. The slice 1 tests still pass unchanged apart from the renamed handler and the generalised order function.

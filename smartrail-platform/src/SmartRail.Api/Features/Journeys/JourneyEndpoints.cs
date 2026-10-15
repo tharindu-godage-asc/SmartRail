@@ -129,6 +129,7 @@ public static class JourneyFeatures
         RejectReason.JourneyNotReportable => (StatusCodes.Status409Conflict, "Journey cannot take reports now", "journey_not_reportable"),
         RejectReason.ClientEventIdReusedWithDifferentContent => (StatusCodes.Status409Conflict, "Client event ID already used", "client_event_id_reused"),
         RejectReason.StopAlreadyHasDifferentTime => (StatusCodes.Status409Conflict, "Stop already has a different time for this report", "stop_has_different_time"),
+        RejectReason.DelayNotGreater => (StatusCodes.Status409Conflict, "The delay is not greater than the one running", "delay_not_greater"),
         RejectReason.OrderConflict => (StatusCodes.Status409Conflict, "Report is impossible in the stop order", "order_conflict"),
         RejectReason.VersionConflict => (StatusCodes.Status409Conflict, "Journey changed, try again", "version_conflict"),
         _ => (StatusCodes.Status500InternalServerError, "Error", "error"),

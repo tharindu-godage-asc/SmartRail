@@ -233,7 +233,8 @@ public sealed class FindTrainsHandler(IPassengerQueries queries, TimeProvider cl
         states.TryGetValue(fromStop.ServiceStopId, out var fromState);
         states.TryGetValue(toStop.ServiceStopId, out var toState);
 
-        var anyReport = journey.StopStates.Any(s => s.Confirmation == StopConfirmation.Reported);
+        // A delay reported before the first stop report counts too: the stops are all Pending but the delay is real.
+        var anyReport = journey.StopStates.Any(s => s.Confirmation == StopConfirmation.Reported) || journey.DelayMinutes > 0;
         var (key, group) = JourneyProgress.StatusFor(anyReport, journey.DelayMinutes, journeys.OnTimeToleranceMinutes);
 
         var departure = Pair(fromTimes.Departure, fromState?.EstimatedDeparture);

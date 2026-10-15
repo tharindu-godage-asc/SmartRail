@@ -40,7 +40,8 @@ public sealed record JourneyStatusSnapshot(
     int DelayMinutes,
     EtaSnapshot? PrimaryEta,
     PositionSnapshot? LastKnownPosition,
-    IReadOnlyList<StopSnapshot> Stops);
+    IReadOnlyList<StopSnapshot> Stops,
+    bool DelayKnown = true);
 
 public static class SnapshotBuilder
 {
@@ -63,9 +64,12 @@ public static class SnapshotBuilder
         }).ToList();
 
         var lastReported = stopsInOrder.LastOrDefault(s => states.TryGetValue(s.ServiceStopId, out var st) && st.Confirmation == StopConfirmation.Reported);
+        // A delay report counts as a report even before the first stop report; an unknown delay is still a delay (spec 06 R7, R8).
         var (key, group) = data.Status == JourneyStatus.Completed
             ? (JourneyStatusKey.Completed, SmartRail.Domain.StatusGroup.Normal)
-            : JourneyProgress.StatusFor(lastReported is not null, data.DelayMinutes, onTimeToleranceMinutes);
+            : !data.DelayKnown
+                ? (JourneyStatusKey.Delayed, SmartRail.Domain.StatusGroup.Warning)
+                : JourneyProgress.StatusFor(lastReported is not null || data.Events.Count > 0, data.DelayMinutes, onTimeToleranceMinutes);
 
         EtaSnapshot? eta = null;
         PositionSnapshot? position = null;
@@ -81,8 +85,9 @@ public static class SnapshotBuilder
                 position = new PositionSnapshot(lastReported.StationCode, lastReported.StationName, null, "Arrived", arrivedAt);
             }
 
+            // R7: with the duration unknown there is no honest ETA, so none is given.
             var next = stopsInOrder.FirstOrDefault(s => s.Sequence > lastReported.Sequence);
-            if (next is not null)
+            if (next is not null && data.DelayKnown)
             {
                 var estimated = states.GetValueOrDefault(next.ServiceStopId)?.EstimatedArrival
                                 ?? schedule[next.ServiceStopId].Arrival + TimeSpan.FromMinutes(data.DelayMinutes);
@@ -95,7 +100,7 @@ public static class SnapshotBuilder
 
         return new JourneyStatusSnapshot(
             data.JourneyId, data.TrainNumber, data.OperatingDate, data.Version, now,
-            group.ToString(), key.ToString(), data.DelayMinutes, eta, position, stops);
+            group.ToString(), key.ToString(), data.DelayMinutes, eta, position, stops, data.DelayKnown);
     }
 }
 

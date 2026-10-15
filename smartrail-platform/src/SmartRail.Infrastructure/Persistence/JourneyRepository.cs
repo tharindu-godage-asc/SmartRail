@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using SmartRail.Application.Features.Events.ReportEvent;
 using SmartRail.Application.Features.Journeys;
 using SmartRail.Domain.Journeys;
 
@@ -60,12 +61,18 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
             Id = change.EventId,
             JourneyId = change.JourneyId,
             ClientEventId = change.ClientEventId,
-            EventType = change.Kind == ReportKind.Arrived ? EventType.Arrived : EventType.Departed,
+            EventType = change.Kind switch
+            {
+                ReportKind.Arrived => EventType.Arrived,
+                ReportKind.DelayReported => EventType.DelayReported,
+                _ => EventType.Departed,
+            },
             ServiceStopId = change.ServiceStopId,
             OccurredAt = change.OccurredAt,
             ReceivedAt = change.ReceivedAt,
             Source = EventSource.Operator,
             CreatedBy = change.CreatedBy,
+            Payload = change.Payload,
             JourneyVersionAfter = journey.Version,
         });
 
@@ -150,28 +157,42 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
             .Select(s => new StopStateInfo(s.ServiceStopId, s.Confirmation, s.EstimatedArrival, s.EstimatedDeparture, s.ActualDeparture, s.ActualArrival))
             .ToListAsync(cancellationToken);
 
-        IReadOnlyList<RecordedEvent> events = [];
+        // Events are always loaded: whether a delay is known is worked out from them (no extra column), and the public status needs it.
+        var stored = await db.TrainEvents.AsNoTracking()
+            .Where(e => e.JourneyId == header.Id
+                && (e.EventType == EventType.Departed || e.EventType == EventType.Arrived || e.EventType == EventType.DelayReported))
+            .OrderBy(e => e.OccurredAt)
+            .Select(e => new { e.Id, e.ClientEventId, e.ServiceStopId, e.OccurredAt, e.JourneyVersionAfter, e.EventType, e.Payload })
+            .ToListAsync(cancellationToken);
+        IReadOnlyList<RecordedEvent> events = stored
+            .Where(e => e.EventType == EventType.DelayReported || e.ServiceStopId is not null)
+            .Select(e => new RecordedEvent(
+                e.Id, e.ClientEventId, e.ServiceStopId, e.OccurredAt, e.JourneyVersionAfter,
+                e.EventType switch
+                {
+                    EventType.Arrived => ReportKind.Arrived,
+                    EventType.DelayReported => ReportKind.DelayReported,
+                    _ => ReportKind.Departed,
+                },
+                e.EventType == EventType.DelayReported ? EventRules.FromJson(e.Payload) : null))
+            .ToList();
+
         IReadOnlyList<AssignmentInfo> assignments = [];
         if (includeEventsAndAssignments)
         {
-            events = await db.TrainEvents.AsNoTracking()
-                .Where(e => e.JourneyId == header.Id
-                    && (e.EventType == EventType.Departed || e.EventType == EventType.Arrived)
-                    && e.ServiceStopId != null)
-                .OrderBy(e => e.OccurredAt)
-                .Select(e => new RecordedEvent(
-                    e.Id, e.ClientEventId, e.ServiceStopId!.Value, e.OccurredAt, e.JourneyVersionAfter,
-                    e.EventType == EventType.Arrived ? ReportKind.Arrived : ReportKind.Departed))
-                .ToListAsync(cancellationToken);
-
             assignments = await db.OperatorAssignments.AsNoTracking()
                 .Where(a => a.JourneyId == header.Id)
                 .Select(a => new AssignmentInfo(a.OperatorUserId, a.ValidFrom, a.ValidTo))
                 .ToListAsync(cancellationToken);
         }
 
-        return new JourneyData(
+        var data = new JourneyData(
             header.Id, header.TrainNumber, header.OperatingDate, header.Status, header.Version, header.CurrentDelayMinutes,
             stops, states, events, assignments);
+
+        // Is the length of the delay known? Only an operator report of "unknown" makes it unknown (spec 06 R7).
+        var stopEvents = events.Where(e => e.Kind != ReportKind.DelayReported).Select(e => new ReportedStopEvent(e.ServiceStopId!.Value, e.Kind, e.OccurredAt)).ToList();
+        var delays = events.Where(e => e.Kind == ReportKind.DelayReported).Select(e => new ReportedDelay(e.OccurredAt, e.Delay!.TotalDelayMinutes, e.Delay.DelayUnknown)).ToList();
+        return stops.Count == 0 ? data : data with { DelayKnown = JourneyProgress.DelayInForce(data.Schedule(), stopEvents, delays).Known };
     }
 }
