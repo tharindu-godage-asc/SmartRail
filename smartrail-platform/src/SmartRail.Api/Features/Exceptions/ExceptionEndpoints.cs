@@ -20,6 +20,7 @@ public static class ExceptionFeatures
     {
         services.AddScoped<ListOpenExceptionsHandler>();
         services.AddScoped<ResolveExceptionHandler>();
+        services.AddScoped<GetOverviewHandler>();
         return services;
     }
 
@@ -27,8 +28,12 @@ public static class ExceptionFeatures
     {
         app.MapGet("/api/v1/exceptions", ListOpen).WithName("ListOpenExceptions").RequireAuthorization(Policies.Controller);
         app.MapPost("/api/v1/exceptions/{id:guid}/resolve", Resolve).WithName("ResolveException").RequireAuthorization(Policies.Controller);
+        app.MapGet("/api/v1/overview", Overview).WithName("GetOverview").RequireAuthorization(Policies.Controller);
         return app;
     }
+
+    private static async Task<IResult> Overview(GetOverviewHandler handler, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await handler.HandleAsync(cancellationToken));
 
     private static async Task<IResult> ListOpen(
         [FromQuery(Name = "status")] string? status, ListOpenExceptionsHandler handler, CancellationToken cancellationToken)

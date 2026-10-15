@@ -30,6 +30,16 @@ public sealed class ExceptionRepository(SmartrailDbContext db) : IExceptionRepos
             .ToList();
     }
 
+    public async Task<OpenSummary> GetOpenSummaryAsync(CancellationToken cancellationToken)
+    {
+        var open = await db.JourneyExceptions.AsNoTracking()
+            .Where(e => e.ResolvedAt == null)
+            .Select(e => new { e.JourneyId, e.Type })
+            .ToListAsync(cancellationToken);
+        var awaiting = open.Where(e => e.Type == ExceptionType.ReasonAwaitingVerification).Select(e => e.JourneyId).ToHashSet();
+        return new OpenSummary(open.Count, awaiting);
+    }
+
     public async Task<ResolveOutcome> ResolveAsync(Guid id, string resolvedBy, string action, DateTimeOffset at, CancellationToken cancellationToken)
     {
         // One UPDATE that only matches an open row: of two simultaneous resolves exactly one changes it.

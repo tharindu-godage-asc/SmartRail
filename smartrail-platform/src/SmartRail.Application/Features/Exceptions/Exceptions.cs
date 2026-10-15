@@ -13,6 +13,8 @@ public sealed record OpenExceptionRow(
     DateTimeOffset CreatedAt,
     Guid? RelatedEventId);
 
+public sealed record OpenSummary(int Count, IReadOnlySet<Guid> AwaitingVerificationJourneyIds);
+
 public enum ResolveOutcome { Resolved, NotFound, AlreadyResolved, InvalidAction }
 
 /// <summary>Persistence for the exceptions queue. Implemented in Infrastructure with EF Core.</summary>
@@ -20,6 +22,9 @@ public interface IExceptionRepository
 {
     /// <summary>Every open exception: Critical first, then oldest first (AC-E05-02 3).</summary>
     Task<IReadOnlyList<OpenExceptionRow>> ListOpenAsync(CancellationToken cancellationToken);
+
+    /// <summary>How many exceptions are open, and which journeys have a reason awaiting verification (overview, AC-E05-01 4, 6).</summary>
+    Task<OpenSummary> GetOpenSummaryAsync(CancellationToken cancellationToken);
 
     /// <summary>
     /// Marks it resolved by this controller, once. Two controllers resolving at the same moment cannot both succeed:
