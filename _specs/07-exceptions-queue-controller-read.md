@@ -4,7 +4,7 @@ branch: claude/feature/exceptions-queue-controller-read
 spec: _specs/07-exceptions-queue-controller-read.md
 owner: tharindu
 date: 2026-10-15
-status: draft, reviewed 2026-10-15 against the code and docs (corrected below, not approved; see section 12 for what the owner must decide)
+status: ready, approved 2026-10-15 (owner approved the corrected spec in chat: Q1, Q3, Q4, Q5, Q6, Q7, Q8 and Q9 as recommended). Built as B1 (raise, queue, resolve); B2 (overview) only if B1 is merged by 17 Oct.
 
 ---
 
@@ -18,7 +18,7 @@ Size: two PRs, B1 (raise + queue read + resolve) and B2 (overview read). Feature
 
 ## 1) Traceability
 - Requirements: FR-50, FR-51, FR-43 (resolve is audited), FR-27 (flag), NFR-30 (source label not colour alone). FR-52 verify and FR-53 controller entry are NOT here (see Non-Goals).
-- Acceptance criteria: AC-E05-01 (1, 3, 4, 5, 6 read side only), AC-E05-02 (1 to 6), AC-E03-02 (10), AC-E03-04 (7), AC-E03-06 (1), AC-E04-02 (3 deferred).
+- Acceptance criteria: AC-E05-01 (1, 3, 4, 5, 6 read side only, B2), AC-E05-02 (1 to 6), AC-E03-02 (10), AC-E03-04 (7), AC-E04-02 (3 deferred). AC-E03-06 (the flag) moved out of this slice (Q6).
 - Edge cases: EC-08 (early departure: accepted, High exception), EC-53 (one report, one exception), EC-54 (nothing non-actionable raises an exception). EC-05 (same station, different time) and EC-07 (backward report) are the conflicts left out (Q1). EC-50 (operator event during a suspension) needs the suspended state, which does not exist. *(The first draft cited EC-50 for "reason awaiting verification" and described EC-53 and EC-54 as ordering and row format; the edge-cases file says otherwise.)*
 - Decisions: D-44 (severity, one report one exception, order), D-43 and P-07 (what is not an exception), D-48/D-49 (early departure High; early arrival raises nothing), D-41 (flag), D-10 (reason only after verification), D-76 (senior controller deferred).
 - Design: no hi-fi board for the controller yet. This spec is API only; the controller web screen is a later slice.
@@ -78,12 +78,12 @@ All three require the Controller policy (secure by default; a Passenger or Opera
 ## 6) Business Rules
 1. Types and severities (D-44, AC-E05-02 1): Critical = `ReasonAwaitingVerification` when reason is TechnicalFault, Obstruction or Weather. High = `ReasonAwaitingVerification` for SignalIssue or Unknown, `EarlyDeparture`, `OperatorCorrectionRequested`.
 2. One report, one exception. A delay with a technical fault creates one Critical row, not two (AC-E05-02 2).
-3. An early departure that also carries nothing else creates one `EarlyDeparture`; an early arrival creates none (D-48, D-49).
+3. **Early departure (Q7, decided 2026-10-15).** A departure raises one `EarlyDeparture` (High) when it happened at least 30 seconds before its scheduled time, the same half-minute rounding the delay uses: 08:29:40 against 08:30:00 raises one, 08:29:50 does not. An early arrival raises none (D-48, D-49).
 4. Not exceptions (AC-E05-02 5): forward skips, late events in correct order, sync retries (a replayed `clientEventId` returns the first result and raises nothing), a delay report with no reason.
 5. The exception and the event are saved in one transaction; if either fails neither exists.
 6. Queue order: severity (Critical first), then `created_at` ascending.
 7. Resolving writes who, when and the action and removes the row from the open queue (AC-E05-02 6, FR-43). Resolving never changes journey state or what passengers see.
-8. A flag creates `OperatorCorrectionRequested` linked to the flagged report; if the flag is queued offline it is created when it arrives (AC-E03-06 3).
+8. **The flag is not in this slice (Q6, decided 2026-10-15).** No endpoint lets an operator flag a report yet, so `OperatorCorrectionRequested` is never raised here; it arrives with the flag slice (AC-E03-06).
 9. Time since update and age use server time.
 
 ## 7) Architecture (CLAUDE.md, ADR-15)
@@ -107,7 +107,7 @@ All three require the Controller policy (secure by default; a Passenger or Opera
 ## 9) Acceptance Criteria
 - [ ] A delay report with TechnicalFault, Obstruction or Weather creates one Critical exception (AC-E05-02 1, 2).
 - [ ] A delay report with SignalIssue or Unknown creates one High exception.
-- [ ] A departure before the scheduled time creates one High `EarlyDeparture`; an early arrival creates none.
+- [ ] A departure at least 30 seconds before its scheduled time creates one High `EarlyDeparture`; 29 seconds early, on time and an early arrival create none (Q7).
 - [ ] A flag creates one High `OperatorCorrectionRequested` linked to that report and journey state is unchanged (AC-E03-06 1).
 - [ ] A replayed request creates no second exception (AC-E05-02 5).
 - [ ] Queue order is Critical then High, oldest first (AC-E05-02 3); rows carry journey, station, type, severity, age (AC-E05-02 4).
@@ -156,3 +156,6 @@ Journey 8058 (Veyangoda 08:20, Gampaha 08:30/08:31, Ragama 08:42/08:43, Maradana
 6. **Header** pointed at the old file name.
 7. Checked and correct: the severity split, the queue order, the row contents and "nothing else raises one" against AC-E05-02 (1) to (6); FR-43, FR-50, FR-51 and NFR-30; the Controller policy exists; the one-transaction rule works with the existing single save.
 8. Not in the spec but needed later for the controller screen: AC-E05-01 (7) asks for a permanent notice that SmartRail is an information system and not a safety system on every operations screen.
+
+### Decisions (owner, 2026-10-15; each is the recommendation above)
+- **Q1** the backward and same-station conflicts stay out (a documented gap, said at the viva). **Q2** the unique index goes in the new migration. **Q3** three fixed resolve actions: `Acknowledged`, `NoActionNeeded`, `Escalated`. **Q4** B1 now, B2 only if B1 is merged by 17 Oct. **Q5** polling every 10 seconds, not push; said honestly in the report. **Q6** the flag is out of this slice. **Q7** early means at least 30 seconds early. **Q8** `station_id` is stored when the exception is raised. **Q9** one exception per report, so repeated delay updates repeat the exception.
