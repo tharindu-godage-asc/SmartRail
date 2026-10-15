@@ -4,7 +4,7 @@
   "tags": ["smartrail"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "refresh": "30s",
   "time": { "from": "now-30m", "to": "now" },
   "templating": {
@@ -95,6 +95,17 @@
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "sum by (deployment_environment) (smartrail_journeys_completed_total{deployment_environment=~\"$env\"})", "legendFormat": "{{deployment_environment}}" }
+      ]
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "Exceptions raised and resolved (total)",
+      "description": "Counters smartrail.exceptions.raised (by severity) and smartrail.exceptions.resolved (by action). Spec 07: raised = queue grows, resolved = a controller acted.",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (severity) (smartrail_exceptions_raised_total{deployment_environment=~\"$env\"})", "legendFormat": "raised {{severity}}" },
+        { "refId": "B", "expr": "sum by (action) (smartrail_exceptions_resolved_total{deployment_environment=~\"$env\"})", "legendFormat": "resolved {{action}}" }
       ]
     },
     {

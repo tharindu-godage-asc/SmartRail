@@ -58,6 +58,32 @@ internal sealed class JourneyStopStateConfiguration : IEntityTypeConfiguration<J
     }
 }
 
+internal sealed class JourneyExceptionConfiguration : IEntityTypeConfiguration<JourneyException>
+{
+    public void Configure(EntityTypeBuilder<JourneyException> b)
+    {
+        b.ToTable("journey_exception", t =>
+        {
+            t.HasCheckConstraint("ck_journey_exception_type", EnumSql.InList<ExceptionType>("type"));
+            t.HasCheckConstraint("ck_journey_exception_severity", EnumSql.InList<ExceptionSeverity>("severity"));
+        });
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+        b.Property(x => x.Type).HasConversion<string>().HasMaxLength(40);
+        b.Property(x => x.Severity).HasConversion<string>().HasMaxLength(10);
+        b.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
+        b.Property(x => x.ResolvedBy).HasMaxLength(64);
+        b.Property(x => x.Resolution).HasMaxLength(200);
+        // One report, one exception of a type (D-44, AC-E05-02 2). Null event IDs (future types) never collide.
+        b.HasIndex(x => new { x.RelatedEventId, x.Type }).IsUnique().HasDatabaseName("ux_exception_event_type");
+        // The open queue: severity, then age (AC-E05-02 3).
+        b.HasIndex(x => new { x.Severity, x.CreatedAt }).HasDatabaseName("ix_exception_open").HasFilter("resolved_at IS NULL");
+        b.HasOne<Journey>().WithMany().HasForeignKey(x => x.JourneyId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<TrainEvent>().WithMany().HasForeignKey(x => x.RelatedEventId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Station>().WithMany().HasForeignKey(x => x.StationId).OnDelete(DeleteBehavior.NoAction);
+    }
+}
+
 internal sealed class TrainEventConfiguration : IEntityTypeConfiguration<TrainEvent>
 {
     public void Configure(EntityTypeBuilder<TrainEvent> b)

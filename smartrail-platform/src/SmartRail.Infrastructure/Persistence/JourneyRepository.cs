@@ -76,6 +76,21 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
             JourneyVersionAfter = journey.Version,
         });
 
+        // The exception is saved with the event in the same SaveChanges, so either both exist or neither does (spec 07 R5).
+        if (change.Raised is { } raised)
+        {
+            db.JourneyExceptions.Add(new JourneyException
+            {
+                Id = Guid.CreateVersion7(change.ReceivedAt),
+                JourneyId = change.JourneyId,
+                RelatedEventId = change.EventId,
+                StationId = raised.StationId,
+                Type = raised.Exception.Type,
+                Severity = raised.Exception.Severity,
+                CreatedAt = change.ReceivedAt,
+            });
+        }
+
         var rows = await db.JourneyStopStates.Where(s => s.JourneyId == change.JourneyId).ToDictionaryAsync(s => s.ServiceStopId, cancellationToken);
         foreach (var progress in change.NewStopStates)
         {
@@ -144,12 +159,12 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
             join station in db.Stations.AsNoTracking() on stop.StationId equals station.Id
             where stop.ServiceId == header.ServiceId
             orderby stop.Sequence
-            select new { stop.Id, stop.Sequence, station.Code, station.Name, stop.ScheduledArrival, stop.ScheduledDeparture, stop.ArrivalReportRequired })
+            select new { stop.Id, stop.Sequence, station.Code, station.Name, StationId = station.Id, stop.ScheduledArrival, stop.ScheduledDeparture, stop.ArrivalReportRequired })
             .ToListAsync(cancellationToken);
         var lastSequence = rawStops.Count == 0 ? 0 : rawStops.Max(s => s.Sequence);
         var stops = rawStops
             .Select(s => new StopInfo(
-                s.Id, s.Sequence, s.Code, s.Name, s.ScheduledArrival, s.ScheduledDeparture, s.Sequence == lastSequence, s.ArrivalReportRequired))
+                s.Id, s.Sequence, s.Code, s.Name, s.ScheduledArrival, s.ScheduledDeparture, s.Sequence == lastSequence, s.ArrivalReportRequired, s.StationId))
             .ToList();
 
         var states = await db.JourneyStopStates.AsNoTracking()

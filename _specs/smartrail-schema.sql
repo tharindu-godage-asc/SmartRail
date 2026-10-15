@@ -198,6 +198,7 @@ CREATE TABLE journey_exception (
     id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     journey_id        uuid NOT NULL REFERENCES journey(id),
     related_event_id  uuid REFERENCES train_event(id),
+    station_id        uuid REFERENCES station(id),   -- where the train was when raised (spec 07); null if nothing reported yet
     related_journey_id uuid REFERENCES journey(id),  -- the other journey in a platform conflict (FR-57)
     platform_id       uuid REFERENCES platform(id),  -- the platform in conflict (FR-57)
     type              varchar(40) NOT NULL,      -- Overdue, ReasonAwaitingVerification, BackwardConflict, PlatformConflict, ...
@@ -210,6 +211,8 @@ CREATE TABLE journey_exception (
 );
 -- Open exceptions queue: severity, then age
 CREATE INDEX ix_exception_open ON journey_exception (severity, created_at) WHERE resolved_at IS NULL;
+-- One report, one exception of a type (spec 07): a replayed report cannot raise it twice
+CREATE UNIQUE INDEX ux_exception_event_type ON journey_exception (related_event_id, type);
 
 CREATE TABLE disruption_message (
     id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -11,7 +11,8 @@ public sealed record StopInfo(
     TimeOnly? ScheduledArrival,
     TimeOnly? ScheduledDeparture,
     bool IsFinalStop,
-    bool ArrivalReportRequired = false)
+    bool ArrivalReportRequired = false,
+    Guid StationId = default)
 {
     /// <summary>
     /// D-08, FR-22: an arrival is reported at a stop flagged for it and at the final stop, and only where the stop has a
@@ -76,7 +77,11 @@ public sealed record ReportChange(
     JourneyStatus NewStatus,
     int NewDelayMinutes,
     IReadOnlyList<StopProgress> NewStopStates,
-    string? Payload = null);
+    string? Payload = null,
+    RaisedAt? Raised = null);
+
+/// <summary>An exception raised by a report, and where the train was (null when nothing had been reported yet).</summary>
+public sealed record RaisedAt(RaisedException Exception, Guid? StationId);
 
 public enum SaveOutcome { Saved, Conflict }
 

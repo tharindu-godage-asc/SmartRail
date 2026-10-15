@@ -6,10 +6,12 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using SmartRail.Api.Authentication;
 using SmartRail.Api.Features.Diagnostics;
+using SmartRail.Api.Features.Exceptions;
 using SmartRail.Api.Features.Journeys;
 using SmartRail.Api.Features.Passenger;
 using SmartRail.Application.Features.Passenger;
 using SmartRail.Application.Features.Events.ReportEvent;
+using SmartRail.Application.Features.Exceptions;
 using SmartRail.Api.Features.Status;
 using SmartRail.Infrastructure;
 
@@ -25,6 +27,7 @@ if (databaseConfigured)
 {
     builder.Services.AddJourneyFeatures(builder.Configuration);
     builder.Services.AddPassengerFeatures(builder.Configuration);
+    builder.Services.AddExceptionFeatures();
 }
 
 builder.Services.AddHealthChecks();
@@ -34,7 +37,7 @@ builder.Services.AddHealthChecks();
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService("smartrail-api").AddAttributes(new Dictionary<string, object>
         { ["deployment.environment"] = env }))
-    .WithMetrics(m => m.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddRuntimeInstrumentation().AddMeter(AuthMetrics.MeterName).AddMeter(EventMetrics.MeterName).AddMeter(SearchMetrics.MeterName).AddOtlpExporter())
+    .WithMetrics(m => m.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddRuntimeInstrumentation().AddMeter(AuthMetrics.MeterName).AddMeter(EventMetrics.MeterName).AddMeter(SearchMetrics.MeterName).AddMeter(ExceptionMetrics.MeterName).AddOtlpExporter())
     .WithTracing(t => t.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddNpgsql().AddOtlpExporter());
 builder.Logging.AddOpenTelemetry(o => { o.IncludeScopes = true; o.AddOtlpExporter(); });
 
@@ -52,6 +55,7 @@ if (databaseConfigured)
 {
     app.MapJourneyFeatures();
     app.MapPassengerFeatures();
+    app.MapExceptionFeatures();
 }
 
 if (app.Configuration.GetValue<bool>("Diagnostics:WhoAmI"))
