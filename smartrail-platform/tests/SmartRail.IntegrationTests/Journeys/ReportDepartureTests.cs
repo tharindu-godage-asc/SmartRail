@@ -301,7 +301,7 @@ public sealed class ReportDepartureTests(PostgresFixture postgres) : JourneyApiT
     }
 
     [Theory]
-    [InlineData("Arrived")]
+    [InlineData("DelayReported")] // arrives in slice A2
     [InlineData("departed")]
     [InlineData(null)]
     public async Task An_event_type_other_than_departed_is_a_422(string? eventType)

@@ -42,7 +42,7 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
         return assignedJourney is { } id ? await GetAsync(id, cancellationToken) : null;
     }
 
-    public async Task<SaveOutcome> SaveDepartureAsync(DepartureChange change, CancellationToken cancellationToken)
+    public async Task<SaveOutcome> SaveReportAsync(ReportChange change, CancellationToken cancellationToken)
     {
         var journey = await db.Journeys.SingleAsync(j => j.Id == change.JourneyId, cancellationToken);
         if (journey.Version != change.ExpectedVersion)
@@ -60,7 +60,7 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
             Id = change.EventId,
             JourneyId = change.JourneyId,
             ClientEventId = change.ClientEventId,
-            EventType = EventType.Departed,
+            EventType = change.Kind == ReportKind.Arrived ? EventType.Arrived : EventType.Departed,
             ServiceStopId = change.ServiceStopId,
             OccurredAt = change.OccurredAt,
             ReceivedAt = change.ReceivedAt,
@@ -81,6 +81,7 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
             row.Confirmation = progress.Confirmation;
             row.EstimatedArrival = progress.EstimatedArrival;
             row.EstimatedDeparture = progress.EstimatedDeparture;
+            row.ActualArrival = progress.ActualArrival;
             row.ActualDeparture = progress.ActualDeparture;
         }
 
@@ -136,16 +137,17 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
             join station in db.Stations.AsNoTracking() on stop.StationId equals station.Id
             where stop.ServiceId == header.ServiceId
             orderby stop.Sequence
-            select new { stop.Id, stop.Sequence, station.Code, station.Name, stop.ScheduledArrival, stop.ScheduledDeparture })
+            select new { stop.Id, stop.Sequence, station.Code, station.Name, stop.ScheduledArrival, stop.ScheduledDeparture, stop.ArrivalReportRequired })
             .ToListAsync(cancellationToken);
         var lastSequence = rawStops.Count == 0 ? 0 : rawStops.Max(s => s.Sequence);
         var stops = rawStops
-            .Select(s => new StopInfo(s.Id, s.Sequence, s.Code, s.Name, s.ScheduledArrival, s.ScheduledDeparture, s.Sequence == lastSequence))
+            .Select(s => new StopInfo(
+                s.Id, s.Sequence, s.Code, s.Name, s.ScheduledArrival, s.ScheduledDeparture, s.Sequence == lastSequence, s.ArrivalReportRequired))
             .ToList();
 
         var states = await db.JourneyStopStates.AsNoTracking()
             .Where(s => s.JourneyId == header.Id)
-            .Select(s => new StopStateInfo(s.ServiceStopId, s.Confirmation, s.EstimatedArrival, s.EstimatedDeparture, s.ActualDeparture))
+            .Select(s => new StopStateInfo(s.ServiceStopId, s.Confirmation, s.EstimatedArrival, s.EstimatedDeparture, s.ActualDeparture, s.ActualArrival))
             .ToListAsync(cancellationToken);
 
         IReadOnlyList<RecordedEvent> events = [];
@@ -153,9 +155,13 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
         if (includeEventsAndAssignments)
         {
             events = await db.TrainEvents.AsNoTracking()
-                .Where(e => e.JourneyId == header.Id && e.EventType == EventType.Departed && e.ServiceStopId != null)
+                .Where(e => e.JourneyId == header.Id
+                    && (e.EventType == EventType.Departed || e.EventType == EventType.Arrived)
+                    && e.ServiceStopId != null)
                 .OrderBy(e => e.OccurredAt)
-                .Select(e => new RecordedEvent(e.Id, e.ClientEventId, e.ServiceStopId!.Value, e.OccurredAt, e.JourneyVersionAfter))
+                .Select(e => new RecordedEvent(
+                    e.Id, e.ClientEventId, e.ServiceStopId!.Value, e.OccurredAt, e.JourneyVersionAfter,
+                    e.EventType == EventType.Arrived ? ReportKind.Arrived : ReportKind.Departed))
                 .ToListAsync(cancellationToken);
 
             assignments = await db.OperatorAssignments.AsNoTracking()

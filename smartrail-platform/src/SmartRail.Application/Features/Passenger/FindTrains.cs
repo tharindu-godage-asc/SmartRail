@@ -214,7 +214,7 @@ public sealed class FindTrainsHandler(IPassengerQueries queries, TimeProvider cl
         }
 
         var marks = journey.StopStates
-            .Join(service.Stops, state => state.ServiceStopId, stop => stop.ServiceStopId, (state, stop) => new StopMark(stop.Sequence, state.Confirmation));
+            .Join(service.Stops, state => state.ServiceStopId, stop => stop.ServiceStopId, (state, stop) => new StopMark(stop.Sequence, state.Confirmation, state.ActualDeparture is not null));
         return !StopPassed.HasDeparted(marks, fromStop.Sequence);
     }
 
