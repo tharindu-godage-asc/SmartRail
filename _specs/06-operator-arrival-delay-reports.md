@@ -1,7 +1,7 @@
 # Feature Spec: Operator reports arrival and delay, journeys complete
 
 branch: claude/feature/operator-arrival-delay-reports
-spec: _specs/operator-arrival-delay-reports.md
+spec: _specs/06-operator-arrival-delay-reports.md
 owner: tharindu
 date: 2026-10-15
 status: draft (not approved, do not build)
@@ -29,7 +29,7 @@ Checked on 2026-10-15 against `docs/smartrail-refined-requirements.md` v1.13, `d
   - AC-E04-01 (1): a repeat is acknowledged once. AC-E04-02 (1) (2) (4): time limits and out-of-order arrival. AC-E04-03 (1) (2) (4): ETAs, no negative delay, a total delay is not added to the current one.
   - **Not built here:** AC-E03-04 (4) (verification, FR-52), AC-E03-04 (7) (the Critical exception, D-44), AC-E03-06 (flag), AC-E03-01 (6) (suspended), AC-E03-02 (5) (7) (10) (exceptions). They wait for slice 2.
 - Edge cases: EC-02, EC-04, EC-06, EC-10, EC-15, EC-16 (handled by refusing, see R8), EC-17, EC-20, EC-27, EC-35, EC-37.
-- Decisions and assumptions: D-05, D-07 (total, not extra), D-08 (arrival only at designated stops), D-09, D-10 (reason published only after verification), D-35, D-36, D-48, A-TZ, ADR-06, ADR-09, and D8 of `operator-report-live-status.md` (Completed ends visibility; this spec changes how, see R11).
+- Decisions and assumptions: D-05, D-07 (total, not extra), D-08 (arrival only at designated stops), D-09, D-10 (reason published only after verification), D-35, D-36, D-48, A-TZ, ADR-06, ADR-09, and D8 of `03-operator-report-live-status.md` (Completed ends visibility; this spec changes how, see R11).
 - Design: hi-fi canvas boards `Nimal-Journey` (arrival), `Nimal-DelayReason`, `Nimal-DelayEstimate`, `Nimal-DelaySent`, `Nimal-DelayNotSent`, `Nimal-Completed`; wireframes Op-05, Op-08 to Op-11, Op-15. No new screen is needed.
 
 ## 2) Goals and Non-Goals
@@ -41,7 +41,7 @@ Checked on 2026-10-15 against `docs/smartrail-refined-requirements.md` v1.13, `d
 - Arrival at the final stop sets the journey `Completed` (AC-E03-03 4).
 - The operator app can then enable arrival and delay sending (section 7, clients).
 ### Non-Goals
-- Controller verification of the reason (AC-E03-04 4, FR-52), and any exception record: Critical for a technical fault, obstruction or weather (AC-E03-04 7), High for an early departure or arrival (AC-E03-02 10). All exceptions wait for slice 2 (Q3).
+- Controller verification of the reason (AC-E03-04 4, FR-52), and any exception record: Critical for a technical fault, obstruction or weather (AC-E03-04 7), High for an early departure (AC-E03-02 10); an early arrival raises none. All exceptions wait for slice 2 (Q3).
 - Flag my last report (AC-E03-06), the suspended state, the free-text "Other" reason (FR-30, Should), controller entry of events (FR-53), push notifications, SignalR.
 - Any change to the database schema (section 5).
 
@@ -115,15 +115,15 @@ Slice 1 rules R1 (assignment at occurrence time), R2 (idempotency), R3 (time lim
 - **Api:** `JourneyEndpoints` maps the two new codes in `Describe`; no new route.
 - **Telemetry:** the counter `smartrail.events.received` already has the labels `event_type` and `outcome`; it now also receives `Arrived` and `DelayReported`. New counter `smartrail.journeys.completed`. Add one panel to SmartRail Overview (completed journeys, and events by type). Log refused reports with `LogSafe.Clean`, as slice 1 does.
 - **Clients:**
-  - Operator app (a separate small change to `_specs/operator-app.md`, after this slice is merged): send `Arrived` where `isArrivalStation`, enable "Report delay" with reason and the estimate options above the running delay (the status read gives `delayMinutes`): +10, +15, +20, +30, +45 and Unknown (decided 2026-10-15; the hi-fi board `Nimal-DelayEstimate` is redrawn with the two extra options), enable the completed screen, and map the new reason codes. This removes the Non-Goals "Arrival reports", "Report delay" and "Journey completed" from the app spec and closes the FR-20 gap.
-  - Passenger find trains (`passenger-find-trains.md`, already approved): its `statusKey` list gains `Completed`, and a train may carry `delayKnown: false`. Both are additive; add them to its contract and tests.
+  - Operator app (a separate small change to `_specs/05-operator-app.md`, after this slice is merged): send `Arrived` where `isArrivalStation`, enable "Report delay" with reason and the estimate options above the running delay (the status read gives `delayMinutes`): +10, +15, +20, +30, +45 and Unknown (decided 2026-10-15; the hi-fi board `Nimal-DelayEstimate` is redrawn with the two extra options), enable the completed screen, and map the new reason codes. This removes the Non-Goals "Arrival reports", "Report delay" and "Journey completed" from the app spec and closes the FR-20 gap.
+  - Passenger find trains (`04-passenger-find-trains.md`, already approved): its `statusKey` list gains `Completed`, and a train may carry `delayKnown: false`. Both are additive; add them to its contract and tests.
 
 ## 8) Edge Cases
 - Arrival at a stop that is not designated (EC for D-08): 422 `not_arrival_station`; the app does not offer it.
 - Arrival before the previous departure, or after this stop's departure: 409 `order_conflict` (R3).
 - Arrival repeated with a different time (EC-02): same ID with the same content 200; a different time 409 `stop_has_different_time`.
 - Arrival offline and sent late, or arriving out of order (EC-04): accepted if its occurrence time fits (R3); the rebuild gives the same result as in order.
-- Early arrival (EC-35): accepted, delay 0, the departure stays scheduled (R4, R5). Its High exception waits for slice 2.
+- Early arrival (EC-35): accepted, delay 0, the departure stays scheduled (R4, R5). It raises no exception; only an early departure does (D-48, D-49).
 - Delay lower than or equal to the one running (EC-16): 409 `delay_not_greater`. Slice B may later change this to "accept and flag", as EC-16 reads "backend flags unusual values" (Q5).
 - Delay "Unknown" (EC-17): `delayKnown` false, no ETAs (R7).
 - Total versus extra (EC-37): a +10 total after +8 gives 10 in total, not 18 (R4).
@@ -168,7 +168,7 @@ Journey 8058 (Veyangoda 08:20, Gampaha 08:30/08:31, Ragama 08:42/08:43, Maradana
 Happy paths for both types; duplicate by ID and by content; same ID with different content; arrival at a non-designated stop and at the first stop; arrival at the final stop completing the journey and then 409 for a new report; unauthorised (401, controller 403, `operator2` 403 with nothing stored); invalid input; time limits; out-of-order arrival; a delay lower than the running one; Unknown; no reason in any response; the lookup with a Completed night train; version conflict with two simultaneous reports; the operator journey `isArrivalStation` flag. Run against Postgres in a container, as slice 1.
 
 ## 11) References
-- `_specs/operator-report-live-status.md` (slice 1: R1 to R16, section 4 error codes, D8), `_specs/passenger-find-trains.md`, `_specs/operator-app.md`, ADR-05, ADR-06, ADR-09, ADR-11, CLAUDE.md.
+- `_specs/03-operator-report-live-status.md` (slice 1: R1 to R16, section 4 error codes, D8), `_specs/04-passenger-find-trains.md`, `_specs/05-operator-app.md`, ADR-05, ADR-06, ADR-09, ADR-11, CLAUDE.md.
 - Existing code reused: `ReportDepartureHandler` (becomes `ReportEventHandler`), `JourneyProgress`, `SnapshotBuilder`, `JourneyRepository`, `JourneyApiTestBase`, `EventMetrics`.
 
 ## 12) Open Questions

@@ -63,7 +63,7 @@ public static class EventRules
 }
 
 /// <summary>
-/// Records one "Departed" report (spec operator-report-live-status, section 4). The checks run in the order the spec gives,
+/// Records one "Departed" report (spec 03-operator-report-live-status, section 4). The checks run in the order the spec gives,
 /// the whole step is retried on a version conflict (R11), and the stop states are rebuilt from all events (R10).
 /// </summary>
 public sealed class ReportDepartureHandler(IJourneyRepository repository, TimeProvider clock, EventLimits limits, JourneySettings settings)

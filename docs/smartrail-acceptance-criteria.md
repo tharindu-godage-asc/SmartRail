@@ -492,4 +492,4 @@ Timeline for these criteria: **Metro** Veyangoda → Colombo Fort (train 8058, 0
 
 ## Change log
 
-- **14 October 2026:** Ragama time in the shared timeline changed from 08:40 to 08:42 to match the seed data (`database-foundation.md`, accepted 13 October), and AC-E04-03 (1) changed from Ragama 08:48 to 08:50 (08:42 plus 8 minutes). Gampaha 08:38, Maradana 08:58 and Colombo Fort 09:03 are unchanged.
+- **14 October 2026:** Ragama time in the shared timeline changed from 08:40 to 08:42 to match the seed data (`01-database-foundation.md`, accepted 13 October), and AC-E04-03 (1) changed from Ragama 08:48 to 08:50 (08:42 plus 8 minutes). Gampaha 08:38, Maradana 08:58 and Colombo Fort 09:03 are unchanged.

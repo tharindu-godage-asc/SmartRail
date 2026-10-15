@@ -38,7 +38,7 @@ What changed from v1 to v2: the cause moved from a missing feature ("no real-tim
 | A-11 | An Android emulator with Google Play is an acceptable test device; a real device is used for a final check if one can be borrowed. |
 | A-12 | A native Tamil speaker is available to validate translations in week 3. |
 | A-13 | Only the catering provider is modelled as an external service provider. |
-| A-TZ | The operating time zone is **Asia/Colombo (UTC+05:30)**. Stop times are local times of day; stored instants are UTC. (Temporary ID: renumber when merged with the assumptions register, where IDs above A-13 already exist. Added 13 Oct 2026, `_specs/database-foundation.md`.) |
+| A-TZ | The operating time zone is **Asia/Colombo (UTC+05:30)**. Stop times are local times of day; stored instants are UTC. (Temporary ID: renumber when merged with the assumptions register, where IDs above A-13 already exist. Added 13 Oct 2026, `_specs/01-database-foundation.md`.) |
 
 > The full requirement discovery register, organised by the categories in brief section 22, is in **smartrail-discovery-register.md**.
 

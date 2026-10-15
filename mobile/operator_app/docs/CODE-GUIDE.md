@@ -1,7 +1,7 @@
 # Operator app: code guide
 
 A map of every file in `mobile/operator_app`, what it is for, and its main functions. Read this first when you need to find
-something or explain how the app works. The requirements are in `_specs/operator-app.md`; this guide describes the code.
+something or explain how the app works. The requirements are in `_specs/05-operator-app.md`; this guide describes the code.
 
 ## 1. The idea in five sentences
 
