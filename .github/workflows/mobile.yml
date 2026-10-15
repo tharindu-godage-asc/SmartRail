@@ -1,0 +1,29 @@
+name: mobile
+# Operator app (Flutter): analyze and test whenever it changes. Separate from ci.yml so a .NET change does not wait for Flutter
+# and the other way round. Spec: _specs/operator-app.md.
+on:
+  push:
+    branches: [main, develop, dev]
+    paths: ["mobile/operator_app/**", ".github/workflows/mobile.yml"]
+  pull_request:
+    paths: ["mobile/operator_app/**", ".github/workflows/mobile.yml"]
+permissions:
+  contents: read
+jobs:
+  operator-app:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: mobile/operator_app } }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: 3.47.2, channel: stable, cache: true }
+      - run: flutter pub get
+      # The generated files are committed. This fails if someone changed a drift table or smartrail-tokens.json and forgot to
+      # regenerate (the files are formatted like the rest of lib/, so format after generating).
+      - run: dart run build_runner build
+      - run: dart run tool/generate_tokens.dart
+      - run: dart format lib
+      - run: git diff --exit-code -- lib/core/theme/tokens.g.dart lib/features/reports/data/app_database.g.dart
+      - run: dart format --output=none --set-exit-if-changed lib test tool
+      - run: flutter analyze --fatal-infos
+      - run: flutter test

@@ -1,0 +1,619 @@
+{
+ "color": {
+  "$description": "Light value is $value; dark value is $extensions.smartrail.dark. Source tags: [20.2] discovery section 20.2, [wireframes] values already used on the canvas, [proposed] not yet in the spec.",
+  "bg": {
+   "page": {
+    "$value": "#FFFFFF",
+    "$type": "color",
+    "$description": "[wireframes] Page background. Dark #1B1F24 is the display and dark-theme background used for all contrast checks.",
+    "$extensions": {
+     "smartrail": {
+      "dark": "#1B1F24"
+     }
+    }
+   },
+   "surface": {
+    "$value": "#F6F7F8",
+    "$type": "color",
+    "$description": "[wireframes] light; [proposed] dark. Cards and panels.",
+    "$extensions": {
+     "smartrail": {
+      "dark": "#262B32"
+     }
+    }
+   }
+  },
+  "text": {
+   "primary": {
+    "$value": "#1B1F24",
+    "$type": "color",
+    "$description": "[wireframes] light; [proposed] dark.",
+    "$extensions": {
+     "smartrail": {
+      "dark": "#F2F4F6"
+     }
+    }
+   },
+   "secondary": {
+    "$value": "#4A5058",
+    "$type": "color",
+    "$description": "[proposed] Secondary text, at least 4.5:1 on bg.page and bg.surface (check in CI).",
+    "$extensions": {
+     "smartrail": {
+      "dark": "#C4C8CC"
+     }
+    }
+   }
+  },
+  "border": {
+   "default": {
+    "$value": "#D5D9DE",
+    "$type": "color",
+    "$description": "[wireframes] light; [proposed] dark.",
+    "$extensions": {
+     "smartrail": {
+      "dark": "#3A4048"
+     }
+    }
+   }
+  },
+  "status": {
+   "$description": "Reserved for journey status. Never used for errors, information banners or decoration (20.1).",
+   "$type": "color",
+   "normal": {
+    "fg": {
+     "$value": "#1F5FBF",
+     "$type": "color",
+     "$description": "[20.2, revised 9 Oct] Text, icon and outline colour of the normal group.",
+     "$extensions": {
+      "smartrail": {
+       "dark": "#6EA8FF"
+      }
+     }
+    },
+    "chipBg": {
+     "$value": "#E4ECF7",
+     "$type": "color",
+     "$description": "12% of fg over bg.page. Text and icon fg are at least 4.5:1 on this.",
+     "$extensions": {
+      "smartrail": {
+       "dark": "#252F3E"
+      }
+     }
+    }
+   },
+   "warning": {
+    "fg": {
+     "$value": "#9E4A00",
+     "$type": "color",
+     "$description": "[20.2, revised 9 Oct] Text, icon and outline colour of the warning group.",
+     "$extensions": {
+      "smartrail": {
+       "dark": "#FFB74D"
+      }
+     }
+    },
+    "chipBg": {
+     "$value": "#F3E9E0",
+     "$type": "color",
+     "$description": "12% of fg over bg.page. Text and icon fg are at least 4.5:1 on this.",
+     "$extensions": {
+      "smartrail": {
+       "dark": "#363129"
+      }
+     }
+    }
+   },
+   "unknown": {
+    "fg": {
+     "$value": "#666A6E",
+     "$type": "color",
+     "$description": "[20.2, revised 9 Oct] Text, icon and outline colour of the unknown group.",
+     "$extensions": {
+      "smartrail": {
+       "dark": "#C4C8CC"
+      }
+     }
+    },
+    "chipBg": {
+     "$value": "#F6F6F6",
+     "$type": "color",
+     "$description": "6% of fg over bg.page. Text and icon fg are at least 4.5:1 on this.",
+     "$extensions": {
+      "smartrail": {
+       "dark": "#25292E"
+      }
+     }
+    }
+   },
+   "disrupted": {
+    "fg": {
+     "$value": "#B0003A",
+     "$type": "color",
+     "$description": "[20.2, revised 9 Oct] Text, icon and outline colour of the disrupted group.",
+     "$extensions": {
+      "smartrail": {
+       "dark": "#FF6B8B"
+      }
+     }
+    },
+    "chipBg": {
+     "$value": "#F6E0E7",
+     "$type": "color",
+     "$description": "12% of fg over bg.page. Text and icon fg are at least 4.5:1 on this.",
+     "$extensions": {
+      "smartrail": {
+       "dark": "#362830"
+      }
+     }
+    },
+    "onFilled": {
+     "$value": "#FFFFFF",
+     "$type": "color",
+     "$description": "Text and icon on the solid Disrupted chip (7.22:1 light, 6.09:1 dark).",
+     "$extensions": {
+      "smartrail": {
+       "dark": "#1B1F24"
+      }
+     }
+    }
+   }
+  },
+  "brand": {
+   "$description": "[proposed 14 Oct, owner chose deep teal] Brand accent for the passenger app only (buttons, links, selected navigation, splash, onboarding). Never used for journey status; status colours stay in color.status. The operator app, controller dashboard and displays stay neutral.",
+   "accent": {
+    "$value": "#00696F",
+    "$type": "color",
+    "$description": "Primary action fill and brand text. 6.46:1 with white text and on white; dark value 7.89:1 on #1B1F24.",
+    "$extensions": {
+     "smartrail": {
+      "dark": "#4FC3CC"
+     }
+    }
+   },
+   "onAccent": {
+    "$value": "#FFFFFF",
+    "$type": "color",
+    "$description": "Text and icons on a color.brand.accent fill (6.46:1 light, 7.89:1 dark).",
+    "$extensions": {
+     "smartrail": {
+      "dark": "#1B1F24"
+     }
+    }
+   },
+   "accentSurface": {
+    "$value": "#E3F1F2",
+    "$type": "color",
+    "$description": "Soft tint behind selected items and illustrations. color.brand.accent on it is 5.58:1 (light).",
+    "$extensions": {
+     "smartrail": {
+      "dark": "#12363A"
+     }
+    }
+   }
+  }
+ },
+ "statusChip": {
+  "$description": "Chip style per group so colour is never the only signal (accessibility audit, 9 Oct). Fill and outline colours come from color.status.<group>.",
+  "normal": {
+   "fill": {
+    "$value": "chipBg",
+    "$type": "other",
+    "$description": "Resolves to color.status.normal.chipBg"
+   },
+   "outlineStyle": {
+    "$value": "solid",
+    "$type": "other"
+   },
+   "outlineWidth": {
+    "$value": "1.5px",
+    "$type": "dimension",
+    "$description": "Solid thin outline"
+   }
+  },
+  "warning": {
+   "fill": {
+    "$value": "chipBg",
+    "$type": "other",
+    "$description": "Resolves to color.status.warning.chipBg"
+   },
+   "outlineStyle": {
+    "$value": "solid",
+    "$type": "other"
+   },
+   "outlineWidth": {
+    "$value": "3px",
+    "$type": "dimension",
+    "$description": "Solid thick outline"
+   }
+  },
+  "unknown": {
+   "fill": {
+    "$value": "chipBg",
+    "$type": "other",
+    "$description": "Resolves to color.status.unknown.chipBg"
+   },
+   "outlineStyle": {
+    "$value": "dashed",
+    "$type": "other"
+   },
+   "outlineWidth": {
+    "$value": "1.5px",
+    "$type": "dimension",
+    "$description": "Dashed outline, 6% fill"
+   }
+  },
+  "disrupted": {
+   "fill": {
+    "$value": "fg",
+    "$type": "other",
+    "$description": "Resolves to color.status.disrupted.fg"
+   },
+   "outlineStyle": {
+    "$value": "none",
+    "$type": "other"
+   },
+   "outlineWidth": {
+    "$value": "0px",
+    "$type": "dimension",
+    "$description": "Solid filled chip, text uses color.status.disrupted.onFilled"
+   }
+  }
+ },
+ "font": {
+  "family": {
+   "latin": {
+    "$value": [
+     "Noto Sans",
+     "sans-serif"
+    ],
+    "$type": "fontFamily",
+    "$description": "Latin and all numerals. Listed first in every stack so times keep tabular figures."
+   },
+   "sinhala": {
+    "$value": [
+     "Noto Sans",
+     "Noto Sans Sinhala",
+     "sans-serif"
+    ],
+    "$type": "fontFamily",
+    "$description": "Noto Sans first, then the script font."
+   },
+   "tamil": {
+    "$value": [
+     "Noto Sans",
+     "Noto Sans Tamil",
+     "sans-serif"
+    ],
+    "$type": "fontFamily",
+    "$description": "Noto Sans first, then the script font."
+   }
+  },
+  "weight": {
+   "regular": {
+    "$value": 400,
+    "$type": "fontWeight"
+   },
+   "semibold": {
+    "$value": 600,
+    "$type": "fontWeight"
+   },
+   "bold": {
+    "$value": 700,
+    "$type": "fontWeight"
+   }
+  },
+  "feature": {
+   "tabular": {
+    "$value": "tnum",
+    "$type": "other",
+    "$description": "font-feature-settings for every time and train number"
+   }
+  }
+ },
+ "type": {
+  "$description": "Sizes in px (rem in CSS output). [20.3] unless noted.",
+  "mobile": {
+   "heading": {
+    "size": {
+     "$value": "24px",
+     "$type": "dimension",
+     "$description": "20.3"
+    }
+   },
+   "body": {
+    "size": {
+     "$value": "16px",
+     "$type": "dimension",
+     "$description": "20.3"
+    }
+   },
+   "label": {
+    "size": {
+     "$value": "14px",
+     "$type": "dimension",
+     "$description": "20.3"
+    }
+   },
+   "caption": {
+    "size": {
+     "$value": "12px",
+     "$type": "dimension",
+     "$description": "20.3. Sinhala and Tamil use type.script.captionSize instead"
+    }
+   },
+   "time": {
+    "size": {
+     "$value": "56px",
+     "$type": "dimension",
+     "$description": "[proposed] Hero arrival time on the live status card; the wireframes use 56"
+    }
+   }
+  },
+  "display": {
+   "level1Time": {
+    "size": {
+     "$value": "160px",
+     "$type": "dimension",
+     "$description": "20.3 (about 160)"
+    }
+   },
+   "level1Status": {
+    "size": {
+     "$value": "96px",
+     "$type": "dimension",
+     "$description": "20.3 (about 96, sized to fit)"
+    }
+   },
+   "level2": {
+    "size": {
+     "$value": "64px",
+     "$type": "dimension",
+     "$description": "20.3"
+    }
+   },
+   "level3": {
+    "size": {
+     "$value": "48px",
+     "$type": "dimension",
+     "$description": "20.3"
+    }
+   },
+   "level4": {
+    "size": {
+     "$value": "28px",
+     "$type": "dimension",
+     "$description": "20.3"
+    }
+   }
+  },
+  "script": {
+   "minStatusSize": {
+    "$value": "14px",
+    "$type": "dimension",
+    "$description": "Smallest size for Sinhala and Tamil status text (audit, 9 Oct)"
+   },
+   "captionSize": {
+    "$value": "13px",
+    "$type": "dimension",
+    "$description": "Caption size in Sinhala and Tamil instead of 12px (audit, 9 Oct)"
+   }
+  }
+ },
+ "lineHeight": {
+  "$description": "Unitless, per script. Mobile: up to 28px text. Sinhala and Tamil at least 1.5 there (audit, 9 Oct). Display values are [proposed] and must be validated by the room test (20.3).",
+  "mobile": {
+   "latin": {
+    "$value": 1.4,
+    "$type": "number",
+    "$description": "[proposed]"
+   },
+   "sinhala": {
+    "$value": 1.6,
+    "$type": "number",
+    "$description": "Tested 9 Oct"
+   },
+   "tamil": {
+    "$value": 1.5,
+    "$type": "number",
+    "$description": "Tested 9 Oct (1.6 also fine)"
+   }
+  },
+  "display": {
+   "latin": {
+    "$value": 1.15,
+    "$type": "number",
+    "$description": "[proposed]"
+   },
+   "sinhala": {
+    "$value": 1.4,
+    "$type": "number",
+    "$description": "[proposed] 1.3 rendered cleanly at 96px"
+   },
+   "tamil": {
+    "$value": 1.3,
+    "$type": "number",
+    "$description": "[proposed] rendered cleanly at 96px"
+   }
+  }
+ },
+ "space": {
+  "xs": {
+   "$value": "4px",
+   "$type": "dimension",
+   "$description": "20.3 spacing"
+  },
+  "sm": {
+   "$value": "8px",
+   "$type": "dimension",
+   "$description": "20.3 spacing"
+  },
+  "md": {
+   "$value": "16px",
+   "$type": "dimension",
+   "$description": "20.3 spacing"
+  },
+  "lg": {
+   "$value": "24px",
+   "$type": "dimension",
+   "$description": "20.3 spacing"
+  },
+  "xl": {
+   "$value": "32px",
+   "$type": "dimension",
+   "$description": "20.3 spacing"
+  }
+ },
+ "radius": {
+  "$description": "[proposed] Section 20 defines no radius; values match the wireframes.",
+  "sm": {
+   "$value": "4px",
+   "$type": "dimension",
+   "$description": "[proposed]"
+  },
+  "md": {
+   "$value": "8px",
+   "$type": "dimension",
+   "$description": "[proposed]"
+  },
+  "lg": {
+   "$value": "12px",
+   "$type": "dimension",
+   "$description": "[proposed]"
+  },
+  "pill": {
+   "$value": "999px",
+   "$type": "dimension",
+   "$description": "[proposed]"
+  }
+ },
+ "size": {
+  "touchTarget": {
+   "min": {
+    "$value": "44px",
+    "$type": "dimension",
+    "$description": "WCAG 2.5.5 minimum touch target; confirm against the NFRs"
+   }
+  }
+ },
+ "icon": {
+  "$description": "Material Symbols names (D-51, 20.4). Similar shapes were usability-tested: do not swap done/check_circle or schedule/schedule_send. Avoid no-entry symbols for offline.",
+  "status": {
+   "onTime": {
+    "$value": "schedule",
+    "$type": "other",
+    "$description": "On time"
+   },
+   "delayed": {
+    "$value": "warning",
+    "$type": "other",
+    "$description": "Delayed"
+   },
+   "waiting": {
+    "$value": "help",
+    "$type": "other",
+    "$description": "Waiting for update"
+   },
+   "suspended": {
+    "$value": "pause_circle",
+    "$type": "other",
+    "$description": "Suspended"
+   },
+   "cancelled": {
+    "$value": "cancel",
+    "$type": "other",
+    "$description": "Cancelled"
+   },
+   "terminated": {
+    "$value": "stop_circle",
+    "$type": "other",
+    "$description": "Terminated"
+   }
+  },
+  "group": {
+   "normal": {
+    "$value": "schedule",
+    "$type": "other",
+    "$description": "= status.onTime"
+   },
+   "warning": {
+    "$value": "warning",
+    "$type": "other",
+    "$description": "= status.delayed"
+   },
+   "unknown": {
+    "$value": "help",
+    "$type": "other",
+    "$description": "= status.waiting"
+   },
+   "disrupted": {
+    "$value": "cancel",
+    "$type": "other",
+    "$description": "Default for the group; suspended and terminated use their own icons"
+   }
+  },
+  "verification": {
+   "verified": {
+    "$value": "verified_user",
+    "$type": "other",
+    "$description": "Verified by Operations"
+   }
+  },
+  "stop": {
+   "current": {
+    "$value": "location_on",
+    "$type": "other",
+    "$description": "Current or next stop"
+   },
+   "passed": {
+    "$value": "done",
+    "$type": "other",
+    "$description": "Passed stop"
+   },
+   "upcoming": {
+    "$value": "radio_button_unchecked",
+    "$type": "other",
+    "$description": "Upcoming stop"
+   },
+   "inferred": {
+    "$value": "more_horiz",
+    "$type": "other",
+    "$description": "Inferred stop, operations only"
+   }
+  },
+  "connection": {
+   "connected": {
+    "$value": "cloud_done",
+    "$type": "other",
+    "$description": "Connected"
+   },
+   "reconnecting": {
+    "$value": "sync",
+    "$type": "other",
+    "$description": "Reconnecting"
+   },
+   "offline": {
+    "$value": "cloud_off",
+    "$type": "other",
+    "$description": "Offline"
+   }
+  },
+  "delivery": {
+   "delivered": {
+    "$value": "check_circle",
+    "$type": "other",
+    "$description": "Delivered"
+   },
+   "notSent": {
+    "$value": "schedule_send",
+    "$type": "other",
+    "$description": "Not sent yet"
+   },
+   "rejected": {
+    "$value": "error",
+    "$type": "other",
+    "$description": "Rejected"
+   }
+  }
+ }
+}
