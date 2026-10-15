@@ -17,7 +17,7 @@ status: ready, approved 2026-10-15 (owner approved the corrected spec in chat: Q
 Size: two PRs, B1 (raise + queue read + resolve) and B2 (overview read). Feature freeze is today (15 Oct), so B2 is the first thing to drop if time runs short; B1 alone already gives the demo moment.
 
 ## 1) Traceability
-- Requirements: FR-50, FR-51, FR-43 (resolve is audited), FR-27 (flag), NFR-30 (source label not colour alone). FR-52 verify and FR-53 controller entry are NOT here (see Non-Goals).
+- Requirements: FR-50, FR-51, FR-43 (resolve is audited), NFR-30 (source label not colour alone). FR-52 verify and FR-53 controller entry are NOT here (see Non-Goals).
 - Acceptance criteria: AC-E05-01 (1, 3, 4, 5, 6 read side only, B2), AC-E05-02 (1 to 6), AC-E03-02 (10), AC-E03-04 (7), AC-E04-02 (3 deferred). AC-E03-06 (the flag) moved out of this slice (Q6).
 - Edge cases: EC-08 (early departure: accepted, High exception), EC-53 (one report, one exception), EC-54 (nothing non-actionable raises an exception). EC-05 (same station, different time) and EC-07 (backward report) are the conflicts left out (Q1). EC-50 (operator event during a suspension) needs the suspended state, which does not exist. *(The first draft cited EC-50 for "reason awaiting verification" and described EC-53 and EC-54 as ordering and row format; the edge-cases file says otherwise.)*
 - Decisions: D-44 (severity, one report one exception, order), D-43 and P-07 (what is not an exception), D-48/D-49 (early departure High; early arrival raises nothing), D-41 (flag), D-10 (reason only after verification), D-76 (senior controller deferred).
@@ -46,7 +46,6 @@ Size: two PRs, B1 (raise + queue read + resolve) and B2 (overview read). Feature
 3. Jayasinghe calls the queue; row reads "8058 · Gampaha · Reason awaiting verification · 3 min" with severity Critical.
 4. He resolves it with an action ("Acknowledged"). It leaves the queue; audit shows him, the time and the action.
 ### Secondary
-- Nimal flags his last report: a High `OperatorCorrectionRequested` exception appears; journey state unchanged.
 - Nimal reports departure before the scheduled time: accepted as in slice 1 and a High `EarlyDeparture` appears.
 
 ## 4) API Surface
@@ -95,7 +94,7 @@ All three require the Controller policy (secure by default; a Passenger or Opera
 - Clients: controller web screen (later slice). Operator app unchanged.
 
 ## 8) Edge Cases
-- EC-05/07/08 (wrong tap, flag, early departure): flag and early departure create High records, state never rolled back (D-41).
+- EC-08 (early departure): High record, the departure is accepted and the journey state is never rolled back. EC-05 and EC-07 (conflicts) and the flag are out of this slice (Q1, Q6).
 - EC-50 (reason awaiting verification): Critical or High by reason, one per report.
 - EC-53/54 (queue ordering and row format): API returns codes, client formats.
 - Replay of the same `clientEventId`: no second exception.
@@ -108,7 +107,6 @@ All three require the Controller policy (secure by default; a Passenger or Opera
 - [ ] A delay report with TechnicalFault, Obstruction or Weather creates one Critical exception (AC-E05-02 1, 2).
 - [ ] A delay report with SignalIssue or Unknown creates one High exception.
 - [ ] A departure at least 30 seconds before its scheduled time creates one High `EarlyDeparture`; 29 seconds early, on time and an early arrival create none (Q7).
-- [ ] A flag creates one High `OperatorCorrectionRequested` linked to that report and journey state is unchanged (AC-E03-06 1).
 - [ ] A replayed request creates no second exception (AC-E05-02 5).
 - [ ] Queue order is Critical then High, oldest first (AC-E05-02 3); rows carry journey, station, type, severity, age (AC-E05-02 4).
 - [ ] Resolve removes the row and stores controller, time, action (AC-E05-02 6).
@@ -132,7 +130,7 @@ Journey 8058 (Veyangoda 08:20, Gampaha 08:30/08:31, Ragama 08:42/08:43, Maradana
 ## 11) References
 - docs: acceptance criteria E03/E05, discovery 19.4, requirements FR-43, 50, 51, 58.
 - Code reused: `ReportDepartureHandler`, `JourneyProgress`, `SnapshotBuilder`, `JourneyRepository`, `EventMetrics`, `JourneyEndpoints.Describe`, Controller policy in `AuthenticationExtensions`.
-- Depends on `operator-arrival-delay-reports.md` (A2) for delay reasons; B1 can ship with early departure and flag first if A2 is late.
+- Depends on `06-operator-arrival-delay-reports.md` slice A2 for delay reasons. **A2 is merged into `dev` (15 Oct 2026)**, so B1 raises delay exceptions as well as early departures.
 
 ## 12) Open Questions (answer before building; recommendation first)
 - **Q1. Conflicts (backward, same station different time).** Slice 1 stores nothing on 409, so there is nothing to link. Recommend: leave out of B (stay a documented gap), and say so at the viva; storing rejected events is a design change to slice 1. Alternative: save the rejected report as an event with an outcome flag (bigger change, touches the order rules).
