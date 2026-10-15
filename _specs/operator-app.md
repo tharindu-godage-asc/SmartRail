@@ -116,7 +116,7 @@ Location: `mobile/operator_app` (new Flutter project; nothing copied from the sp
 - [x] AC-E01-01 (1): sign in with PKCE on the emulator shows the assigned journey.
 - [ ] AC-E01-01 (2) (shown in the spike; not repeated with this app): wrong password is refused with a generic message (Keycloak's).
 - [x] AC-E01-01 (3): an expired access token is refreshed without a prompt (unit test with a fake token endpoint).
-- [ ] AC-E01-01 (4) (partly: the session-expired screen was seen on the emulator after the reset, and the sender pauses and keeps reports in tests; sending after a new sign-in with waiting reports is not yet run end to end: on 15 Oct the report was queued and the operator signed out, but the sign-in was not completed): expired refresh token with queued reports: sign-in asked, queue kept and then sent.
+- [x] AC-E01-01 (4): reports waiting while the session ends are kept and sent after a new sign-in. Shown on the emulator on 15 Oct via sign-out: "Departed Gampaha" was queued with the API stopped, the operator signed out and back in, and it was delivered; the server recorded it at the tap time (08:50:14 Colombo), about 13 minutes before delivery. The expired-session screen was seen separately after the database reset; expiry with waiting reports is covered by the sender and widget tests.
 - [x] AC-E03-01 (1), (2), (3): train number, route, stops, done and next stop; only the next action.
 - [x] AC-E03-01 (5): offline shows the cached journey labelled "Offline, last updated <time>".
 - [x] AC-E03-02 (1): tapping Departed records the event with that occurrence time and shows Delivered.
@@ -128,10 +128,10 @@ Location: `mobile/operator_app` (new Flutter project; nothing copied from the sp
 - [x] AC-E01-03 (1) (2): a call without a token gets 401 and a refresh or sign-in; a 403 for an unassigned report shows Rejected and stores nothing.
 - [ ] FR-21 (unit-tested; not yet tried with a real wrong phone clock): with the phone clock 3 minutes fast, the departure is still accepted (server offset applied).
 - [x] A 409 caused by a version conflict is retried; other 409 and 422 answers show Rejected.
-- [x] Sign out on the emulator (15 Oct): the confirmation said "1 report is still waiting to send from this phone" and the app returned to the sign-in screen. The queue is kept (widget- and drift-tested). **Not yet shown on the emulator:** that the waiting report sends after the next sign-in (see AC-E01-01 4).
+- [x] Sign out on the emulator (15 Oct): the confirmation said "1 report is still waiting to send from this phone" and the app returned to the sign-in screen. The queue is kept (widget- and drift-tested). The waiting report was sent after the next sign-in (see AC-E01-01 4).
 - [x] Screens match the designs (`Nimal-Login`, `Nimal-SessionExpired`, `Nimal-NoJourney`, `Nimal-Journey-Departure`, `Nimal-Offline`, `Nimal-PhoneFallback`, `Nimal-SignOut-Confirm`; `Nimal-Suspended`, `Nimal-DelayReason` and `Nimal-DelayEstimate` as tested widgets), with icon and text for status, 44 px targets, and the text scale at 200 % not clipped.
 - [ ] `flutter analyze` clean and `flutter test` green (85 tests, run locally on 15 Oct). CI job `mobile` green: not run on GitHub yet.
-- [x] End to end on the emulator: Departed from the app is visible in `GET /api/v1/trains/8058/status` (14 and 15 Oct), and the events metric moves in Grafana: `smartrail_events_received_total{event_type="Departed", outcome="recorded"}` read 1 through Grafana's query API. Two panels were added to SmartRail Overview ("Reports received", "Report to visible"); they fill after the next report once the API has restarted.
+- [x] End to end on the emulator: Departed from the app is visible in `GET /api/v1/trains/8058/status` (14 and 15 Oct), and the events metric moves in Grafana: `smartrail_events_received_total{event_type="Departed", outcome="recorded"}` read 1 through Grafana's query API. Two panels were added to SmartRail Overview ("Reports received", "Report to visible"); they showed data after the report that had been waiting was delivered.
 
 ## 10) Test Plan
 ### 10.1 Seed and fixture data
