@@ -6,24 +6,47 @@ import '../../../core/strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/tokens.g.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../reports/domain/report.dart';
+import '../../reports/presentation/delivery_chip.dart';
+import '../../reports/presentation/report_dispatcher.dart';
+import '../../reports/presentation/report_label.dart';
 import '../domain/models.dart';
+import 'help_screen.dart';
 import 'journey_controller.dart';
 
-const delayReasons = [
-  Strings.reasonSignal,
-  Strings.reasonTechnical,
-  Strings.reasonObstruction,
-  Strings.reasonWeather,
-  Strings.reasonUnknown,
+/// The reasons in the order the screen lists them (`Nimal-DelayReason`).
+const delayReasonOrder = [
+  DelayReason.signalIssue,
+  DelayReason.technicalFault,
+  DelayReason.obstruction,
+  DelayReason.weather,
+  DelayReason.unknown,
 ];
 
-/// "Total delay" choices. A choice at or below the delay already running is not offered (AC-E03-04 6).
-const delayChoices = [10, 15, 20];
+/// The labels as listed, kept for the tests and the screen.
+final delayReasons = [
+  for (final reason in delayReasonOrder) reasonLabel(reason),
+];
+
+/// "Total delay" choices decided with the owner (spec 06, Q6): +10, +15, +20, +30, +45 and Unknown. A choice at or below
+/// the delay already running is not offered (AC-E03-04 6). The server accepts 1 to 240, so no server change is needed.
+const delayChoices = [10, 15, 20, 30, 45];
 
 List<int> offeredDelays(int runningLate) =>
     delayChoices.where((m) => m > runningLate).toList();
 
-/// Step 1 of 2 (`Nimal-DelayReason`). The screen is built; sending a delay is not, because the server has no endpoint yet.
+/// The reason chosen on step 1, kept for step 2.
+class DelayReasonDraft extends Notifier<DelayReason> {
+  @override
+  DelayReason build() => DelayReason.signalIssue;
+
+  void choose(DelayReason reason) => state = reason;
+}
+
+final delayReasonDraftProvider =
+    NotifierProvider<DelayReasonDraft, DelayReason>(DelayReasonDraft.new);
+
+/// Step 1 of 2 (`Nimal-DelayReason`).
 class DelayReasonScreen extends ConsumerStatefulWidget {
   const DelayReasonScreen({super.key});
 
@@ -32,7 +55,7 @@ class DelayReasonScreen extends ConsumerStatefulWidget {
 }
 
 class _DelayReasonScreenState extends ConsumerState<DelayReasonScreen> {
-  int _selected = 0;
+  DelayReason _selected = DelayReason.signalIssue;
 
   @override
   Widget build(BuildContext context) {
@@ -43,20 +66,23 @@ class _DelayReasonScreenState extends ConsumerState<DelayReasonScreen> {
       title: Strings.delayReasonTitle,
       progress: 1,
       body: [
-        for (var i = 0; i < delayReasons.length; i++)
+        for (final reason in delayReasonOrder)
           _Choice(
-            label: delayReasons[i],
-            selected: i == _selected,
-            icon: i == _selected
+            label: reasonLabel(reason),
+            selected: reason == _selected,
+            icon: reason == _selected
                 ? Icons.radio_button_checked
                 : TokenIcons.stopUpcoming,
-            onTap: () => setState(() => _selected = i),
+            onTap: () => setState(() => _selected = reason),
           ),
       ],
       actions: [
         PrimaryButton(
           label: Strings.next,
-          onPressed: () => context.push('/delay/estimate'),
+          onPressed: () {
+            ref.read(delayReasonDraftProvider.notifier).choose(_selected);
+            context.push('/delay/estimate');
+          },
         ),
         SecondaryButton(label: Strings.cancel, onPressed: () => context.pop()),
       ],
@@ -64,7 +90,7 @@ class _DelayReasonScreenState extends ConsumerState<DelayReasonScreen> {
   }
 }
 
-/// Step 2 of 2 (`Nimal-DelayEstimate`). "Send report" stays off until the server can take delay reports.
+/// Step 2 of 2 (`Nimal-DelayEstimate`): the total, or Unknown, then Send report.
 class DelayEstimateScreen extends ConsumerStatefulWidget {
   const DelayEstimateScreen({super.key});
 
@@ -74,60 +100,258 @@ class DelayEstimateScreen extends ConsumerStatefulWidget {
 }
 
 class _DelayEstimateScreenState extends ConsumerState<DelayEstimateScreen> {
+  /// What the operator picked; until they pick, the first option offered is shown selected, as in the design.
+  bool _picked = false;
+
   /// null is "Unknown".
-  int? _selected;
+  int? _choice;
+
+  /// True from the tap until the report is saved, so a double tap cannot make two reports.
+  bool _sending = false;
+
+  Future<void> _send(OperatorJourney journey, int? total) async {
+    if (_sending) {
+      return;
+    }
+    setState(() => _sending = true);
+    final report = await ref
+        .read(reportActionsProvider)
+        .delayed(
+          journey,
+          reason: ref.read(delayReasonDraftProvider),
+          totalMinutes: total,
+        );
+    if (mounted) {
+      context.pushReplacement('/delay/sent', extra: report.clientEventId);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final view = ref.watch(journeyControllerProvider).value;
+    final journey = view?.journey;
     final runningLate = view?.status?.delayMinutes ?? 0;
+    final known = view?.status?.delayKnown ?? true;
     final offered = offeredDelays(runningLate);
+    final selected = _picked
+        ? _choice
+        : (offered.isEmpty ? null : offered.first);
 
     return _DelayScaffold(
-      subtitle: '${_trainLine(view?.journey)} · ${Strings.stepOfTwo(2)}',
+      subtitle: '${_trainLine(journey)} · ${Strings.stepOfTwo(2)}',
       title: Strings.delayEstimateTitle,
       progress: 2,
       body: [
-        Text.rich(
-          TextSpan(
-            text: 'Running ',
-            children: [
-              TextSpan(
-                text: '+$runningLate min',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const TextSpan(text: ' late now'),
-            ],
-          ),
+        Text(
+          known ? Strings.runningLate(runningLate) : Strings.runningLateUnknown,
           style: const TextStyle(fontSize: 16),
         ),
         for (final minutes in offered)
           _Choice(
-            label: '+$minutes min',
-            selected: _selected == minutes,
-            icon: _selected == minutes
+            label: Strings.plusMinutes(minutes),
+            selected: selected == minutes,
+            icon: selected == minutes
                 ? Icons.radio_button_checked
                 : TokenIcons.stopUpcoming,
-            onTap: () => setState(() => _selected = minutes),
+            onTap: () => setState(() {
+              _picked = true;
+              _choice = minutes;
+            }),
           ),
         _Choice(
           label: Strings.reasonUnknown,
-          selected: _selected == null,
-          icon: _selected == null
+          selected: selected == null,
+          icon: selected == null
               ? Icons.radio_button_checked
               : TokenIcons.stopUpcoming,
-          onTap: () => setState(() => _selected = null),
+          onTap: () => setState(() {
+            _picked = true;
+            _choice = null;
+          }),
         ),
-        const InfoLine(
-          'Total delay against the timetable, not extra minutes. Options below your current delay are not offered.',
-        ),
-        const InfoLine(Strings.delayUnavailable, icon: Icons.call),
+        const InfoLine(Strings.delayTotalHelp),
       ],
       actions: [
-        // Disabled on purpose: AC-E03-04 needs a backend slice first (spec operator-app, Non-Goals).
-        const PrimaryButton(label: Strings.sendReport, onPressed: null),
+        PrimaryButton(
+          label: Strings.sendReport,
+          onPressed: journey == null || _sending
+              ? null
+              : () => _send(journey, selected),
+        ),
         SecondaryButton(label: Strings.back, onPressed: () => context.pop()),
       ],
+    );
+  }
+}
+
+/// What happened to the delay just sent: Delivered (`Nimal-DelaySent`), saved on the phone (`Nimal-DelayNotSent`), or refused.
+/// It follows the report, so it changes by itself when a saved report is delivered later.
+class DelaySentScreen extends ConsumerWidget {
+  const DelaySentScreen({required this.clientEventId, super.key});
+
+  final String clientEventId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final journeyId = ref
+        .watch(journeyControllerProvider)
+        .value
+        ?.journey
+        ?.journeyId;
+    final reports = journeyId == null
+        ? const <QueuedReport>[]
+        : ref.watch(reportsProvider(journeyId)).value ?? const <QueuedReport>[];
+    final report = reports
+        .where((r) => r.clientEventId == clientEventId)
+        .firstOrNull;
+    final waiting = reports.where((r) => r.state == ReportState.pending).length;
+
+    if (report == null) {
+      return const Scaffold(body: SafeArea(child: AppHeader()));
+    }
+
+    final reason = reasonLabel(report.delayReason ?? DelayReason.unknown);
+    final total = report.totalDelayMinutes;
+    final summary = Strings.delaySummary(
+      reason,
+      total == null ? Strings.durationUnknown : Strings.aboutLate(total),
+    );
+    final (icon, title, detail) = switch (report.state) {
+      ReportState.delivered => (
+        TokenIcons.deliveryDelivered,
+        Strings.delaySentTitle,
+        Strings.delaySentDetail(
+          total == null
+              ? Strings.delayShownUnknown
+              : Strings.delayShownKnown(total),
+        ),
+      ),
+      ReportState.pending => (
+        TokenIcons.deliveryNotSent,
+        Strings.delaySavedTitle,
+        Strings.delaySavedDetail,
+      ),
+      ReportState.rejected => (
+        TokenIcons.deliveryRejected,
+        Strings.delayRejectedTitle,
+        Strings.delayRejectedDetail,
+      ),
+    };
+
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppHeader(),
+            if (report.state == ReportState.pending)
+              Semantics(
+                liveRegion: true,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Space.md,
+                    vertical: 12,
+                  ),
+                  color: colors.textPrimary,
+                  child: Row(
+                    spacing: 12,
+                    children: [
+                      Icon(
+                        TokenIcons.connectionOffline,
+                        size: 22,
+                        color: colors.bgPage,
+                      ),
+                      Expanded(
+                        child: Text(
+                          Strings.waitingReports(waiting),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: colors.bgPage,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(Space.md),
+                children: [
+                  const SizedBox(height: Space.lg),
+                  Center(
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: colors.bgPage,
+                        border: Border.all(
+                          color: colors.borderDefault,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(icon, size: 40, color: colors.textPrimary),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Center(child: DeliveryChip(report.state)),
+                  const SizedBox(height: 14),
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: context.text.headlineMedium,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    summary,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    detail,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Space.md,
+                0,
+                Space.md,
+                Space.md,
+              ),
+              child: Column(
+                spacing: 10,
+                children: [
+                  PrimaryButton(
+                    label: Strings.backToJourney,
+                    onPressed: () => context.go('/'),
+                  ),
+                  if (report.state != ReportState.delivered)
+                    const PhoneDeskButton(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

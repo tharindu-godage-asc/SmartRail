@@ -41,7 +41,7 @@ void main() {
     await app.pump(tester);
 
     expect(find.text('Start your shift'), findsNothing);
-    expect(find.text('Next: Veyangoda departure'), findsOneWidget);
+    expect(find.text('Next: Veyangoda (departure)'), findsOneWidget);
     await app.close(tester);
   });
 

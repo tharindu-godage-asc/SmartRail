@@ -4,7 +4,7 @@ branch: claude/feature/operator-app
 spec: _specs/05-operator-app.md
 owner: tharindu
 date: 2026-10-14
-status: in progress (build started 2026-10-14 on the owner's go-ahead; open questions answered as recommended, see section 12)
+status: built (first slice on 14 Oct 2026; arrival, delay and completed screens added on 15 Oct 2026 after spec 06 A1 and A2 merged). Open questions answered as recommended, see section 12.
 
 ---
 
@@ -36,12 +36,12 @@ status: in progress (build started 2026-10-14 on the owner's go-ahead; open ques
 - Riverpod for state, repository interfaces for every external call, widget and unit tests alongside.
 
 ### Non-Goals
-- **Arrival reports** ("Arrived Gampaha", AC-E03-03). The API only accepts `Departed`, and which stations are designated arrival stations (D-08) is not in the data. The next-action card shows departure only.
-- **Report delay** (AC-E03-04). No endpoint. The "Report delay" button, the reason screen (`Nimal-DelayReason`, step 1 of 2) and the estimate screen (`Nimal-DelayEstimate`, step 2 of 2) are built as UI, but submitting is disabled with a clear label until a backend slice exists (the server answers 422 to any event type other than Departed). **FR-20 and AC-E03-01 (4) are therefore not met in this slice**: a Must requirement with a known gap, recorded here on purpose. Step 2 also needs the current delay (+8 min in the design), which comes from the status read.
+- ~~**Arrival reports**~~ **Built on 15 Oct 2026 (spec `06-operator-arrival-delay-reports.md`, slices A1 and A2).** The app sends `Arrived` at the stops the server marks `isArrivalStation` (Gampaha and the final stop), in the order arrive, then depart (AC-E03-03 1, 2, 3).
+- ~~**Report delay**~~ **Built on 15 Oct 2026.** Both screens now send: the reason (step 1) and the TOTAL delay (step 2: +10, +15, +20, +30, +45 or Unknown, only options above the delay running), then `Nimal-DelaySent` or `Nimal-DelayNotSent` shows what happened. FR-20 and AC-E03-01 (4) are now met. The reason is never shown to passengers (the server withholds it until a controller verifies it, D-10).
 - **Flag my last report** (AC-E03-06). No endpoint. The link is not shown in this slice.
 - **Suspended state** (AC-E03-01 (6)). No service-state override exists yet (slice 2). The `Nimal-Suspended` screen is built as a widget and tested with fake data, but the real API never produces it.
 - **Reports tab** (history): no "my reports" endpoint. The design shows a 3-tab bar (Journey, Reports, Help). In this slice the bar shows Journey and Help only; Help holds the desk phone number and sign out. (Question Q3.)
-- **Arrival and "Journey completed"**: slice 1 never sets Completed, and the final stop cannot be departed from (422). After the last allowed departure the next-action card shows "No more reports to send. Reporting the arrival at <final stop> comes in a later release." with no button.
+- ~~**Arrival and "Journey completed"**~~ **Built on 15 Oct 2026.** An arrival at the final stop completes the journey (the server sets `Completed`); the app then shows `Nimal-Completed` with the counts of sent, waiting and rejected reports, and Done puts it away for this run of the app.
 - Rejected-by-Operations review flow (AC-E03-02 (5) to (8)): the app shows the chip "Rejected, requires Operations review" for a 409 or 422, nothing more.
 - Push notifications, Sinhala and Tamil text (English only; strings go through one localisation file so the languages can be added), tablet layouts, iOS (Android emulator only), a real device build.
 - Biometric lock, device attestation, certificate pinning.
@@ -166,3 +166,24 @@ Answered on 2026-10-14 by taking each recommendation (the owner said to start wi
 - Rejected uses the warning group's style (thick solid outline, icon, words); `Nimal-RejectedDetail` was not built or read.
 - CI is a separate workflow `.github/workflows/mobile.yml` with a path filter, not a job in `ci.yml`.
 - The language button on the sign-in design is left out (English only).
+
+## 13) Change on 15 Oct 2026: arrival, delay and the completed screen
+Requested by the owner after spec 06 A1 (arrival and Completed) and A2 (delay) were merged into `dev`. The criteria come from spec 06 section 9 ("App (after the app change)") and AC-E03-03, AC-E03-04, AC-E03-05.
+
+**What changed in the app**
+- A report is now one of three kinds: `departed`, `arrived`, `delay`. The queue stores the kind, the reason code and the total (null total means "unknown"). A delay has no stop.
+- The phone database moves from version 1 to 2 (three new columns, the stop becomes optional). Reports waiting on a phone with the old app are kept (tested against a version 1 file).
+- At a designated stop the next action is the arrival, then the departure. At the final stop only the arrival. A stop with only an arrival reported counts as "reported" on the server but not as left, so the app no longer reads every `Reported` stop as departed.
+- The estimate screen offers +10, +15, +20, +30, +45 and Unknown, only above the delay running; with an unknown delay it says so instead of showing a number.
+- The server's times: a new report is stamped after the journey's previous report by at least one second, because the server refuses two reports at the same moment.
+
+**Criteria**
+- [x] AC-E03-03 (1) (2) (3): arrive at a designated stop, no arrival elsewhere, an arrival taken offline is kept and the departure is offered at once (widget and unit tests).
+- [x] AC-E03-03 (4): an arrival at the final stop shows `Nimal-Completed` with the counts.
+- [x] AC-E03-04 (1) (5) (6): a delay is sent with the chosen reason and total, Unknown sends no total, and with +8 running +10 to +45 and Unknown are offered; with +25 running only +30, +45 and Unknown.
+- [x] AC-E03-01 (4): "Report delay" is always available, now with a working send.
+- [x] Delay confirmation: delivered, saved on the phone (offline, with the desk phone), and refused are three different screens; a saved delay changes to delivered by itself.
+- [x] The database migration keeps waiting reports (test with a version 1 file).
+- [x] `flutter analyze --fatal-infos` clean and `flutter test` green (see the PR for the count).
+- [ ] End to end on the emulator against the Compose stack: arrival, delay and completion appear in `GET /api/v1/trains/8058/status`.
+- [ ] The `mobile` CI job on GitHub.

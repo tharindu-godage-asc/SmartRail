@@ -5,8 +5,8 @@ something or explain how the app works. The requirements are in `_specs/05-opera
 
 ## 1. The idea in five sentences
 
-The operator signs in with Keycloak and sees the journey they are assigned to. When the train leaves a station they tap
-**Departed <stop>**. The tap is saved in a small database on the phone first, with the time it happened. A sender then
+The operator signs in with Keycloak and sees the journey they are assigned to. When the train reaches a designated stop they tap
+**Arrived <stop>**, when it leaves a station **Departed <stop>**, and when it runs late they report a delay with a reason and a total. The tap is saved in a small database on the phone first, with the time it happened. A sender then
 delivers it to the API, retrying with growing waits if the network or server fails, and never throws a report away. The screen
 works out "what is next" from the server's status plus the reports still waiting on the phone, so it moves on even offline.
 
@@ -165,3 +165,19 @@ The same `clientEventId` is sent on every retry, so the server treats repeats as
 
 Arrival reports, sending a delay, "flag my last report", the suspended state and the Reports tab need server work first (see
 the spec's Non-Goals). The Noto Sans font file is not bundled, so the platform font is used.
+
+## 9. Arrival, delay and the completed screen (15 Oct 2026)
+
+A report is now one of three kinds (`ReportKind` in `reports/domain/report.dart`): `departed`, `arrived`, `delay`.
+
+| Piece | What it does |
+|---|---|
+| `QueuedReport` | Holds the kind. A stop report has a stop; a **delay** has none, only a `DelayReason` and a total (a null total means "unknown"). |
+| `app_database.dart` | Schema version 2. `onUpgrade` rebuilds the `reports` table (stop optional, three new columns) and keeps every row. |
+| `DriftReportQueue.enqueue` | One departure and one arrival per stop (a second tap returns the first). A delay is always saved. `latestOccurredAt` lets a new report be stamped after the last one. |
+| `SmartRailApi.requestBody` | The exact JSON for each kind. A delay has no `serviceStopId` and exactly one of `totalDelayMinutes` or `delayUnknown`. |
+| `deriveProgress` (`journey/domain/progress.dart`) | At a designated stop: arrive, then depart. At the final stop: arrive. `JourneyFinished` once the arrival at the final stop is reported or the server says `Completed`. A stop with only an arrival is **not** left. |
+| `ReportActions` | `departed`, `arrived`, `delayed`. All stamp the corrected time, at least one second after the previous report of the journey. |
+| `report_label.dart` | One wording for a report everywhere: "Departed X", "Arrived X", "Delay: Signal issue, ~10 min". |
+| `delay_screens.dart` | Step 1 (reason), step 2 (+10, +15, +20, +30, +45, Unknown, only above the running delay) and the confirmation (`DelaySentScreen`: delivered, saved on the phone, or refused). The confirmation follows the report, so a saved delay becomes delivered by itself. |
+| `_CompletedView` (`journey_screen.dart`) | `Nimal-Completed`: where the train arrived and the counts of sent, waiting and rejected reports. Done puts it away for this run. |

@@ -34,32 +34,50 @@ OperatorJourney demoJourney({int version = 0}) => OperatorJourney(
         stationCode: 'S${i + 1}',
         stationName: stationNames[i],
         isFinalStop: i == stationNames.length - 1,
+        // Gampaha is designated in the seed; the final stop is an arrival station by rule (spec 06, Q2).
+        isArrivalStation: i == 1 || i == stationNames.length - 1,
       ),
   ],
 );
 
+/// The public status as the server would send it. [departed] stops have a departure (and an arrival where the stop has one),
+/// [arrivedOnly] stops have only an arrival: `Reported`, but the train has not left.
 TrainStatus statusWith({
   Set<int> departed = const {},
+  Set<int> arrivedOnly = const {},
   int version = 0,
   int delay = 0,
+  bool delayKnown = true,
+  String statusKey = '',
   DateTime? serverTime,
 }) => TrainStatus(
   journeyId: demoJourney().journeyId,
   version: version,
   serverTime: serverTime ?? DateTime.utc(2026, 10, 6, 3),
   delayMinutes: delay,
+  delayKnown: delayKnown,
+  statusKey: statusKey,
   stops: [
     for (var i = 1; i <= stationNames.length; i++)
       StopProgress(
         serviceStopId: stopId(i),
         sequence: i,
-        confirmation: departed.contains(i) ? 'Reported' : 'Pending',
+        confirmation: departed.contains(i) || arrivedOnly.contains(i)
+            ? 'Reported'
+            : 'Pending',
+        actualArrival: arrivedOnly.contains(i)
+            ? DateTime.utc(2026, 10, 6, 3)
+            : null,
+        actualDeparture: departed.contains(i)
+            ? DateTime.utc(2026, 10, 6, 3)
+            : null,
       ),
   ],
 );
 
 QueuedReport reportFor(
   int sequence, {
+  ReportKind kind = ReportKind.departed,
   ReportState state = ReportState.pending,
   DateTime? at,
   String? id,
@@ -68,6 +86,7 @@ QueuedReport reportFor(
 }) => QueuedReport(
   clientEventId: id ?? 'evt-$sequence',
   journeyId: demoJourney().journeyId,
+  kind: kind,
   serviceStopId: stopId(sequence),
   stationName: stationNames[sequence - 1],
   occurredAt:
@@ -77,24 +96,53 @@ QueuedReport reportFor(
   nextTryAt: nextTryAt,
 );
 
+/// A delay report as the app stores it. A null [total] is "unknown".
+QueuedReport delayReport({
+  String id = 'delay-1',
+  DelayReason reason = DelayReason.signalIssue,
+  int? total = 10,
+  DateTime? at,
+  ReportState state = ReportState.pending,
+}) => QueuedReport(
+  clientEventId: id,
+  journeyId: demoJourney().journeyId,
+  kind: ReportKind.delay,
+  occurredAt: at ?? DateTime.utc(2026, 10, 6, 3),
+  delayReason: reason,
+  totalDelayMinutes: total,
+  state: state,
+);
+
 class InMemoryReportQueue implements ReportQueue {
   final List<QueuedReport> items = [];
   final _changes = StreamController<void>.broadcast();
 
   @override
   Future<QueuedReport> enqueue(QueuedReport report) async {
-    final existing = items.where(
-      (r) =>
-          r.journeyId == report.journeyId &&
-          r.serviceStopId == report.serviceStopId &&
-          r.state != ReportState.rejected,
-    );
+    // Same rule as the real queue: one departure or arrival per journey, stop and kind; a delay is always saved.
+    final existing = report.isDelay
+        ? const <QueuedReport>[]
+        : items.where(
+            (r) =>
+                r.journeyId == report.journeyId &&
+                r.serviceStopId == report.serviceStopId &&
+                r.kind == report.kind &&
+                r.state != ReportState.rejected,
+          );
     if (existing.isNotEmpty) {
       return existing.first;
     }
     items.add(report);
     _changes.add(null);
     return report;
+  }
+
+  @override
+  Future<DateTime?> latestOccurredAt(String journeyId) async {
+    final times = items
+        .where((r) => r.journeyId == journeyId)
+        .map((r) => r.occurredAt);
+    return times.isEmpty ? null : times.reduce((a, b) => a.isAfter(b) ? a : b);
   }
 
   @override

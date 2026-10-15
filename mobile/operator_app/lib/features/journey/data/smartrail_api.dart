@@ -53,12 +53,7 @@ class SmartRailApi implements JourneyApi, ReportApi {
       response = await _call(
         (token) => _dio.post<Object>(
           '/api/v1/journeys/${report.journeyId}/events',
-          data: {
-            'clientEventId': report.clientEventId,
-            'eventType': 'Departed',
-            'serviceStopId': report.serviceStopId,
-            'occurredAt': report.occurredAt.toUtc().toIso8601String(),
-          },
+          data: requestBody(report),
           options: _options(token),
         ),
       );
@@ -74,6 +69,24 @@ class SmartRailApi implements JourneyApi, ReportApi {
         : null;
     return SendResult.fromResponse(response.statusCode ?? 0, reason: reason);
   }
+
+  /// The JSON the server expects for each kind of report (spec 06, section 4). A delay report has no stop and carries
+  /// exactly one of a total or "unknown"; the other kinds carry a stop and nothing else.
+  static Map<String, Object?> requestBody(QueuedReport report) => {
+    'clientEventId': report.clientEventId,
+    'eventType': switch (report.kind) {
+      ReportKind.departed => 'Departed',
+      ReportKind.arrived => 'Arrived',
+      ReportKind.delay => 'DelayReported',
+    },
+    if (!report.isDelay) 'serviceStopId': report.serviceStopId,
+    'occurredAt': report.occurredAt.toUtc().toIso8601String(),
+    if (report.isDelay)
+      'reason': report.delayReason?.code ?? DelayReason.unknown.code,
+    if (report.isDelay && report.totalDelayMinutes != null)
+      'totalDelayMinutes': report.totalDelayMinutes,
+    if (report.isDelayUnknown) 'delayUnknown': true,
+  };
 
   Future<Response<Object>> _get(String path, String token) =>
       _dio.get<Object>(path, options: _options(token));

@@ -37,12 +37,26 @@ abstract final class Strings {
   static const phoneDesk = 'Phone the desk';
   static String trainTitle(String number, String from, String to) =>
       'Train $number · $from to $to';
-  static String nextDeparture(String station) => 'Next: $station departure';
+  static String nextDeparture(String station) => 'Next: $station (departure)';
+  static String nextArrival(String station) =>
+      'Next: $station (arrival report required)';
   static String departedButton(String station) => 'Departed $station';
+  static String arrivedButton(String station) => 'Arrived $station';
   static String departedLabel(String station) => 'Departed $station';
-  static const noMoreReports = 'No more reports to send.';
-  static String noMoreReportsDetail(String finalStop) =>
-      'Reporting the arrival at $finalStop comes in a later release.';
+  static String arrivedLabel(String station) => 'Arrived $station';
+  static String delayLabel(String reason, String total) =>
+      'Delay: $reason, $total';
+  static String delayTotalShort(int minutes) => '~$minutes min';
+  static const delayDurationUnknownShort = 'duration unknown';
+
+  // Journey completed (AC-E03-03 4)
+  static const completedTitle = 'Journey completed';
+  static String completedBody(String station) => 'Reached $station at';
+  static const yourReports = 'Your reports';
+  static const countSent = 'Sent';
+  static const countWaiting = 'Waiting to send';
+  static const countRejected = 'Rejected';
+  static const done = 'Done';
   static const reportDelay = 'Report delay';
   static const lastReport = 'Last report';
   static const journey = 'Journey';
@@ -61,11 +75,33 @@ abstract final class Strings {
       'Phone the desk so a controller can enter this report.';
   static const checkPhoneClock = 'Check your phone’s date and time.';
 
-  // Delay (screens exist, sending does not)
+  // Delay (AC-E03-04)
   static const delayReasonTitle = 'What is the reason?';
   static const delayEstimateTitle = 'How late will the train be in total?';
-  static const delayUnavailable =
-      'Delay reports are not available yet. Phone the desk to report a delay.';
+  static const delayTotalHelp =
+      'Total delay against the timetable, not extra minutes. Options below your current delay are not offered.';
+  static String runningLate(int minutes) => 'Running +$minutes min late now';
+  static const runningLateUnknown = 'The length of the delay is unknown now';
+  static String plusMinutes(int minutes) => '+$minutes min';
+  static const delaySentTitle = 'Delay reported';
+  static const delaySavedTitle = 'Delay saved on this phone';
+  static const delayRejectedTitle = 'Delay not accepted';
+  static String delaySummary(String reason, String total) => '$reason · $total';
+  static String aboutLate(int minutes) =>
+      'about $minutes minutes late in total';
+  static const durationUnknown = 'how late is not known yet';
+  static String delaySentDetail(String shown) =>
+      'Passengers now see $shown. The reason appears after Operations verifies it.';
+  static String delayShownKnown(int minutes) => 'Delayed (~$minutes min)';
+  static const delayShownUnknown = 'Delayed, duration unknown';
+  static const delaySavedDetail =
+      'It will send as soon as the connection returns. If it is urgent, phone your line desk.';
+  static const delayRejectedDetail =
+      'The server did not accept it, for example because the delay is not longer than the one already reported. Phone the desk if it still matters.';
+  static const backToJourney = 'Back to journey';
+  static String waitingReports(int count) => count == 1
+      ? '1 report waiting to send'
+      : '$count reports waiting to send';
   static const next = 'Next';
   static const back = 'Back';
   static const cancel = 'Cancel';
