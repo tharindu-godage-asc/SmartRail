@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Manual check of the REAL Keycloak against the running Docker Compose stack (spec keycloak-identity, section 10.4).
+# Manual check of the REAL Keycloak against the running Docker Compose stack (spec 02-keycloak-identity, section 10.4).
 # Run it once by hand before merging changes to the realm file or the authentication code. It is not part of CI.
 #
 # What it proves: tokens from the realm are accepted by the API, carry the right subject, roles, audience and lifetime,

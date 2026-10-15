@@ -1,7 +1,7 @@
 # Feature Spec: Database foundation (EF Core, first migration, seed data)
 
 branch: claude/feature/database-foundation
-spec: _specs/database-foundation.md
+spec: _specs/01-database-foundation.md
 owner: tharindu
 date: 2026-10-13
 status: ready, approved 2026-10-13 (owner approval given in chat after the independent review)
@@ -10,7 +10,7 @@ status: ready, approved 2026-10-13 (owner approval given in chat after the indep
 
 ## 0) Summary
 **One-liner:** Connect the API to Postgres with EF Core, create the first migration for the 13 core tables the first slices need, and seed the reference data and the Train 8058 demo journey.
-**Why now:** The API does not use Postgres yet (the database is empty). Every later feature spec reads or writes these tables, so this comes first (spec order: this one, then `operator-report-live-status`).
+**Why now:** The API does not use Postgres yet (the database is empty). Every later feature spec reads or writes these tables, so this comes first (spec order: this one, then `03-operator-report-live-status`).
 **Who is this for:** The developer (you) and every later feature. No end user sees it.
 **Success looks like:**
 - `docker compose up --build` starts Postgres (healthy), then the API; the migration applies on an empty database; pgAdmin shows the 13 tables with seed data.
@@ -101,7 +101,7 @@ Names and columns follow [smartrail-schema.sql](smartrail-schema.sql) exactly (i
 ## 7) Architecture (follow CLAUDE.md and ADR-15)
 - `Infrastructure/Persistence/SmartrailDbContext.cs`, `Configurations/*Configuration.cs` (one per entity), `Migrations/` (generated), `Seeding/ReferenceData.cs` (fixed GUIDs and values used by `HasData`), `Seeding/DemoSeeder.cs`, `Seeding/DemoIds.cs` (the two fixed operator GUIDs).
 - Entities live in Domain (plain classes, no EF attributes); mapping is in Infrastructure configurations only. The inward dependency rule holds: Domain knows nothing about EF Core.
-- Application defines repository interfaces per feature (for example `IJourneyRepository`); Infrastructure implements them. This spec adds the context and the first implementations needed by `operator-report-live-status`, not a generic repository.
+- Application defines repository interfaces per feature (for example `IJourneyRepository`); Infrastructure implements them. This spec adds the context and the first implementations needed by `03-operator-report-live-status`, not a generic repository.
 - Registration in `AddInfrastructure`, only when `ConnectionStrings:Smartrail` is set: `AddDbContext` with Npgsql, the readiness check (database reachable, no pending migration), the migration-and-seed hosted step. `TimeProvider.System` is already registered.
 - One `SmartrailDbContext` type. The runtime registration builds it from `ConnectionStrings:Smartrail`; the migration step builds an instance of the same type from `ConnectionStrings:SmartrailMigrations`, so the runtime instance never holds admin rights.
 - Packages (check current versions when adding): `Npgsql.EntityFrameworkCore.PostgreSQL`, `EFCore.NamingConventions`, `Microsoft.EntityFrameworkCore.Design`, `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`, `Npgsql.OpenTelemetry`; tests: `Testcontainers.PostgreSql`. Tool: `dotnet-ef` pinned in `.config/dotnet-tools.json` (`dotnet tool restore`). New packages must pass the CI vulnerable-package check.
@@ -170,7 +170,7 @@ Mapping conversions (string enums), the stop-time to UTC conversion for Asia/Col
 Docker must be running. One Postgres container per test run; **each test class gets its own freshly created database** (the TRUNCATE trigger rules out cleaning between tests). The fixture runs `01-roles-and-databases.sql` once per container and `02-smartrail-privileges.sql` in each new database, as Compose does. Tests: apply the migration to an empty database; seed twice and count rows; trigger blocks UPDATE, DELETE and TRUNCATE; the same through the `smartrail_app` connection; `smartrail_app` privileges as in section 9 (ordinary table, a table created later, `__EFMigrationsHistory`); unique constraint on `(journey_id, client_event_id)`; the composite platform key rejects a planned platform from another station; migration without the role fails; the health endpoints with and without a connection string. The existing `StatusEndpointTests` must keep passing without a database.
 
 ## 11) References
-- [smartrail-schema.sql](smartrail-schema.sql), ADR-08, ADR-09, ADR-10 and ADR-11 (discovery document, sections 16 and 18), ADR-15, CLAUDE.md, `operator-report-live-status.md` (the next spec).
+- [smartrail-schema.sql](smartrail-schema.sql), ADR-08, ADR-09, ADR-10 and ADR-11 (discovery document, sections 16 and 18), ADR-15, CLAUDE.md, `03-operator-report-live-status.md` (the next spec).
 - Cited but not in the repo: `smartrail-er-diagram.md`, `smartrail-refined-requirements.md`, `smartrail-acceptance-criteria.md`, `smartrail-edge-cases.md`. The AC and EC numbers above were checked against them by an independent reviewer on 2026-10-13 (AC-E04-02 (5), EC-132, AC-E02-01, FR-15); they could not be checked by Claude here.
 - Docs: EF Core migrations, Npgsql provider, Testcontainers for .NET (check current versions when you add the packages).
 
@@ -209,5 +209,5 @@ None. (Required empty before approval.)
 | D1 | Real distances and the express times | The rounded placeholders in section 7 | Before the demo, or when a real timetable is available |
 | D2 | Daily journey generation (7-day horizon) and whether the demo journey is created on weekends | Only the demo journey exists, created every day whatever `runs_on` says | The journey-generation hosted service is built |
 ### Consequences for other specs (not edited here)
-- `operator-report-live-status.md` section 10.1 says "Nimal assigned 08:00 to 10:00". That is fine for tests that create their own assignment, but its demo and manual-testing text should now say "assigned for the whole operating day". Its Q4 (real stop times) is answered by section 7 above.
+- `03-operator-report-live-status.md` section 10.1 says "Nimal assigned 08:00 to 10:00". That is fine for tests that create their own assignment, but its demo and manual-testing text should now say "assigned for the whole operating day". Its Q4 (real stop times) is answered by section 7 above.
 - Decision owner: tharindu. Approval needed before the migration starts.

@@ -45,7 +45,7 @@ services:
       timeout: 3s
       retries: 12
   keycloak:
-    # Development mode only (start-dev): plain HTTP, no production hardening (spec keycloak-identity, deferred decision D2).
+    # Development mode only (start-dev): plain HTTP, no production hardening (spec 02-keycloak-identity, deferred decision D2).
     image: quay.io/keycloak/keycloak:26.7.5
     command: ["start-dev", "--import-realm"]
     environment:

@@ -1,7 +1,7 @@
 # Feature Spec: Passenger finds trains between stations
 
 branch: claude/feature/passenger-find-trains
-spec: _specs/passenger-find-trains.md
+spec: _specs/04-passenger-find-trains.md
 owner: tharindu
 date: 2026-10-14
 status: built, awaiting CI and review (approved 2026-10-14; every criterion verified locally except CI)
@@ -191,7 +191,7 @@ The slice-1 test base (one fresh database per test, a fake clock set per test, r
 The acceptance criteria above, plus: 304 handling (single, several, weak and `*` values), the freshness field staying put while `serverTime` moves, every error code, the allow-list and no-database tests, a bad token on a public route, the metric outcomes, and a regression check that `GET /api/v1/status` is unchanged.
 
 ## 11) References
-- `operator-report-live-status.md` (R5, R6, R15, R16 and the journey data), `database-foundation.md` (tables, seed), `keycloak-identity.md` (allow-list), [smartrail-schema.sql](smartrail-schema.sql), discovery sections 19.1, 19.2, 11.3 and 6.5, CLAUDE.md.
+- `03-operator-report-live-status.md` (R5, R6, R15, R16 and the journey data), `01-database-foundation.md` (tables, seed), `02-keycloak-identity.md` (allow-list), [smartrail-schema.sql](smartrail-schema.sql), discovery sections 19.1, 19.2, 11.3 and 6.5, CLAUDE.md.
 - Existing code reused: `ScheduleInstants`, `JourneySelection`, `JourneyProgress`, `SnapshotBuilder`, `OperatingTime`, the slice-1 test base.
 - The requirements, acceptance-criteria and edge-case documents under `docs/` (`smartrail-refined-requirements.md`, `smartrail-acceptance-criteria.md`, `smartrail-edge-cases.md`), checked on 2026-10-14.
 
@@ -249,4 +249,4 @@ None. (Required empty before approval.)
 - `delayMinutes` is 0 for a live journey with no report, and null for a timetable-only train.
 - Station codes in logs are used only after they have been matched to a station (never the raw query value), because CodeQL flags logging of request input.
 - The version hash is a SHA-256 of a canonical text, shortened to 16 hex characters.
-- Decision owner: tharindu. Approval needed before the build starts. The build starts after slice 1 (`operator-report-live-status`) has been merged into `dev`, on a branch from `dev`.
+- Decision owner: tharindu. Approval needed before the build starts. The build starts after slice 1 (`03-operator-report-live-status`) has been merged into `dev`, on a branch from `dev`.
