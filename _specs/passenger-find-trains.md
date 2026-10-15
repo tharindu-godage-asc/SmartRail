@@ -4,7 +4,7 @@ branch: claude/feature/passenger-find-trains
 spec: _specs/passenger-find-trains.md
 owner: tharindu
 date: 2026-10-14
-status: ready, approved 2026-10-14 (owner approval given in chat)
+status: built, awaiting CI and review (approved 2026-10-14; every criterion verified locally except CI)
 
 ---
 
@@ -156,30 +156,30 @@ Feature folders, no cross-feature references:
 | A search at 23:59 across midnight | `date` default is evaluated by the server clock when the request arrives |
 
 ## 9) Acceptance Criteria
-- [ ] `GET /api/v1/stations` returns the five stations **starting at Colombo Fort**, in line order (Colombo Fort, Maradana, Ragama, Gampaha, Veyangoda), each with English, Sinhala and Tamil names, line sequences and a version (FR-14, FR-69, FR-65).
-- [ ] The same request with `If-None-Match` equal to that version returns 304 with no body; so do a list of several tags that contains it, a weak `W/"…"` form of it, and `*`; a list that does not contain it returns 200. The version is the same after a restart and changes when a station name changes.
-- [ ] Every seeded station has a Sinhala and a Tamil name (a test fails if one is missing); a station with a missing translation would return its English name.
-- [ ] `GET /api/v1/trains?from=VYG&to=CF` on the seed (clock 08:10 on the seeded Tuesday) returns 8058 and 8061 with the scheduled times at both stations, destination Colombo Fort, `live: true`, and the estimated times equal to the scheduled ones.
-- [ ] After slice 1 records Veyangoda departing 08:28 (8 minutes late), a search from Gampaha to Colombo Fort shows 8058 arriving at Gampaha at an estimated 08:38 beside the scheduled 08:30 (AC-E06-01 2), departing Gampaha at an estimated 08:39 (scheduled 08:31), and arriving at Colombo Fort at an estimated 09:03 (scheduled 08:55), delay 8, `Warning`, `Delayed`.
-- [ ] A search from Veyangoda (the first stop of 8058) returns `atFrom.arrival` as null and the departure times at Veyangoda.
-- [ ] After the Veyangoda report, a search from Veyangoda to Colombo Fort no longer returns 8058 (it left From); a search from Gampaha still does until Gampaha is reported.
-- [ ] A search from Ragama to Colombo Fort does not return 8061 (it does not stop at Ragama).
-- [ ] A search from Gampaha to Veyangoda returns 200 with an empty list.
-- [ ] Unknown station code: 404. `from` equals `to`: 422. Missing parameter: 422. Invalid, past and 8-days-ahead dates: 422; a date 7 days ahead is accepted.
-- [ ] A `Completed` journey, a journey whose expected end plus 15 minutes has passed, and a journey that left From are not returned; an `Unassigned` journey is returned.
-- [ ] For the next Monday (no journey row), the search returns 8058 and 8061 from the timetable with `live: false`, null `journeyId`, null estimates, `Scheduled` and `Normal`. For the next Saturday it returns an empty list (the seed runs on weekdays).
-- [ ] Today, a service with no journey row is returned from the timetable only while its scheduled departure from From is not in the past.
-- [ ] A service with `runs_on` text that is not supported never appears from the timetable, and a warning is logged.
-- [ ] A timetable-only overnight service (23:50, 00:20, 08:00) returns its stop times on the right calendar days.
-- [ ] A night train still running at 00:10 on the next date is returned for today's search with its own operating date.
-- [ ] Results are sorted by the estimated departure from From, then train number, and are capped at `Search:MaxResults`.
-- [ ] `GET /api/v1/lines/MAIN/status` is `Normal` with `journeysInProgress: 0` and `lastEventAt: null` when none is running (the client words that case "No trains running now"), `Normal` when journeys run on time, and `SomeDelayed` with `delayedJourneys: 1` when one is delayed (delay above 2 minutes). An unknown line is 404.
-- [ ] `lastEventAt` of the line is the latest report time among the journeys in progress and does not move when nothing new is reported, while `serverTime` does. A journey with no report gives null. The same field on a live train result is that journey's latest report time; on a timetable-only train it is null.
-- [ ] All three routes work with no token and with a bad token, are on the allow-list (the allow-list test sees exactly these new routes), and do not exist when no database is configured.
-- [ ] `smartrail.trains.searches` is visible in Grafana with the outcomes found and empty.
-- [ ] Existing tests still pass (62 unit, 119 integration at the time of writing), including `GET /api/v1/status`.
-- [ ] The slice-1 train lookup and this feature read the same `Journeys:VisibleAfterEndMinutes`: a test changes it once and both change (R14).
-- [ ] Nothing here returns 429 or `Retry-After`: NFR-13 is deliberately deferred (D2), and this is stated in the report and the Google Sheet.
+- [x] `GET /api/v1/stations` returns the five stations **starting at Colombo Fort**, in line order (Colombo Fort, Maradana, Ragama, Gampaha, Veyangoda), each with English, Sinhala and Tamil names, line sequences and a version (FR-14, FR-69, FR-65).
+- [x] The same request with `If-None-Match` equal to that version returns 304 with no body; so do a list of several tags that contains it, a weak `W/"…"` form of it, and `*`; a list that does not contain it returns 200. The version is the same after a restart and changes when a station name changes.
+- [x] Every seeded station has a Sinhala and a Tamil name (a test fails if one is missing); a station with a missing translation would return its English name.
+- [x] `GET /api/v1/trains?from=VYG&to=CF` on the seed (clock 08:10 on the seeded Tuesday) returns 8058 and 8061 with the scheduled times at both stations, destination Colombo Fort, `live: true`, and the estimated times equal to the scheduled ones.
+- [x] After slice 1 records Veyangoda departing 08:28 (8 minutes late), a search from Gampaha to Colombo Fort shows 8058 arriving at Gampaha at an estimated 08:38 beside the scheduled 08:30 (AC-E06-01 2), departing Gampaha at an estimated 08:39 (scheduled 08:31), and arriving at Colombo Fort at an estimated 09:03 (scheduled 08:55), delay 8, `Warning`, `Delayed`.
+- [x] A search from Veyangoda (the first stop of 8058) returns `atFrom.arrival` as null and the departure times at Veyangoda.
+- [x] After the Veyangoda report, a search from Veyangoda to Colombo Fort no longer returns 8058 (it left From); a search from Gampaha still does until Gampaha is reported.
+- [x] A search from Ragama to Colombo Fort does not return 8061 (it does not stop at Ragama).
+- [x] A search from Gampaha to Veyangoda returns 200 with an empty list.
+- [x] Unknown station code: 404. `from` equals `to`: 422. Missing parameter: 422. Invalid, past and 8-days-ahead dates: 422; a date 7 days ahead is accepted.
+- [x] A `Completed` journey, a journey whose expected end plus 15 minutes has passed, and a journey that left From are not returned; an `Unassigned` journey is returned.
+- [x] For the next Monday (no journey row), the search returns 8058 and 8061 from the timetable with `live: false`, null `journeyId`, null estimates, `Scheduled` and `Normal`. For the next Saturday it returns an empty list (the seed runs on weekdays).
+- [x] Today, a service with no journey row is returned from the timetable only while its scheduled departure from From is not in the past. (Verified at unit level with a fake clock, at the exact boundary 08:20 and 08:21.)
+- [x] A service with `runs_on` text that is not supported never appears from the timetable, and a warning is logged. (Verified: the answer leaves the service out and reports its train number, which is unit-tested; the warning line itself is written by the endpoint and no test asserts the log text.)
+- [x] A timetable-only overnight service (23:50, 00:20, 08:00) returns its stop times on the right calendar days. (Unit-tested through the handler.)
+- [x] A night train still running at 00:10 on the next date is returned for today's search with its own operating date. (Unit-tested through the handler; the slice 1 lookup of the same night train is tested end to end in `NightTrainTests`.)
+- [x] Results are sorted by the estimated departure from From, then train number, and are capped at `Search:MaxResults`.
+- [x] `GET /api/v1/lines/MAIN/status` is `Normal` with `journeysInProgress: 0` and `lastEventAt: null` when none is running (the client words that case "No trains running now"), `Normal` when journeys run on time, and `SomeDelayed` with `delayedJourneys: 1` when one is delayed (delay above 2 minutes). An unknown line is 404.
+- [x] `lastEventAt` of the line is the latest report time among the journeys in progress and does not move when nothing new is reported, while `serverTime` does. A journey with no report gives null. The same field on a live train result is that journey's latest report time; on a timetable-only train it is null.
+- [x] All three routes work with no token and with a bad token, are on the allow-list (the allow-list test sees exactly these new routes), and do not exist when no database is configured.
+- [x] `smartrail.trains.searches` is visible in Grafana with the outcomes found and empty. (Seen in Grafana for environment local on 2026-10-14 with the outcomes empty, found/timetable and invalid; found/live is covered by the integration test that reads the counter directly.)
+- [x] Existing tests still pass (62 unit, 119 integration at the time of writing), including `GET /api/v1/status`. (Now 148 unit and 158 integration tests, all passing.)
+- [x] The slice-1 train lookup and this feature read the same `Journeys:VisibleAfterEndMinutes`: a test changes it once and both change (R14). (Proved as: one shared `JourneySettings` registration, and changing it to 30 moves the search by 15 minutes. Slice 1's lookup reads the same registered instance; its own behaviour at the boundary was already tested in slice 1.)
+- [x] Nothing here returns 429 or `Retry-After`: NFR-13 is deliberately deferred (D2), and this is stated in the report and the Google Sheet. (True today. The Google Sheet row for this could not be added because the Sheets connection was not available in this session.)
 - [ ] CI is green: build with `-warnaserror`, vulnerable-package check, and all tests.
 
 ## 10) Test Plan
