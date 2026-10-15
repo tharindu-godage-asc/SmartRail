@@ -1,11 +1,22 @@
 using System.Diagnostics.Metrics;
+using System.Text.Json;
 using SmartRail.Application.Features.Journeys;
 using SmartRail.Domain.Journeys;
 
 namespace SmartRail.Application.Features.Events.ReportEvent;
 
-/// <summary>The request body of POST /api/v1/journeys/{journeyId}/events. Fields are nullable so a missing one is a 422, not a crash.</summary>
-public sealed record ReportEventRequest(Guid ClientEventId, string? EventType, Guid? ServiceStopId, DateTimeOffset? OccurredAt);
+/// <summary>
+/// The request body of POST /api/v1/journeys/{journeyId}/events. Fields are nullable so a missing one is a 422, not a crash.
+/// A stop report (Departed, Arrived) carries a stop; a delay report carries a reason and a total or "unknown" (spec 06, section 4).
+/// </summary>
+public sealed record ReportEventRequest(
+    Guid ClientEventId,
+    string? EventType,
+    Guid? ServiceStopId,
+    DateTimeOffset? OccurredAt,
+    string? Reason = null,
+    int? TotalDelayMinutes = null,
+    bool? DelayUnknown = null);
 
 public enum ReportOutcome { Recorded, Duplicate, Rejected }
 
@@ -23,6 +34,7 @@ public enum RejectReason
     ClientEventIdReusedWithDifferentContent,
     StopAlreadyHasDifferentTime,
     OrderConflict,
+    DelayNotGreater,
     VersionConflict,
 }
 
@@ -57,9 +69,14 @@ public static class EventMetrics
     public static void Visible(double seconds) => ReportToVisible.Record(Math.Max(0, seconds));
 }
 
-/// <summary>The small rules of FR-03 and FR-38 as plain functions, so they can be tested at their exact edges.</summary>
+/// <summary>The small rules of FR-03, FR-23 and FR-38 as plain functions, so they can be tested at their exact edges.</summary>
 public static class EventRules
 {
+    /// <summary>The delay reasons the operator app offers (AC-E03-04). The free-text "Other" is a Should and not built.</summary>
+    public static readonly IReadOnlyList<string> DelayReasons = ["SignalIssue", "TechnicalFault", "Obstruction", "Weather", "Unknown"];
+
+    public const int MaxTotalDelayMinutes = 240;
+
     /// <summary>R1: valid_from &lt;= at &lt; valid_to, or valid_to null.</summary>
     public static bool IsAssignedAt(IEnumerable<AssignmentInfo> assignments, string operatorUserId, DateTimeOffset at) =>
         assignments.Any(a => a.OperatorUserId == operatorUserId && a.ValidFrom <= at && (a.ValidTo is null || at < a.ValidTo));
@@ -68,7 +85,7 @@ public static class EventRules
     public static bool IsWithinTimeLimits(DateTimeOffset occurredAt, DateTimeOffset now, EventLimits limits) =>
         occurredAt <= now + TimeSpan.FromMinutes(limits.MaxFutureMinutes) && occurredAt >= now - TimeSpan.FromHours(limits.MaxAgeHours);
 
-    /// <summary>The event types this slice accepts for a stop; anything else is a 422.</summary>
+    /// <summary>The event types accepted here; anything else is a 422.</summary>
     public static bool TryParseKind(string? eventType, out ReportKind kind)
     {
         switch (eventType)
@@ -79,16 +96,76 @@ public static class EventRules
             case "Arrived":
                 kind = ReportKind.Arrived;
                 return true;
+            case "DelayReported":
+                kind = ReportKind.DelayReported;
+                return true;
             default:
                 kind = default;
                 return false;
         }
     }
+
+    /// <summary>
+    /// The shape table of spec 06 section 4. A stop report needs a stop and nothing about delays. A delay report needs a reason
+    /// and exactly one of a total (1 to 240) or "unknown", and no stop. Returns the payload of a delay report.
+    /// </summary>
+    public static bool IsValidShape(ReportEventRequest request, ReportKind kind, out DelayPayload? delay)
+    {
+        delay = null;
+        var hasDelayFields = request.Reason is not null || request.TotalDelayMinutes is not null || request.DelayUnknown is not null;
+
+        if (kind != ReportKind.DelayReported)
+        {
+            return request.ServiceStopId is { } stop && stop != Guid.Empty && !hasDelayFields;
+        }
+
+        if (request.ServiceStopId is not null || request.Reason is null || !DelayReasons.Contains(request.Reason))
+        {
+            return false;
+        }
+
+        var unknown = request.DelayUnknown == true;
+        var hasTotal = request.TotalDelayMinutes is not null;
+        if (unknown == hasTotal)
+        {
+            return false; // neither, or both
+        }
+
+        if (hasTotal && request.TotalDelayMinutes is < 1 or > MaxTotalDelayMinutes)
+        {
+            return false;
+        }
+
+        delay = new DelayPayload(request.Reason, request.TotalDelayMinutes, unknown);
+        return true;
+    }
+
+    /// <summary>The payload as stored in the event (jsonb). The reason is kept now and published only after a controller verifies it (D-10).</summary>
+    public static string ToJson(DelayPayload delay) =>
+        JsonSerializer.Serialize(
+            delay.DelayUnknown
+                ? new { reason = delay.Reason, delayUnknown = true }
+                : (object)new { reason = delay.Reason, totalDelayMinutes = delay.TotalDelayMinutes });
+
+    public static DelayPayload? FromJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        return new DelayPayload(
+            root.TryGetProperty("reason", out var reason) ? reason.GetString() ?? "" : "",
+            root.TryGetProperty("totalDelayMinutes", out var total) && total.ValueKind == JsonValueKind.Number ? total.GetInt32() : null,
+            root.TryGetProperty("delayUnknown", out var unknown) && unknown.ValueKind == JsonValueKind.True);
+    }
 }
 
 /// <summary>
-/// Records one "Departed" or "Arrived" report (specs 03 and 06, section 4). The checks run in the order the spec gives, the
-/// whole step is retried on a version conflict (R11), and the stop states are rebuilt from all events (R10).
+/// Records one "Departed", "Arrived" or "DelayReported" report (specs 03 and 06, section 4). The checks run in the order the
+/// spec gives, the whole step is retried on a version conflict (R11), and the stop states are rebuilt from all events (R10).
 /// </summary>
 public sealed class ReportEventHandler(IJourneyRepository repository, TimeProvider clock, EventLimits limits, JourneySettings settings)
 {
@@ -106,13 +183,14 @@ public sealed class ReportEventHandler(IJourneyRepository repository, TimeProvid
     private async Task<ReportEventResult> RunAsync(
         Guid journeyId, string subject, ReportEventRequest request, CancellationToken cancellationToken)
     {
-        if (request.ClientEventId == Guid.Empty || request.ServiceStopId is null || request.ServiceStopId == Guid.Empty
-            || request.OccurredAt is null || !EventRules.TryParseKind(request.EventType, out var kind))
+        if (request.ClientEventId == Guid.Empty || request.OccurredAt is null
+            || !EventRules.TryParseKind(request.EventType, out var kind)
+            || !EventRules.IsValidShape(request, kind, out var delay))
         {
             return ReportEventResult.Reject(RejectReason.InvalidRequest);
         }
 
-        var stopId = request.ServiceStopId.Value;
+        var stopId = request.ServiceStopId; // null for a delay report
 
         // The database keeps microseconds. A client may send finer times (.NET sends 100 ns ticks), so trim to what is stored;
         // otherwise a retry of an accepted report would not equal the stored one and would wrongly be refused (R2).
@@ -133,16 +211,18 @@ public sealed class ReportEventHandler(IJourneyRepository repository, TimeProvid
                 return ReportEventResult.Reject(RejectReason.NotAssigned);
             }
 
-            // R2: an exact repeat, or a different ID for the same type, stop and time, is answered with the original.
+            // R2: an exact repeat, or a different ID for the same type, stop, time and content, is answered with the original.
+            bool SameContent(RecordedEvent e) => e.Kind == kind && e.ServiceStopId == stopId && e.OccurredAt == occurredAt && e.Delay == delay;
+
             var sameId = data.Events.FirstOrDefault(e => e.ClientEventId == request.ClientEventId);
             if (sameId is not null)
             {
-                return sameId.Kind == kind && sameId.ServiceStopId == stopId && sameId.OccurredAt == occurredAt
+                return SameContent(sameId)
                     ? ReportEventResult.Duplicate(sameId.EventId, sameId.JourneyVersionAfter)
                     : ReportEventResult.Reject(RejectReason.ClientEventIdReusedWithDifferentContent);
             }
 
-            var sameContent = data.Events.FirstOrDefault(e => e.Kind == kind && e.ServiceStopId == stopId && e.OccurredAt == occurredAt);
+            var sameContent = data.Events.FirstOrDefault(SameContent);
             if (sameContent is not null)
             {
                 return ReportEventResult.Duplicate(sameContent.EventId, sameContent.JourneyVersionAfter);
@@ -154,21 +234,24 @@ public sealed class ReportEventHandler(IJourneyRepository repository, TimeProvid
                 return ReportEventResult.Reject(RejectReason.TimeOutOfRange);
             }
 
-            var stop = data.Stops.FirstOrDefault(s => s.ServiceStopId == stopId);
-            if (stop is null)
+            if (kind != ReportKind.DelayReported)
             {
-                return ReportEventResult.Reject(RejectReason.StopNotInService);
-            }
+                var stop = data.Stops.FirstOrDefault(s => s.ServiceStopId == stopId);
+                if (stop is null)
+                {
+                    return ReportEventResult.Reject(RejectReason.StopNotInService);
+                }
 
-            if (kind == ReportKind.Departed && stop.IsFinalStop)
-            {
-                return ReportEventResult.Reject(RejectReason.FinalStop);
-            }
+                if (kind == ReportKind.Departed && stop.IsFinalStop)
+                {
+                    return ReportEventResult.Reject(RejectReason.FinalStop);
+                }
 
-            // D-08: an arrival only at a designated stop or the final stop (never the first stop, which has no arrival).
-            if (kind == ReportKind.Arrived && !stop.IsArrivalStation)
-            {
-                return ReportEventResult.Reject(RejectReason.NotArrivalStation);
+                // D-08: an arrival only at a designated stop or the final stop (never the first stop, which has no arrival).
+                if (kind == ReportKind.Arrived && !stop.IsArrivalStation)
+                {
+                    return ReportEventResult.Reject(RejectReason.NotArrivalStation);
+                }
             }
 
             if (data.Status is JourneyStatus.Unassigned or JourneyStatus.Completed)
@@ -176,25 +259,63 @@ public sealed class ReportEventHandler(IJourneyRepository repository, TimeProvid
                 return ReportEventResult.Reject(RejectReason.JourneyNotReportable);
             }
 
-            // R3: strictly increasing times in stop order, arrival before departure within a stop.
             var schedule = data.Schedule();
-            var existing = data.Events.Select(e => new ReportedStopEvent(e.ServiceStopId, e.Kind, e.OccurredAt)).ToList();
-            var candidate = new ReportedStopEvent(stopId, kind, occurredAt);
-            switch (JourneyProgress.CheckOrder(schedule, existing, candidate))
+            var existingStops = data.Events
+                .Where(e => e.Kind != ReportKind.DelayReported)
+                .Select(e => new ReportedStopEvent(e.ServiceStopId!.Value, e.Kind, e.OccurredAt))
+                .ToList();
+            var existingDelays = data.Events
+                .Where(e => e.Kind == ReportKind.DelayReported)
+                .Select(e => new ReportedDelay(e.OccurredAt, e.Delay!.TotalDelayMinutes, e.Delay.DelayUnknown))
+                .ToList();
+
+            // Spec 06 R1: no two different reports of one journey happen at the same moment, so the rebuild is deterministic.
+            if (data.Events.Any(e => e.OccurredAt == occurredAt))
             {
-                case ReportOrderResult.ConflictingTimeForStop:
-                    return ReportEventResult.Reject(RejectReason.StopAlreadyHasDifferentTime);
-                case ReportOrderResult.NotStrictlyIncreasing:
-                    return ReportEventResult.Reject(RejectReason.OrderConflict);
+                return ReportEventResult.Reject(RejectReason.OrderConflict);
+            }
+
+            ReportedStopEvent? candidateStop = null;
+            ReportedDelay? candidateDelay = null;
+            if (kind == ReportKind.DelayReported)
+            {
+                // R6: a numeric total must be greater than the delay in force just before this report (EC-16).
+                if (delay!.TotalDelayMinutes is { } total)
+                {
+                    var before = JourneyProgress.DelayInForce(schedule, existingStops, existingDelays, occurredAt);
+                    // After "unknown" the last number is still the floor, but equal to it is allowed: nothing new was learned.
+                    var acceptable = before.Known ? total > before.Minutes : total >= before.Minutes;
+                    if (!acceptable)
+                    {
+                        return ReportEventResult.Reject(RejectReason.DelayNotGreater);
+                    }
+                }
+
+                candidateDelay = new ReportedDelay(occurredAt, delay.TotalDelayMinutes, delay.DelayUnknown);
+            }
+            else
+            {
+                // R3: strictly increasing times in stop order, arrival before departure within a stop.
+                candidateStop = new ReportedStopEvent(stopId!.Value, kind, occurredAt);
+                switch (JourneyProgress.CheckOrder(schedule, existingStops, candidateStop))
+                {
+                    case ReportOrderResult.ConflictingTimeForStop:
+                        return ReportEventResult.Reject(RejectReason.StopAlreadyHasDifferentTime);
+                    case ReportOrderResult.NotStrictlyIncreasing:
+                        return ReportEventResult.Reject(RejectReason.OrderConflict);
+                }
             }
 
             // R10: rebuild every stop from all accepted reports in occurrence order.
-            var progress = JourneyProgress.Compute(schedule, [.. existing, candidate], settings.OnTimeToleranceMinutes);
+            var allStops = candidateStop is null ? existingStops : [.. existingStops, candidateStop];
+            var allDelays = candidateDelay is null ? existingDelays : [.. existingDelays, candidateDelay];
+            var progress = JourneyProgress.Compute(schedule, allStops, settings.OnTimeToleranceMinutes, allDelays);
 
-            // R9 and R10: the first stop report makes the journey Running; an arrival at the final stop completes it.
+            // R9 and R10: the first stop report makes the journey Running (a delay report alone does not); an arrival at the
+            // final stop completes it.
             var newStatus = progress.IsCompleted
                 ? JourneyStatus.Completed
-                : data.Status == JourneyStatus.Scheduled ? JourneyStatus.Running : data.Status;
+                : data.Status == JourneyStatus.Scheduled && kind != ReportKind.DelayReported ? JourneyStatus.Running : data.Status;
 
             var change = new ReportChange(
                 data.JourneyId,
@@ -208,7 +329,8 @@ public sealed class ReportEventHandler(IJourneyRepository repository, TimeProvid
                 subject,
                 newStatus,
                 progress.DelayMinutes,
-                progress.Stops);
+                progress.Stops,
+                delay is null ? null : EventRules.ToJson(delay));
 
             if (await repository.SaveReportAsync(change, cancellationToken) == SaveOutcome.Saved)
             {

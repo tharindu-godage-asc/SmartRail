@@ -29,14 +29,18 @@ public sealed record StopStateInfo(
     DateTimeOffset? ActualDeparture,
     DateTimeOffset? ActualArrival = null);
 
-/// <summary>An accepted "arrived" or "departed" event, as stored (append-only).</summary>
+/// <summary>What a delay report said: the reason code and either a total in minutes or "unknown" (stored as the event payload).</summary>
+public sealed record DelayPayload(string Reason, int? TotalDelayMinutes, bool DelayUnknown);
+
+/// <summary>An accepted "arrived", "departed" or "delay reported" event, as stored (append-only). A delay report has no stop.</summary>
 public sealed record RecordedEvent(
     Guid EventId,
     Guid ClientEventId,
-    Guid ServiceStopId,
+    Guid? ServiceStopId,
     DateTimeOffset OccurredAt,
     int JourneyVersionAfter,
-    ReportKind Kind = ReportKind.Departed);
+    ReportKind Kind = ReportKind.Departed,
+    DelayPayload? Delay = null);
 
 public sealed record AssignmentInfo(string OperatorUserId, DateTimeOffset ValidFrom, DateTimeOffset? ValidTo);
 
@@ -51,7 +55,8 @@ public sealed record JourneyData(
     IReadOnlyList<StopInfo> Stops,
     IReadOnlyList<StopStateInfo> StopStates,
     IReadOnlyList<RecordedEvent> Events,
-    IReadOnlyList<AssignmentInfo> Assignments)
+    IReadOnlyList<AssignmentInfo> Assignments,
+    bool DelayKnown = true)
 {
     public IReadOnlyList<StopSchedule> Schedule() =>
         ScheduleInstants.For(OperatingDate, Stops.Select(s => new StopTimes(s.ServiceStopId, s.Sequence, s.ScheduledArrival, s.ScheduledDeparture)));
@@ -64,13 +69,14 @@ public sealed record ReportChange(
     Guid EventId,
     Guid ClientEventId,
     ReportKind Kind,
-    Guid ServiceStopId,
+    Guid? ServiceStopId,
     DateTimeOffset OccurredAt,
     DateTimeOffset ReceivedAt,
     string CreatedBy,
     JourneyStatus NewStatus,
     int NewDelayMinutes,
-    IReadOnlyList<StopProgress> NewStopStates);
+    IReadOnlyList<StopProgress> NewStopStates,
+    string? Payload = null);
 
 public enum SaveOutcome { Saved, Conflict }
 
