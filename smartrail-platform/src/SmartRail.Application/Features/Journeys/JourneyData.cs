@@ -28,7 +28,8 @@ public sealed record StopStateInfo(
     DateTimeOffset? EstimatedArrival,
     DateTimeOffset? EstimatedDeparture,
     DateTimeOffset? ActualDeparture,
-    DateTimeOffset? ActualArrival = null);
+    DateTimeOffset? ActualArrival = null,
+    string? PlatformCode = null);
 
 /// <summary>What a delay report said: the reason code and either a total in minutes or "unknown" (stored as the event payload).</summary>
 public sealed record DelayPayload(string Reason, int? TotalDelayMinutes, bool DelayUnknown);

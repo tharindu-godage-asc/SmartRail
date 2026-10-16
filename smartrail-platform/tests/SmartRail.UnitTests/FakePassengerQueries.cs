@@ -128,6 +128,12 @@ public sealed class FakePassengerQueries : IPassengerQueries
     public Task<IReadOnlyList<ServiceRecord>> GetServicesOfLineAsync(string lineCode, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<ServiceRecord>>(Services.Where(s => s.LineCode == lineCode).ToList());
 
+    public Task<IReadOnlyList<ServiceRecord>> GetServicesAtAsync(string stationCode, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<ServiceRecord>>(Services.Where(s => s.Stops.Any(p => p.StationCode == stationCode)).ToList());
+
+    public Task<IReadOnlyList<string>> GetPlatformCodesAsync(string stationCode, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<string>>(_stations.Any(s => s.Code == stationCode) ? ["1", "2"] : []);
+
     public Task<IReadOnlyList<JourneyRecord>> GetJourneysAsync(
         IReadOnlyCollection<Guid> serviceIds, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<JourneyRecord>>(Journeys

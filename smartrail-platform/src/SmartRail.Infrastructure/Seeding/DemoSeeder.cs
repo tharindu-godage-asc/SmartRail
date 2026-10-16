@@ -76,4 +76,59 @@ public sealed class DemoSeeder(SmartrailDbContext db, TimeProvider clock)
         await db.SaveChangesAsync(cancellationToken);
         return created;
     }
+
+    /// <summary>The demo train 8070 leaves its first station this many minutes after the seed runs.</summary>
+    public const int SoonMinutes = 4;
+
+    // Minutes after the first departure for each stop of 8070: Veyangoda, Gampaha, Ragama, Maradana, Colombo Fort (arrival, departure).
+    private static readonly (int Sequence, int? Arrival, int? Departure, Guid Station)[] SoonStops =
+    [
+        (1, null, 0, ReferenceData.StationVeyangoda),
+        (2, 10, 11, ReferenceData.StationGampaha),
+        (3, 22, 23, ReferenceData.StationRagama),
+        (4, 30, 31, ReferenceData.StationMaradana),
+        (5, 35, null, ReferenceData.StationColomboFort),
+    ];
+
+    /// <summary>
+    /// Spec 09 section 16: creates or updates the demo train 8070 so that it leaves Veyangoda <see cref="SoonMinutes"/> minutes from now,
+    /// platform 1, every day. It has no journey, so the station boards show it from the timetable until its time passes. Run again later
+    /// it moves the same service (no second one). Returns the local time of the departure. Compose only (Seeding:DemoData).
+    /// </summary>
+    public async Task<TimeOnly> SeedSoonTrainAsync(CancellationToken cancellationToken = default)
+    {
+        var now = TimeZoneInfo.ConvertTime(clock.GetUtcNow(), OperatingTime.Zone);
+        var first = new TimeOnly(now.Hour, now.Minute).AddMinutes(SoonMinutes);
+
+        var service = await db.TrainServices.SingleOrDefaultAsync(s => s.Id == DemoIds.SoonService, cancellationToken);
+        if (service is null)
+        {
+            service = new Domain.Reference.TrainService
+            {
+                Id = DemoIds.SoonService, TrainNumber = "8070", LineId = ReferenceData.LineMain, ServiceType = Domain.Reference.ServiceType.Slow,
+                ServiceCategory = Domain.Reference.ServiceCategory.Regional, Direction = Domain.Reference.ServiceDirection.Inbound, RunsOn = "Daily",
+            };
+            db.TrainServices.Add(service);
+        }
+
+        var existing = await db.ServiceStops.Where(s => s.ServiceId == DemoIds.SoonService).ToDictionaryAsync(s => s.Sequence, cancellationToken);
+        foreach (var (sequence, arrival, departure, station) in SoonStops)
+        {
+            if (!existing.TryGetValue(sequence, out var stop))
+            {
+                stop = new Domain.Reference.ServiceStop
+                {
+                    Id = DemoIds.SoonStop(sequence), ServiceId = DemoIds.SoonService, StationId = station, Sequence = sequence,
+                    PlannedPlatformId = ReferenceData.PlatformOne(station),
+                };
+                db.ServiceStops.Add(stop);
+            }
+
+            stop.ScheduledArrival = arrival is { } a ? first.AddMinutes(a) : null;
+            stop.ScheduledDeparture = departure is { } d ? first.AddMinutes(d) : null;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return first;
+    }
 }

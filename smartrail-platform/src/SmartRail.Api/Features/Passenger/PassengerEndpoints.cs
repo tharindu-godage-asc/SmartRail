@@ -20,9 +20,11 @@ public static class PassengerFeatures
     public static IServiceCollection AddPassengerFeatures(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton(configuration.GetSection(SearchSettings.Section).Get<SearchSettings>() ?? new SearchSettings());
+        services.AddSingleton(configuration.GetSection(BoardSettings.Section).Get<BoardSettings>() ?? new BoardSettings());
         services.AddScoped<GetStationsHandler>();
         services.AddScoped<FindTrainsHandler>();
         services.AddScoped<GetLineStatusHandler>();
+        services.AddScoped<GetStationBoardHandler>();
         return services;
     }
 
@@ -32,6 +34,7 @@ public static class PassengerFeatures
         app.MapGet("/api/v1/stations", GetStations).WithName("GetStations").AllowAnonymous();
         app.MapGet("/api/v1/trains", FindTrains).WithName("FindTrains").AllowAnonymous();
         app.MapGet("/api/v1/lines/{code}/status", GetLineStatus).WithName("GetLineStatus").AllowAnonymous();
+        app.MapGet("/api/v1/stations/{code}/board", GetStationBoard).WithName("GetStationBoard").AllowAnonymous(); // spec 09, for the station displays
         return app;
     }
 
@@ -78,6 +81,27 @@ public static class PassengerFeatures
         }
 
         return TypedResults.Ok(result.Response);
+    }
+
+    /// <summary>Spec 09: what is due at a station, optionally for one platform. Public (a display has no user) and cached for 5 seconds like the other snapshots.</summary>
+    private static async Task<IResult> GetStationBoard(
+        string code,
+        HttpContext http,
+        GetStationBoardHandler handler,
+        [FromQuery(Name = "platform")] string? platform,
+        [FromQuery(Name = "count")] string? count,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(code, platform, count, cancellationToken);
+        http.Response.Headers[HeaderNames.CacheControl] = SnapshotCache;
+
+        return result.Error switch
+        {
+            BoardError.None => TypedResults.Ok(result.Response),
+            BoardError.StationNotFound => Problem(StatusCodes.Status404NotFound, "Station not found", "station_not_found"),
+            BoardError.PlatformNotFound => Problem(StatusCodes.Status404NotFound, "Platform not found at this station", "platform_not_found"),
+            _ => Problem(StatusCodes.Status422UnprocessableEntity, "count must be a whole number from 1 to the maximum", "invalid_request"),
+        };
     }
 
     private static async Task<IResult> GetLineStatus(string code, HttpContext http, GetLineStatusHandler handler, CancellationToken cancellationToken)

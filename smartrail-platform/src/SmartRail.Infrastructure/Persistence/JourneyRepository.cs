@@ -186,7 +186,9 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
 
         var states = await db.JourneyStopStates.AsNoTracking()
             .Where(s => s.JourneyId == header.Id)
-            .Select(s => new StopStateInfo(s.ServiceStopId, s.Confirmation, s.EstimatedArrival, s.EstimatedDeparture, s.ActualDeparture, s.ActualArrival))
+            .Select(s => new StopStateInfo(
+                s.ServiceStopId, s.Confirmation, s.EstimatedArrival, s.EstimatedDeparture, s.ActualDeparture, s.ActualArrival,
+                db.Platforms.Where(p => p.Id == s.PlatformId).Select(p => p.Code).FirstOrDefault()))
             .ToListAsync(cancellationToken);
 
         // Events are always loaded: whether a delay is known is worked out from them (no extra column), and the public status needs it.

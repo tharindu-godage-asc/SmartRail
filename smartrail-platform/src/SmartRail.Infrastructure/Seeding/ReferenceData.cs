@@ -23,6 +23,7 @@ public static class ReferenceData
 
     public static readonly Guid Service8058 = Id(4, 1);
     public static readonly Guid Service8061 = Id(4, 2);
+    public static readonly Guid Service8075 = Id(4, 3);
 
     public static IReadOnlyList<Language> Languages { get; } =
     [
@@ -93,6 +94,12 @@ public static class ReferenceData
             Id = Service8061, TrainNumber = "8061", LineId = LineMain, ServiceType = ServiceType.Express,
             ServiceCategory = ServiceCategory.Regional, Direction = ServiceDirection.Inbound, RunsOn = "Weekdays",
         },
+        // Spec 09 section 16: a night train, so every board has an upcoming train late in the evening. Runs every day.
+        new()
+        {
+            Id = Service8075, TrainNumber = "8075", LineId = LineMain, ServiceType = ServiceType.Slow,
+            ServiceCategory = ServiceCategory.Regional, Direction = ServiceDirection.Inbound, RunsOn = "Daily",
+        },
     ];
 
     public static IReadOnlyList<ServiceStop> ServiceStops { get; } =
@@ -106,6 +113,12 @@ public static class ReferenceData
         Stop(21, Service8061, StationVeyangoda, 1, null, new(7, 50)),
         Stop(22, Service8061, StationGampaha, 2, new(8, 0), new(8, 1)),
         Stop(23, Service8061, StationColomboFort, 3, new(8, 30), null),
+
+        Stop(31, Service8075, StationVeyangoda, 1, null, new(22, 10)),
+        Stop(32, Service8075, StationGampaha, 2, new(22, 20), new(22, 21)),
+        Stop(33, Service8075, StationRagama, 3, new(22, 32), new(22, 33)),
+        Stop(34, Service8075, StationMaradana, 4, new(22, 40), new(22, 41)),
+        Stop(35, Service8075, StationColomboFort, 5, new(22, 45), null),
     ];
 
     public static Guid StopId(Guid serviceId, int sequence) =>
@@ -116,7 +129,18 @@ public static class ReferenceData
     {
         Id = Id(5, n), ServiceId = serviceId, StationId = stationId, Sequence = sequence,
         ScheduledArrival = arrival, ScheduledDeparture = departure, ArrivalReportRequired = arrivalReportRequired,
+        PlannedPlatformId = PlatformOne(stationId),
     };
+
+    /// <summary>
+    /// Spec 09: the demo services all use platform 1 at every station, so a platform display has something to show and platform 2
+    /// stays empty (the honest "no train" state). The platform IDs are the ones BuildPlatforms creates.
+    /// </summary>
+    internal static Guid PlatformOne(Guid stationId)
+    {
+        var stations = new[] { StationColomboFort, StationMaradana, StationRagama, StationGampaha, StationVeyangoda };
+        return Id(3, ((Array.IndexOf(stations, stationId) + 1) * 10) + 1);
+    }
 
     private static List<Platform> BuildPlatforms()
     {

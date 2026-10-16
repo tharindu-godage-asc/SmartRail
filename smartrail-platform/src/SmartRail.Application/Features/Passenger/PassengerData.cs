@@ -18,7 +18,13 @@ public sealed record StationRecord(string Code, string NameEn, string? NameSi, s
 
 public sealed record LineRecord(string Code, string NameEn, string? NameSi, string? NameTa);
 
-public sealed record ServiceStopRecord(Guid ServiceStopId, int Sequence, string StationCode, TimeOnly? ScheduledArrival, TimeOnly? ScheduledDeparture);
+public sealed record ServiceStopRecord(
+    Guid ServiceStopId,
+    int Sequence,
+    string StationCode,
+    TimeOnly? ScheduledArrival,
+    TimeOnly? ScheduledDeparture,
+    string? PlannedPlatform = null);
 
 /// <summary>A timetable service with all its stops (the schedule instants need the whole walk, R16).</summary>
 public sealed record ServiceRecord(
@@ -52,6 +58,12 @@ public interface IPassengerQueries
     Task<IReadOnlyList<ServiceRecord>> GetServicesCallingAtAsync(string firstStationCode, string secondStationCode, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<ServiceRecord>> GetServicesOfLineAsync(string lineCode, CancellationToken cancellationToken);
+
+    /// <summary>Services that have a stop at the station (spec 09, the station board).</summary>
+    Task<IReadOnlyList<ServiceRecord>> GetServicesAtAsync(string stationCode, CancellationToken cancellationToken);
+
+    /// <summary>The platform codes of one station, for example 1 and 2 (empty when the station has none or is unknown).</summary>
+    Task<IReadOnlyList<string>> GetPlatformCodesAsync(string stationCode, CancellationToken cancellationToken);
 
     /// <summary>Journeys of the given services with operating dates from <paramref name="fromDate"/> to <paramref name="toDate"/>.</summary>
     Task<IReadOnlyList<JourneyRecord>> GetJourneysAsync(

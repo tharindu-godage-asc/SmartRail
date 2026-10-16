@@ -719,6 +719,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-00000000000b"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000033"),
                             ScheduledDeparture = new TimeOnly(8, 20, 0),
                             Sequence = 1,
                             ServiceId = new Guid("00000004-0000-4000-8000-000000000001"),
@@ -729,6 +730,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-00000000000c"),
                             ArrivalReportRequired = true,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000029"),
                             ScheduledArrival = new TimeOnly(8, 30, 0),
                             ScheduledDeparture = new TimeOnly(8, 31, 0),
                             Sequence = 2,
@@ -740,6 +742,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-00000000000d"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-00000000001f"),
                             ScheduledArrival = new TimeOnly(8, 42, 0),
                             ScheduledDeparture = new TimeOnly(8, 43, 0),
                             Sequence = 3,
@@ -751,6 +754,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-00000000000e"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000015"),
                             ScheduledArrival = new TimeOnly(8, 50, 0),
                             ScheduledDeparture = new TimeOnly(8, 51, 0),
                             Sequence = 4,
@@ -762,6 +766,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-00000000000f"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-00000000000b"),
                             ScheduledArrival = new TimeOnly(8, 55, 0),
                             Sequence = 5,
                             ServiceId = new Guid("00000004-0000-4000-8000-000000000001"),
@@ -772,6 +777,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-000000000015"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000033"),
                             ScheduledDeparture = new TimeOnly(7, 50, 0),
                             Sequence = 1,
                             ServiceId = new Guid("00000004-0000-4000-8000-000000000002"),
@@ -782,6 +788,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-000000000016"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000029"),
                             ScheduledArrival = new TimeOnly(8, 0, 0),
                             ScheduledDeparture = new TimeOnly(8, 1, 0),
                             Sequence = 2,
@@ -793,9 +800,68 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-000000000017"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-00000000000b"),
                             ScheduledArrival = new TimeOnly(8, 30, 0),
                             Sequence = 3,
                             ServiceId = new Guid("00000004-0000-4000-8000-000000000002"),
+                            StationId = new Guid("00000002-0000-4000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("00000005-0000-4000-8000-00000000001f"),
+                            ArrivalReportRequired = false,
+                            CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000033"),
+                            ScheduledDeparture = new TimeOnly(22, 10, 0),
+                            Sequence = 1,
+                            ServiceId = new Guid("00000004-0000-4000-8000-000000000003"),
+                            StationId = new Guid("00000002-0000-4000-8000-000000000005")
+                        },
+                        new
+                        {
+                            Id = new Guid("00000005-0000-4000-8000-000000000020"),
+                            ArrivalReportRequired = false,
+                            CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000029"),
+                            ScheduledArrival = new TimeOnly(22, 20, 0),
+                            ScheduledDeparture = new TimeOnly(22, 21, 0),
+                            Sequence = 2,
+                            ServiceId = new Guid("00000004-0000-4000-8000-000000000003"),
+                            StationId = new Guid("00000002-0000-4000-8000-000000000004")
+                        },
+                        new
+                        {
+                            Id = new Guid("00000005-0000-4000-8000-000000000021"),
+                            ArrivalReportRequired = false,
+                            CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-00000000001f"),
+                            ScheduledArrival = new TimeOnly(22, 32, 0),
+                            ScheduledDeparture = new TimeOnly(22, 33, 0),
+                            Sequence = 3,
+                            ServiceId = new Guid("00000004-0000-4000-8000-000000000003"),
+                            StationId = new Guid("00000002-0000-4000-8000-000000000003")
+                        },
+                        new
+                        {
+                            Id = new Guid("00000005-0000-4000-8000-000000000022"),
+                            ArrivalReportRequired = false,
+                            CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000015"),
+                            ScheduledArrival = new TimeOnly(22, 40, 0),
+                            ScheduledDeparture = new TimeOnly(22, 41, 0),
+                            Sequence = 4,
+                            ServiceId = new Guid("00000004-0000-4000-8000-000000000003"),
+                            StationId = new Guid("00000002-0000-4000-8000-000000000002")
+                        },
+                        new
+                        {
+                            Id = new Guid("00000005-0000-4000-8000-000000000023"),
+                            ArrivalReportRequired = false,
+                            CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-00000000000b"),
+                            ScheduledArrival = new TimeOnly(22, 45, 0),
+                            Sequence = 5,
+                            ServiceId = new Guid("00000004-0000-4000-8000-000000000003"),
                             StationId = new Guid("00000002-0000-4000-8000-000000000001")
                         });
                 });
@@ -1058,6 +1124,17 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             ServiceCategory = "Regional",
                             ServiceType = "Express",
                             TrainNumber = "8061",
+                            UnreservedCapacity = 0
+                        },
+                        new
+                        {
+                            Id = new Guid("00000004-0000-4000-8000-000000000003"),
+                            Direction = "Inbound",
+                            LineId = new Guid("00000001-0000-4000-8000-000000000001"),
+                            RunsOn = "Daily",
+                            ServiceCategory = "Regional",
+                            ServiceType = "Slow",
+                            TrainNumber = "8075",
                             UnreservedCapacity = 0
                         });
                 });

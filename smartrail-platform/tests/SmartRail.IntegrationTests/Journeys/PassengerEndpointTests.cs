@@ -114,7 +114,7 @@ public sealed class PassengerEndpointTests(PostgresFixture postgres) : JourneyAp
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("public, max-age=5", response.Headers.CacheControl!.ToString());
         var body = await ReadAsync(response);
-        Assert.Equal(["8058"], Numbers(body)); // 8061 left at 07:50 and has no journey today
+        Assert.Equal(["8058", "8075"], Numbers(body)); // 8061 left at 07:50 and has no journey today; 8075 is the daily night train (timetable only)
         var train = Train(body, "8058");
         Assert.True(train.GetProperty("live").GetBoolean());
         Assert.Equal(JourneyId, train.GetProperty("journeyId").GetGuid());
@@ -151,8 +151,8 @@ public sealed class PassengerEndpointTests(PostgresFixture postgres) : JourneyAp
         Assert.Equal("Delayed", train.GetProperty("statusKey").GetString());
         Assert.Equal(1, train.GetProperty("version").GetInt32());
 
-        // A search from Veyangoda no longer offers the train: it has left.
-        Assert.Empty(Numbers(await ReadAsync(await Search("?from=VYG&to=CF"))));
+        // A search from Veyangoda no longer offers the train: it has left. Only the night train, 8075, is still to come.
+        Assert.Equal(["8075"], Numbers(await ReadAsync(await Search("?from=VYG&to=CF"))));
     }
 
     [Fact]
@@ -185,7 +185,7 @@ public sealed class PassengerEndpointTests(PostgresFixture postgres) : JourneyAp
 
         var body = await ReadAsync(await Search("?from=VYG&to=CF&date=2026-10-12"));
 
-        Assert.Equal(["8061", "8058"], Numbers(body));
+        Assert.Equal(["8061", "8058", "8075"], Numbers(body)); // 8075 is the daily night train
         Assert.Equal("2026-10-12", body.GetProperty("date").GetString());
         foreach (var train in body.GetProperty("trains").EnumerateArray())
         {
@@ -204,11 +204,11 @@ public sealed class PassengerEndpointTests(PostgresFixture postgres) : JourneyAp
     }
 
     [Fact]
-    public async Task A_saturday_has_no_trains_because_the_seed_runs_on_weekdays()
+    public async Task A_saturday_has_only_the_daily_night_train_because_the_other_trains_run_on_weekdays()
     {
         Clock.SetUtcNow(Local(22, 0));
 
-        Assert.Empty(Numbers(await ReadAsync(await Search("?from=VYG&to=CF&date=2026-10-10"))));
+        Assert.Equal(["8075"], Numbers(await ReadAsync(await Search("?from=VYG&to=CF&date=2026-10-10"))));
     }
 
     [Theory]
@@ -325,7 +325,7 @@ public sealed class PassengerEndpointTests(PostgresFixture postgres) : JourneyAp
         });
         listener.Start();
 
-        await Search("?from=VYG&to=CF"); // found, live
+        await Search("?from=VYG&to=CF"); // found, mixed: the live 8058 and the timetable-only night train 8075
         await Search("?from=GPH&to=VYG"); // empty
         await Search("?from=VYG"); // invalid
         Clock.SetUtcNow(Local(22, 0));
@@ -333,7 +333,7 @@ public sealed class PassengerEndpointTests(PostgresFixture postgres) : JourneyAp
 
         lock (counts)
         {
-            Assert.Equal(1, counts["found/live"]);
+            Assert.Equal(1, counts["found/mixed"]);
             Assert.Equal(1, counts["empty/none"]);
             Assert.Equal(1, counts["invalid/none"]);
             Assert.Equal(1, counts["found/timetable"]);
@@ -349,9 +349,9 @@ public sealed class PassengerEndpointTests(PostgresFixture postgres) : JourneyAp
 
         // Default 15: the 08:55 expected end plus 15 minutes means 09:10 is the last visible minute.
         Clock.SetUtcNow(Local(9, 10));
-        Assert.Equal(["8058"], Numbers(await ReadAsync(await Search("?from=VYG&to=CF"))));
+        Assert.Equal(["8058", "8075"], Numbers(await ReadAsync(await Search("?from=VYG&to=CF"))));
         Clock.SetUtcNow(Local(9, 11));
-        Assert.Empty(Numbers(await ReadAsync(await Search("?from=VYG&to=CF"))));
+        Assert.Equal(["8075"], Numbers(await ReadAsync(await Search("?from=VYG&to=CF")))); // 8058 is over; the night train is still to come
 
         // Change the one setting to 30 and the search moves with it.
         await using var thirty = new AuthApiFactory(
@@ -361,9 +361,9 @@ public sealed class PassengerEndpointTests(PostgresFixture postgres) : JourneyAp
         Assert.Equal(30, thirty.Services.GetRequiredService<JourneySettings>().VisibleAfterEndMinutes);
 
         Clock.SetUtcNow(Local(9, 25));
-        Assert.Equal(["8058"], Numbers(JsonDocument.Parse(await client.GetStringAsync("/api/v1/trains?from=VYG&to=CF")).RootElement));
+        Assert.Equal(["8058", "8075"], Numbers(JsonDocument.Parse(await client.GetStringAsync("/api/v1/trains?from=VYG&to=CF")).RootElement));
         Clock.SetUtcNow(Local(9, 26));
-        Assert.Empty(Numbers(JsonDocument.Parse(await client.GetStringAsync("/api/v1/trains?from=VYG&to=CF")).RootElement));
+        Assert.Equal(["8075"], Numbers(JsonDocument.Parse(await client.GetStringAsync("/api/v1/trains?from=VYG&to=CF")).RootElement));
     }
 }
 
@@ -382,9 +382,10 @@ public sealed class PassengerEarlyMorningTests(PostgresFixture postgres) : Journ
     {
         Clock.SetUtcNow(Local(7, 0));
 
-        Assert.Equal(["8061", "8058"], Numbers(await ReadAsync(await Search("?from=VYG&to=GPH"))));
-        Assert.Equal(["8058"], Numbers(await ReadAsync(await Search("?from=RGM&to=CF"))));
-        Assert.Equal(["8058"], Numbers(await ReadAsync(await Search("?from=VYG&to=MDA"))));
+        // 8075 is the daily night train: it calls at every station.
+        Assert.Equal(["8061", "8058", "8075"], Numbers(await ReadAsync(await Search("?from=VYG&to=GPH"))));
+        Assert.Equal(["8058", "8075"], Numbers(await ReadAsync(await Search("?from=RGM&to=CF"))));
+        Assert.Equal(["8058", "8075"], Numbers(await ReadAsync(await Search("?from=VYG&to=MDA"))));
     }
 
     [Fact]
