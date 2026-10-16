@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Debug builds only: cleartext HTTP to localhost (the Compose API through adb reverse). See res/xml/network_security_config.xml. -->
+    <application android:networkSecurityConfig="@xml/network_security_config"/>
+</manifest>
