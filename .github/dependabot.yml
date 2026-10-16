@@ -3,3 +3,4 @@ updates:
   - { package-ecosystem: nuget, directory: "/smartrail-platform", schedule: { interval: weekly } }
   - { package-ecosystem: docker, directory: "/smartrail-platform/src/SmartRail.Api", schedule: { interval: weekly } }
   - { package-ecosystem: github-actions, directory: "/", schedule: { interval: weekly } }
+  - { package-ecosystem: npm, directory: "/web/ops", schedule: { interval: weekly } }
