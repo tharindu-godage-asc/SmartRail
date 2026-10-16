@@ -4,7 +4,7 @@ branch: claude/feature/controller-web
 spec: _specs/08-controller-web.md
 owner: tharindu
 date: 2026-10-15
-status: approved 2026-10-15 (owner answered Q1 to Q13; Q3 changed to Tailwind)
+status: approved 2026-10-15 (owner answered Q1 to Q13; Q3 changed to Tailwind). Built 15 Oct, waiting for review and the pull request.
 
 ---
 
@@ -91,7 +91,7 @@ No tables and no migration. No data is stored in the browser except what the OID
 12. The token is never logged, put in a URL, or stored; the app sends it only to the API base address from configuration.
 
 ## 7) Architecture
-- Location `web/ops`; Vite, React 18, TypeScript strict, React Router. Feature-first folders: `src/features/{auth,exceptions,overview}`, `src/core/{api,strings,tokens,time}`, and `src/modes/ops` so a later `src/modes/display` fits (D-23).
+- Location `web/ops`; Vite, React 19 (the current stable version when it was built; the draft said 18), TypeScript strict, React Router. Feature-first folders: `src/features/{auth,exceptions,overview}`, `src/core/{api,strings,tokens,time}`, and `src/modes/ops` so a later `src/modes/display` fits (D-23).
 - Auth (Q4, owner: recommendation and industry standard): Authorization Code + PKCE only (no implicit flow, no client secret), `oidc-client-ts` with `react-oidc-context`, tokens held in memory only (`InMemoryWebStorage` for the user store; nothing in local or session storage), renewed silently before expiry, state and nonce checked by the library. A reload signs in again silently through the Keycloak session cookie. Authority `http://localhost:8180/realms/smartrail`; client `smartrail-ops-web`. Because the browser reaches Keycloak at `localhost:8180`, the token issuer already matches the API's accepted issuer: the Docker issuer problem in spec 02 does not arise for the web app.
 - Data: TanStack Query for polling, caching the last good result and mutation state. `fetch` through one small API module that adds the token and maps ProblemDetails `reason` codes to messages.
 - Styling (Q3, owner 2026-10-15): Tailwind CSS (v4, CSS-first config) with `smartrail-tokens.json` integrated into the theme. The designs' variables use the same names as the token file (`--color-bg-page`, `--color-status-*`, `--space-*`, `--radius-*`), so the generator (`tools/generate-css-tokens`, Node) writes them as `:root` variables and as Tailwind `@theme` entries, and a test checks the output against the file. No UI component library: components are small and built from the designs' parts (StatusChip, SeverityBadge, KPI card, DataTable, Button, Callout, dialog).
@@ -118,22 +118,22 @@ No tables and no migration. No data is stored in the browser except what the OID
 | Unknown type or status code | The raw code is shown |
 | Clock difference between laptop and server | Ages come from the server value at each poll; the local tick only moves them between polls |
 | Tab hidden for an hour | Polling paused; one refresh on return |
-| Reload | Session restored silently if the Keycloak session lives, otherwise sign-in |
+| Reload | The token is in memory only, so the sign-in screen shows; one click on "Sign in with staff account" signs in again with no password while the Keycloak session lives (changed from "restored silently", a consequence of Q4) |
 
 ## 9) Acceptance Criteria
-- [ ] Controller sign-in shows the operations view (AC-E01-02 1); an Operator sees "No dashboard access" and the API still refuses their token (AC-E01-02 2, AC-E01-03).
-- [ ] The queue lists open exceptions in the API's order, each row showing train, station, type, severity (icon and word) and age (AC-E05-02 3, 4, NFR-30).
-- [ ] After Nimal's delay report with Technical fault, a Critical row appears within 10 s of the next poll and the overview row shows the delay and "Awaiting verification" (AC-E05-01 1, 6).
-- [ ] The overview shows last event, delay, next stop, time since the last update and the source label with text, not colour alone (AC-E05-01 1, 3).
-- [ ] The open count is always visible in the header and equals the API's `openCount` (AC-E05-01 4).
-- [ ] The safety notice is on every screen and cannot be closed (AC-E05-01 7, FR-63).
-- [ ] Resolving removes the row after confirmation, a second click sends one request, and a 409 is explained (AC-E05-02 6).
-- [ ] Neither panel clears on an error; "Not up to date" with the last good time appears after 30 s of failures (NFR-04).
-- [ ] The whole flow works by keyboard alone; focus is visible; Esc closes the dialog; the page is usable at 200 % text size and at 360 px width (NFR-32, NFR-33).
-- [ ] No token appears in a URL, a log line or browser storage.
-- [ ] CORS: the allowed origin works, another origin gets no CORS headers, and with `Cors:AllowedOrigins` empty nothing changes (the cluster stays Synced and Healthy).
-- [ ] Playwright, against Compose: Nimal's report through the API -> Jayasinghe signs in -> sees the Critical row -> resolves -> the row is gone; and Nimal's token on the web app shows "No dashboard access".
-- [ ] `npm run lint`, type-check, unit tests and build pass; the `web` workflow is green on the pull request.
+- [x] Controller sign-in shows the operations view (AC-E01-02 1); an Operator sees "No dashboard access" and the API still refuses their token (AC-E01-02 2, AC-E01-03). (Checked: AuthGate component tests; live on Compose with Playwright, 15 Oct.)
+- [x] The queue lists open exceptions in the API's order, each row showing train, station, type, severity (icon and word) and age (AC-E05-02 3, 4, NFR-30). (Checked: component tests and a screenshot of the live screen, 15 Oct.)
+- [ ] After Nimal's delay report with Technical fault, a Critical row appears within 10 s of the next poll and the overview row shows the delay and "Awaiting verification" (AC-E05-01 1, 6). (Partly checked: the row appears after sign-in live; the 10 s polling and the announcement are checked in component tests with a fake clock. The overview half of this line was not seen live: see the next line.)
+- [ ] The overview shows last event, delay, next stop, time since the last update and the source label with text, not colour alone (AC-E05-01 1, 3). (Checked with fixtures in component tests, and by the API tests of spec 07. NOT seen live on 15 Oct: the demo train is "in progress" only from 08:20 to about 13:10 Sri Lanka time, and the Playwright test for it skips itself outside that window. Run it in the morning to tick this.)
+- [x] The open count is always visible in the header and equals the API's `openCount` (AC-E05-01 4). (Shown as the count badge on the Exceptions menu item, which is on every screen, as in the designs, not in the header text.)
+- [x] The safety notice is on every screen and cannot be closed (AC-E05-01 7, FR-63). (Checked: AuthGate and shell component tests; seen on the live sign-in, no-access and dashboard screens.)
+- [x] Resolving removes the row after confirmation, a second click sends one request, and a 409 is explained (AC-E05-02 6). (Checked: component tests, including the double click, 409 and 404; and live with Playwright.)
+- [x] Neither panel clears on an error; "Not up to date" with the last good time appears after 30 s of failures (NFR-04). (Checked: component tests with a fake clock; shell test shows the banner with the last good time after 31 s of failures and the count stays.)
+- [ ] The whole flow works by keyboard alone; focus is visible; Esc closes the dialog; the page is usable at 200 % text size and at 360 px width (NFR-32, NFR-33). (NOT fully checked: every control is a native button, link or dialog and Esc closes the dialog (tested); a 390 px screenshot shows no page scroll, the table scrolls in its box. A keyboard-only run and 200 % text size have not been done by hand.)
+- [x] No token appears in a URL, a log line or browser storage. (Checked: the API client test (token only in the header); Playwright checks that local and session storage hold no token; the code never logs it. The PKCE state is kept in session storage during the redirect only, see section 7.)
+- [x] CORS: the allowed origin works, another origin gets no CORS headers, and with `Cors:AllowedOrigins` empty nothing changes (the cluster stays Synced and Healthy). (Checked: 11 integration tests. NOT checked: that the cluster stays Synced and Healthy, which needs the change deployed.)
+- [x] Playwright, against Compose: Nimal's report through the API -> Jayasinghe signs in -> sees the Critical row -> resolves -> the row is gone; and Nimal's token on the web app shows "No dashboard access". (Checked 15 Oct, three tests passed; the overview test skipped itself outside 08:20-13:10.)
+- [ ] `npm run lint`, type-check, unit tests and build pass; the `web` workflow is green on the pull request. (Passed locally: lint, type-check, 56 unit tests, build, token check, npm audit. The `web` workflow on GitHub has not run yet.)
 
 ## 10) Test Plan
 ### 10.1 Seed and fixture data
@@ -159,3 +159,28 @@ Row text formatting and the age display; label mapping including an unknown code
 - **Q10 to Q13. Decided 2026-10-15** after reading the canvas: menu shows only Overview and Exceptions; overview shows only data that exists, plus `from`/`to` (API change); resolve is detail panel plus confirm dialog; label wording follows the designs.
 - **Q8. Decided:** no free-text note (spec 07 Q3).
 - **Q9. Lifted freeze. Confirmed 2026-10-15:** build the full spec (queue, overview, CORS, tests, one Playwright flow). Cut order if time runs short: polish, then the overview, never the queue.
+
+
+## 13) Built on 15 Oct 2026: what differs from the designs and from this spec
+- **Sign out button in the header.** The design header has none; the app needs one (and the 403 and session screens need a way out).
+- **Count badge not in the header text.** The designs put the open count in the menu; so it is there, on every screen.
+- **Only Overview and Exceptions in the menu** (owner decision, 15 Oct). The other five items appear with their slices.
+- **Overview columns:** Train, Route, Next stop, Next time, Status, Last report (with the source label and time since), Verification. The design's Platform column and the "Journeys today" and "Active overrides" tiles are left out: there is no data for them. Route needed `from` and `to` on the overview API (added).
+- **Exceptions table has no State column and no platform-conflict actions:** every row is open, and only the three fixed resolve actions exist.
+- **Login:** the design's app sign-in page is built (button to Keycloak). The Keycloak pages keep their default theme, as in the operator app.
+- **Auth state:** the user and tokens are in memory only. The PKCE verifier and state value must survive the redirect, so they sit in this tab's session storage until the sign-in completes (the library removes them). Nothing else is stored.
+- **Libraries (versions at build time):** React 19, Vite 8, TypeScript 6, Tailwind CSS 4, TanStack Query 5, React Router 8, oidc-client-ts 3, react-oidc-context 3, Vitest 5, Playwright 1.64. `npm audit` found nothing.
+- **Leftover files from the Vite template** (`src/App.css`, `src/assets/`, `public/icons.svg`) were deleted on 16 Oct with the owner's OK; nothing referenced them. `public/favicon.svg` is still Vite's logo and is a placeholder for a SmartRail icon.
+- **Tests:** 56 unit and component tests, 3 Playwright tests (1 skipped by time of day), 11 CORS tests, 1 overview test for `from`/`to`.
+
+## 14) Amendment 15 Oct 2026: Closed tab (owner request)
+- The Exceptions screen gets two tabs, **Open** (the table built above, with its count) and **Closed**. Tabs are links (`/exceptions` and `/exceptions/closed`), so a tab can be bookmarked and the browser back button works. The menu count stays the open count.
+- **Closed shows cards**, newest closure first, from `GET /api/v1/exceptions?status=resolved` (spec 07 section 14). The latest 50 only, with the line "Showing the latest 50 of N" when there are more.
+- **A card shows:** a status chip with icon and words ("Closed · Acknowledged", "Closed · No action needed", "Closed · Escalated"); the severity badge; the type ("Delay reason waiting for verification"); where ("8058 · Gampaha"); **Raised** with day and time ("Thu 15 Oct · 14:52"); **Closed** with day and time and how long it took ("Thu 15 Oct · 16:41, 1 h 49 min after it was raised"); **Closed by** the controller's name ("jayasinghe"; "Controller" when the name is not stored). Times are Sri Lanka time. Nothing on a card can be changed or reopened.
+- **Behaviour:** read every 10 s only while the Closed tab is open, same freshness rules as the Open tab (last good data stays, "Not up to date" banner). Resolving an exception on the Open tab refreshes the Closed list too. Empty: "No closed exceptions yet". The reason is not shown (D-10, same as the Open tab).
+- **Criteria:**
+  - [x] The Closed tab lists closed exceptions as cards with status (icon and words), severity, type, train and station, raised day and time, closed day and time, time taken, who closed it and the action.
+  - [x] An exception resolved on the Open tab appears on the Closed tab at once, and no longer on the Open tab.
+  - [x] More than 50 closed: the page says it shows the latest 50 of the total. (Component test with a total of 214; the API limit is tested with 55 rows.)
+  - [x] Empty and "Not up to date" states work; the tabs are operable by keyboard and say which one is current. (Empty, failed first load, and last cards kept on a failed refresh are tested; the tabs are links with `aria-current`. Keyboard use by hand not done.)
+  - [x] Playwright: resolve in the Open tab, then the card is on the Closed tab with the controller's name and the chosen action.

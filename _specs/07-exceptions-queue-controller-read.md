@@ -157,3 +157,16 @@ Journey 8058 (Veyangoda 08:20, Gampaha 08:30/08:31, Ragama 08:42/08:43, Maradana
 
 ### Decisions (owner, 2026-10-15; each is the recommendation above)
 - **Q1** the backward and same-station conflicts stay out (a documented gap, said at the viva). **Q2** the unique index goes in the new migration. **Q3** three fixed resolve actions: `Acknowledged`, `NoActionNeeded`, `Escalated`. **Q4** B1 now, B2 only if B1 is merged by 17 Oct. **Q5** polling every 10 seconds, not push; said honestly in the report. **Q6** the flag is out of this slice. **Q7** early means at least 30 seconds early. **Q8** `station_id` is stored when the exception is raised. **Q9** one exception per report, so repeated delay updates repeat the exception.
+
+## 14) Amendment 15 Oct 2026: the closed list (owner request, built with spec 08)
+Reason: resolved exceptions were kept but could not be read. The controller web app gets a Closed tab.
+- **API:** `GET /api/v1/exceptions?status=resolved` (controller only). `status` accepts `open` (default) and `resolved`; anything else is still 422 `invalid_request`. Response 200: `{ items: [ { id, journeyId, trainNumber, stationName, type, severity, createdAt, resolvedAt, resolvedByName, resolution, secondsToResolve } ], total, limit }`. Newest `resolvedAt` first, at most 50 (`limit` says 50, `total` is how many exist, so the page can say "Showing the latest 50 of 214"). No `ageSeconds`, no reason (D-10 still holds).
+- **Data:** one new column `resolved_by_name varchar(64) null` (migration). It is filled at resolve time from the token's `preferred_username` claim, trimmed to 64 characters; null when the token has none, and for rows resolved before the column existed. `resolved_by` (the subject) stays the audit key; the name is only for display. No other change to the table, no new index (the closed list is read by `resolved_at desc` with a limit; an index is added when the table is large).
+- **Rules:** reading the closed list changes nothing. Names are display text, never used for any decision. The `resolve` endpoint, 204 and error codes are unchanged.
+- **Criteria:**
+  - [x] `status=resolved` returns resolved rows only, newest closure first, at most 50, with `total`. (9 integration tests, incl. 55 rows -> 50 listed, total 55)
+  - [x] A resolve stores the controller's name; a token without a name stores null and the row still resolves. (A 200-character name is cut to 64.)
+  - [x] Operator 403, no token 401, other `status` values 422.
+  - [x] Open list and overview are unchanged. (Existing tests pass; reading the closed list leaves the passenger status version unchanged.)
+
+**Deferred (owner, 16 Oct 2026): exceptions must never be erasable.** The API role can still DELETE rows from `journey_exception` (default privileges). Later: one migration that revokes DELETE (and TRUNCATE) for the app role, like `train_event`, plus a test that the role gets 42501. Not started.
