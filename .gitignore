@@ -22,3 +22,8 @@ mobile/operator_app/screenshots/
 # start.sh
 .web-dev.pid
 web-dev.log
+
+# SmallBites (.NET) build output
+smallbites/**/bin/
+smallbites/**/obj/
+smallbites/**/TestResults/
