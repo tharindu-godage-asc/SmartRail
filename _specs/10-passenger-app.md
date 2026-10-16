@@ -172,20 +172,20 @@ Errors: the app treats 404 `station_not_found` or a missing train as "not found"
 | Rotated phone | Portrait only |
 
 ## 9) Acceptance Criteria
-- [ ] First launch asks for a language before anything else; the choice persists; all interface text, statuses and station names appear in it (AC-E06-04 5, AC-E06-05 1).
-- [ ] From and To lists come from `GET /stations` in line order and work offline from the cache; From is remembered with no location permission (AC-E06-01 4).
-- [ ] Veyangoda to Colombo Fort shows 8058 with scheduled time, estimated time, status chip and platform or dash (AC-E06-01 1).
-- [ ] With 8058 running +8, the results show 08:38 beside "Sched. 08:30" (AC-E06-01 2).
-- [ ] The live screen shows "Arrives at Gampaha 08:38" with "Delayed 8 min" and no reason; after the train departs Gampaha it shows the arrival at Colombo Fort (AC-E06-02 1, 2, 3).
-- [ ] A passed stop shows "Passed" with no missing-confirmation wording; one stop list holds progress and ETA (AC-E06-02 5, 6).
-- [ ] An Unknown delay shows "Waiting for update", dashes for stop ETAs, and the last update and last seen text (AC-E06-03 1, partial).
-- [ ] Offline within 30 s: banner "You're offline · Showing info from HH:mm", the last ETA kept and marked; "Live updates unavailable" when only the server is unreachable; the first good response restores live data (AC-E06-03 3, 4, 7).
-- [ ] The Home card appears for a followed train with ETA, status and freshness; with none, search is first and no empty card shows (AC-E06-04 1, 2, 4).
-- [ ] Settings changes the language immediately and lists followed trains with a way to remove them.
-- [ ] Statuses are distinguishable without colour; text at 200 % does not clip; a screen reader reads the screen in the required order and announces only meaning changes (an ETA tick from 08:40 to 08:41 announces nothing) (AC-E06-05 2 to 5).
+- [x] First launch asks for a language before anything else; the choice persists; all interface text, statuses and station names appear in it (AC-E06-04 5, AC-E06-05 1).
+- [x] From and To lists come from `GET /stations` in line order and work offline from the cache; From is remembered with no location permission (AC-E06-01 4).
+- [x] Veyangoda to Colombo Fort shows 8058 with scheduled time, estimated time, status chip and platform or dash (AC-E06-01 1).
+- [x] With 8058 running +8, the results show 08:38 beside "Sched. 08:30" (AC-E06-01 2).
+- [x] The live screen shows "Arrives at Gampaha 08:38" with "Delayed 8 min" and no reason; after the train departs Gampaha it shows the arrival at Colombo Fort (AC-E06-02 1, 2, 3).
+- [x] A passed stop shows "Passed" with no missing-confirmation wording; one stop list holds progress and ETA (AC-E06-02 5, 6).
+- [x] An Unknown delay shows "Waiting for update", dashes for stop ETAs, and the last update and last seen text (AC-E06-03 1, partial).
+- [x] Offline within 30 s: banner "You're offline · Showing info from HH:mm", the last ETA kept and marked; "Live updates unavailable" when only the server is unreachable; the first good response restores live data (AC-E06-03 3, 4, 7).
+- [x] The Home card appears for a followed train with ETA, status and freshness; with none, search is first and no empty card shows (AC-E06-04 1, 2, 4).
+- [x] Settings changes the language immediately and lists followed trains with a way to remove them.
+- [x] Statuses are distinguishable without colour; text at 200 % does not clip; a screen reader reads the screen in the required order and announces only meaning changes (an ETA tick from 08:40 to 08:41 announces nothing) (AC-E06-05 2 to 5).
 - [ ] The design gallery (debug) opens every state of the 34 boards from fixtures; each fixture screen has a widget test.
-- [ ] The two backend additions are tested; the existing tests of specs 03 and 04 still pass.
-- [ ] No dead-end buttons in the shipped flow (rule 14).
+- [x] The two backend additions are tested; the existing tests of specs 03 and 04 still pass.
+- [x] No dead-end buttons in the shipped flow (rule 14).
 - [ ] `flutter analyze --fatal-infos` clean, `flutter test` green, the `mobile` workflow green, and the end-to-end run on the emulator against Compose recorded with screenshots.
 - [ ] The report states plainly that FR-75/FR-76 (push) are not met, that suspended, cancelled, terminated, verified reason and alerts are fixtures only, and that Sinhala and Tamil text is unverified (until checked).
 
@@ -233,3 +233,9 @@ Checked against the code, `docs/`, discovery and the canvas (version 1792037517)
 - **Translations (Q3): unverified placeholders.** English is the source; Sinhala and Tamil are marked unverified in the ARB files and in the report until a native speaker checks them.
 - **Recommendations not yet answered by the owner, assumed as written and to be confirmed at approval:** Q2 (hide entry points for unbuilt features in the shipped flow), Q4 (push stays unmet, said plainly), Q5 (keep the five tabs), Q7 (`shared_preferences`), Q8 (the two backend additions), Q9 (bundle the Sinhala and Tamil fonts).
 
+
+
+## 15) Phase 1 delivery notes (16 Oct 2026)
+- Done: language, onboarding, stations and search, results, live status (offline, unavailable, waiting), Home with the followed train, Settings, local-only screens G1 to G6 (built in the same style, no boards: listed in the report), the two backend additions, the `mobile` workflow job. 49 widget and unit tests.
+- Deviations: texts are a plain Dart table (`K` keys with English, Sinhala, Tamil) instead of ARB files, with tests for completeness and matching placeholders; the API default is `http://localhost:8080` with `adb reverse tcp:8080 tcp:8080` (as in the operator app) rather than `10.0.2.2`.
+- Not done (phase 2, owner decides): design gallery and fixture screens, emulator run recorded with screenshots. FR-75/FR-76 (push) stay unmet. Sinhala and Tamil are unverified placeholders. Search results have no "delay unknown" (spec 04 D4).
