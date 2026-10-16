@@ -13,6 +13,8 @@ public sealed record OverviewNextStop(string StationName, DateTimeOffset Expecte
 public sealed record OverviewJourney(
     Guid JourneyId,
     string TrainNumber,
+    string From,
+    string To,
     string StatusGroup,
     string StatusKey,
     int DelayMinutes,
@@ -63,7 +65,7 @@ public sealed class GetOverviewHandler(IJourneyRepository journeys, IExceptionRe
             long? seconds = heard is { } at ? Math.Max(0, (long)(now - at).TotalSeconds) : null;
 
             items.Add(new OverviewJourney(
-                data.JourneyId, data.TrainNumber, snapshot.StatusGroup, snapshot.StatusKey, snapshot.DelayMinutes, snapshot.DelayKnown,
+                data.JourneyId, data.TrainNumber, snapshot.Stops[0].StationName, snapshot.Stops[^1].StationName, snapshot.StatusGroup, snapshot.StatusKey, snapshot.DelayMinutes, snapshot.DelayKnown,
                 lastEvent,
                 snapshot.PrimaryEta is { } eta ? new OverviewNextStop(eta.StationName, eta.Time) : null,
                 seconds,

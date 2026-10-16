@@ -73,6 +73,7 @@ internal sealed class JourneyExceptionConfiguration : IEntityTypeConfiguration<J
         b.Property(x => x.Severity).HasConversion<string>().HasMaxLength(10);
         b.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
         b.Property(x => x.ResolvedBy).HasMaxLength(64);
+        b.Property(x => x.ResolvedByName).HasMaxLength(64);
         b.Property(x => x.Resolution).HasMaxLength(200);
         // One report, one exception of a type (D-44, AC-E05-02 2). Null event IDs (future types) never collide.
         b.HasIndex(x => new { x.RelatedEventId, x.Type }).IsUnique().HasDatabaseName("ux_exception_event_type");

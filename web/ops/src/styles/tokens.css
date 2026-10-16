@@ -1,0 +1,100 @@
+/* GENERATED FILE. Do not edit by hand.
+ * Source: mobile/operator_app/smartrail-tokens.json (one source for the operator app and the web app, ADR-16).
+ * Regenerate with: npm run tokens */
+
+:root {
+  --color-bg-page: #FFFFFF;
+  --color-bg-surface: #F6F7F8;
+  --color-text-primary: #1B1F24;
+  --color-text-secondary: #4A5058;
+  --color-border-default: #D5D9DE;
+  --color-status-normal-fg: #1F5FBF;
+  --color-status-normal-chip-bg: #E4ECF7;
+  --color-status-warning-fg: #9E4A00;
+  --color-status-warning-chip-bg: #F3E9E0;
+  --color-status-unknown-fg: #666A6E;
+  --color-status-unknown-chip-bg: #F6F6F6;
+  --color-status-disrupted-fg: #B0003A;
+  --color-status-disrupted-chip-bg: #F6E0E7;
+  --color-status-disrupted-on-filled: #FFFFFF;
+  --color-brand-accent: #00696F;
+  --color-brand-on-accent: #FFFFFF;
+  --color-brand-accent-surface: #E3F1F2;
+  --status-chip-normal-outline-width: 1.5px;
+  --status-chip-warning-outline-width: 3px;
+  --status-chip-unknown-outline-width: 1.5px;
+  --status-chip-disrupted-outline-width: 0px;
+  --font-family-latin: 'Noto Sans', sans-serif;
+  --font-family-sinhala: 'Noto Sans', 'Noto Sans Sinhala', sans-serif;
+  --font-family-tamil: 'Noto Sans', 'Noto Sans Tamil', sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --type-mobile-heading-size: 24px;
+  --type-mobile-body-size: 16px;
+  --type-mobile-label-size: 14px;
+  --type-mobile-caption-size: 12px;
+  --type-mobile-time-size: 56px;
+  --type-display-level1-time-size: 160px;
+  --type-display-level1-status-size: 96px;
+  --type-display-level2-size: 64px;
+  --type-display-level3-size: 48px;
+  --type-display-level4-size: 28px;
+  --type-script-min-status-size: 14px;
+  --type-script-caption-size: 13px;
+  --line-height-mobile-latin: 1.4;
+  --line-height-mobile-sinhala: 1.6;
+  --line-height-mobile-tamil: 1.5;
+  --line-height-display-latin: 1.15;
+  --line-height-display-sinhala: 1.4;
+  --line-height-display-tamil: 1.3;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+  --size-touch-target-min: 44px;
+}
+
+@theme {
+  --color-page: #FFFFFF;
+  --color-surface: #F6F7F8;
+  --color-ink: #1B1F24;
+  --color-muted: #4A5058;
+  --color-line: #D5D9DE;
+  --color-normal: #1F5FBF;
+  --color-normal-bg: #E4ECF7;
+  --color-warning: #9E4A00;
+  --color-warning-bg: #F3E9E0;
+  --color-unknown: #666A6E;
+  --color-unknown-bg: #F6F6F6;
+  --color-disrupted: #B0003A;
+  --color-disrupted-bg: #F6E0E7;
+  --color-on-disrupted: #FFFFFF;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+  --font-sans: 'Noto Sans', sans-serif;
+  --text-heading: 24px;
+  --text-body: 16px;
+  --text-label: 14px;
+  --text-caption: 12px;
+}
+
+@utility min-h-touch {
+  min-height: 44px;
+}
+
+@utility min-w-touch {
+  min-width: 44px;
+}

@@ -34,6 +34,9 @@ public sealed class JourneyException
     /// <summary>The Keycloak subject of the controller who resolved it.</summary>
     public string? ResolvedBy { get; set; }
 
+    /// <summary>The controller's user name at the time, for display only (null for older rows or a token without one). The subject above is the audit key.</summary>
+    public string? ResolvedByName { get; set; }
+
     /// <summary>The action the controller chose (<see cref="ExceptionResolution"/>).</summary>
     public string? Resolution { get; set; }
 }

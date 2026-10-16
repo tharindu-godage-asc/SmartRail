@@ -30,6 +30,32 @@ public sealed class ExceptionRepository(SmartrailDbContext db) : IExceptionRepos
             .ToList();
     }
 
+    public async Task<ResolvedPage> ListResolvedAsync(int limit, CancellationToken cancellationToken)
+    {
+        var closed = db.JourneyExceptions.AsNoTracking().Where(e => e.ResolvedAt != null);
+        var total = await closed.CountAsync(cancellationToken);
+
+        var rows = await (
+            from e in closed
+            join j in db.Journeys.AsNoTracking() on e.JourneyId equals j.Id
+            join s in db.TrainServices.AsNoTracking() on j.ServiceId equals s.Id
+            join st in db.Stations.AsNoTracking() on e.StationId equals st.Id into stations
+            from station in stations.DefaultIfEmpty()
+            orderby e.ResolvedAt descending, e.Id descending
+            select new
+            {
+                e.Id, e.JourneyId, s.TrainNumber, StationName = station == null ? null : station.Name,
+                e.Type, e.Severity, e.CreatedAt, ResolvedAt = e.ResolvedAt!.Value, e.ResolvedByName, Resolution = e.Resolution ?? "",
+            })
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+        return new ResolvedPage(
+            rows.Select(r => new ResolvedExceptionRow(
+                r.Id, r.JourneyId, r.TrainNumber, r.StationName, r.Type, r.Severity, r.CreatedAt, r.ResolvedAt, r.ResolvedByName, r.Resolution)).ToList(),
+            total);
+    }
+
     public async Task<OpenSummary> GetOpenSummaryAsync(CancellationToken cancellationToken)
     {
         var open = await db.JourneyExceptions.AsNoTracking()
@@ -40,7 +66,7 @@ public sealed class ExceptionRepository(SmartrailDbContext db) : IExceptionRepos
         return new OpenSummary(open.Count, awaiting);
     }
 
-    public async Task<ResolveOutcome> ResolveAsync(Guid id, string resolvedBy, string action, DateTimeOffset at, CancellationToken cancellationToken)
+    public async Task<ResolveOutcome> ResolveAsync(Guid id, string resolvedBy, string? resolvedByName, string action, DateTimeOffset at, CancellationToken cancellationToken)
     {
         // One UPDATE that only matches an open row: of two simultaneous resolves exactly one changes it.
         var changed = await db.JourneyExceptions
@@ -49,6 +75,7 @@ public sealed class ExceptionRepository(SmartrailDbContext db) : IExceptionRepos
                 set => set
                     .SetProperty(e => e.ResolvedAt, at)
                     .SetProperty(e => e.ResolvedBy, resolvedBy)
+                    .SetProperty(e => e.ResolvedByName, resolvedByName)
                     .SetProperty(e => e.Resolution, action),
                 cancellationToken);
         if (changed == 1)
