@@ -21,7 +21,7 @@ Needs: Docker Desktop (running), Git Bash, Node 22+, Flutter, Android SDK with a
 ./start.sh --stop         # stop everything (data is kept)
 ```
 
-The first run builds the images and takes a few minutes. The demo data (a journey for train 8058, eight more demo trains in both directions, a night train and a train leaving within minutes) is created at every API start.
+The first run builds the images and takes a few minutes. The demo data (a journey for train 8058, eight more demo trains, with `nimal` assigned to 8102 because 8058 leaves at 08:20 in both directions, a night train and a train leaving within minutes) is created at every API start.
 
 | What | Address | Sign in |
 |---|---|---|

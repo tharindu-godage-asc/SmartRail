@@ -53,7 +53,7 @@ public sealed class DatabaseStartupService(
             logger.LogInformation("Demo train 8070 leaves Veyangoda at {Departure}.", soon);
 
             // Spec 10: eight more demo journeys, both directions, some delayed, for the passenger app.
-            await new DemoSeeder(db, clock).SeedDemoTrainsAsync(cancellationToken);
+            await new DemoSeeder(db, clock).SeedDemoTrainsAsync(seeding.Value.DemoOperatorSubject, cancellationToken);
         }
     }
 

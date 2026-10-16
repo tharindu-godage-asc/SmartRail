@@ -152,7 +152,7 @@ public sealed class DemoSeeder(SmartrailDbContext db, TimeProvider clock)
     /// Creates or moves the eight demo services and their journeys for today so the first departure is a few minutes to a couple of hours
     /// from now, some of them delayed (the estimates move with the delay). Run again it updates the same rows. Compose only.
     /// </summary>
-    public async Task SeedDemoTrainsAsync(CancellationToken cancellationToken = default)
+    public async Task SeedDemoTrainsAsync(string? operatorSubject, CancellationToken cancellationToken = default)
     {
         var today = OperatingTime.Today(clock);
         var now = TimeZoneInfo.ConvertTime(clock.GetUtcNow(), OperatingTime.Zone);
@@ -203,6 +203,21 @@ public sealed class DemoSeeder(SmartrailDbContext db, TimeProvider clock)
             {
                 journey = new Journey { Id = journeyId, ServiceId = serviceId, OperatingDate = today, Status = JourneyStatus.Scheduled, Version = 0 };
                 db.Journeys.Add(journey);
+            }
+
+            // The demo operator is also assigned to 8102, later than to 8058 (the latest assignment wins), because 8058 has usually left by
+            // the time someone tests: this way the operator app shows a train that is still ahead and the passenger app can find it.
+            if (number == "8102")
+            {
+                var subject = string.IsNullOrWhiteSpace(operatorSubject) ? DemoIds.Nimal.ToString() : operatorSubject;
+                if (!await db.OperatorAssignments.AnyAsync(a => a.JourneyId == journeyId && a.OperatorUserId == subject, cancellationToken))
+                {
+                    db.OperatorAssignments.Add(new OperatorAssignment
+                    {
+                        Id = Guid.CreateVersion7(clock.GetUtcNow()), JourneyId = journeyId, OperatorUserId = subject,
+                        ValidFrom = OperatingTime.StartOfDay(today).AddMinutes(1), ValidTo = OperatingTime.StartOfNextDay(today), AssignedBy = DemoIds.AssignedBy,
+                    });
+                }
             }
 
             if (journey.OperatingDate != today || journey.Status != JourneyStatus.Scheduled) continue; // a reported journey is left alone
