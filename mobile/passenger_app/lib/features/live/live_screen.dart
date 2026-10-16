@@ -138,7 +138,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
       appBar: header(),
       body: Column(
         children: [
-          if (link != LinkStatus.live)
+          if (link == LinkStatus.unavailable)
             LinkBanner(
               text: s.fmt(
                 link == LinkStatus.offline

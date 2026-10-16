@@ -151,6 +151,9 @@ class ResultsPoller extends PollingNotifier<ResultsData> {
   Duration get interval => AppConfig.listInterval;
 
   @override
+  DateTime? serverTimeOf(ResultsData value) => value.today.serverTime;
+
+  @override
   Future<ResultsData> fetch() async {
     final api = ref.read(apiProvider);
     final today = await api.trains(from: route.$1, to: route.$2);
@@ -198,6 +201,9 @@ class TrainStatusPoller extends PollingNotifier<TrainStatus?> {
   }
 
   @override
+  DateTime? serverTimeOf(TrainStatus? value) => value?.serverTime;
+
+  @override
   Future<TrainStatus?> fetch() => ref.read(apiProvider).trainStatus(number);
 
   @override
@@ -218,6 +224,9 @@ final trainStatusProvider = NotifierProvider.autoDispose
 class LineStatusPoller extends PollingNotifier<LineStatus> {
   @override
   Duration get interval => AppConfig.listInterval;
+
+  @override
+  DateTime? serverTimeOf(LineStatus value) => value.serverTime;
 
   @override
   Future<LineStatus> fetch() => ref.read(apiProvider).lineStatus();

@@ -297,13 +297,12 @@ class InnerHeader extends StatelessWidget implements PreferredSizeWidget {
   final Widget title;
   final Widget? trailing;
 
+  /// The height of the status bar the header must start below. Set once per build by the app's top banner wrapper (it is zero while the
+  /// offline banner covers the status bar), because a Scaffold gives its app bar no inset of its own.
+  static double statusInset = 0;
+
   @override
-  Size get preferredSize {
-    // The slot is the bar plus the status bar above it (a Scaffold gives the app bar no inset of its own).
-    final view = WidgetsBinding.instance.platformDispatcher.implicitView;
-    final top = view == null ? 0.0 : view.padding.top / view.devicePixelRatio;
-    return Size.fromHeight(56 + top);
-  }
+  Size get preferredSize => Size.fromHeight(56 + statusInset);
 
   @override
   Widget build(BuildContext context) {
@@ -312,8 +311,8 @@ class InnerHeader extends StatelessWidget implements PreferredSizeWidget {
       color: c.bgPage,
       child: Container(
         // The bar starts below the status bar (and any camera cut-out).
-        padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
-        height: 56 + MediaQuery.paddingOf(context).top,
+        padding: EdgeInsets.only(top: statusInset),
+        height: 56 + statusInset,
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: c.borderDefault)),
         ),

@@ -6,6 +6,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/logic.dart';
 
+/// When any screen last got a good answer from the server: the time the offline banner shows on every screen (spec 10 rule 7).
+final lastSyncProvider = NotifierProvider<LastSync, DateTime?>(LastSync.new);
+
+class LastSync extends Notifier<DateTime?> {
+  @override
+  DateTime? build() => null;
+
+  void set(DateTime value) => state = value;
+}
+
 /// A screen's data that refreshes on its own while it is open (spec 10 rule 8): one request at a time, only while the app is in the
 /// foreground, one extra refresh when the app comes back, and the last good answer kept through any failure. Not faster than [interval].
 abstract class PollingNotifier<T> extends Notifier<Polled<T>>
@@ -16,6 +26,9 @@ abstract class PollingNotifier<T> extends Notifier<Polled<T>>
 
   /// A cached answer to show before the first fetch finishes, if there is one.
   Polled<T> initial() => Polled<T>();
+
+  /// The server's own time on an answer, which the offline banner shows ("info from ..."); null means the phone's clock.
+  DateTime? serverTimeOf(T value) => null;
 
   /// Called after each good answer (the screens use it to save a snapshot).
   void onSuccess(T value) {}
@@ -55,6 +68,9 @@ abstract class PollingNotifier<T> extends Notifier<Polled<T>>
       final value = await fetch();
       if (_disposed) return;
       state = state.succeeded(value, clock.now());
+      ref
+          .read(lastSyncProvider.notifier)
+          .set(serverTimeOf(value) ?? clock.now());
       onSuccess(value);
     } catch (_) {
       if (!_disposed) state = state.failed(clock.now());

@@ -103,6 +103,13 @@ class FollowedCard extends ConsumerWidget {
     final stations = ref.watch(stationsProvider).value;
     final polled = ref.watch(trainStatusProvider(follow.trainNumber));
     final data = polled.data;
+    // A follow ends when the journey is Completed (rule 10); the card shows "Arrived" for that one last moment.
+    ref.listen(trainStatusProvider(follow.trainNumber), (_, next) {
+      final d = next.data;
+      if (d != null && d.completed) {
+        ref.read(followsProvider.notifier).unfollow(follow.trainNumber);
+      }
+    });
     final link = polled.link(
       hasNetwork: hasNetwork(ref),
       now: clock.now().toUtc(),

@@ -314,7 +314,7 @@ class ResultsScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          if (link != LinkStatus.live && data != null)
+          if (link == LinkStatus.unavailable && data != null)
             LinkBanner(
               text: s.fmt(
                 link == LinkStatus.offline
