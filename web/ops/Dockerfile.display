@@ -1,0 +1,18 @@
+# The station displays as their own service (spec 09 section 15): a static page served by nginx. It talks only to the API, so it keeps
+# running when the controller dashboard is down. Build from web/ops:  docker build -f Dockerfile.display -t smartrail-display .
+FROM node:24-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+# The address the browser uses to reach the API. It is part of the bundle, so change it with --build-arg.
+ARG VITE_API_BASE_URL=http://localhost:8080
+ARG VITE_DISPLAY_POLL_SECONDS=10
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL VITE_DISPLAY_POLL_SECONDS=$VITE_DISPLAY_POLL_SECONDS
+RUN npm run build:display
+
+FROM nginx:1.29-alpine
+COPY nginx.display.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist-display /usr/share/nginx/html
+EXPOSE 80
+HEALTHCHECK --interval=15s --timeout=3s CMD wget -qO- http://127.0.0.1/healthz || exit 1

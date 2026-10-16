@@ -15,5 +15,10 @@ public static class DemoIds
     /// <summary>"Jayasinghe", the demo controller (used by the Keycloak realm; no SmartRail table refers to him yet).</summary>
     public static readonly Guid Controller = new("d0d0d0d0-0000-4000-8000-000000000003");
 
+    /// <summary>Spec 09 section 16: the demo train 8070 that leaves 4 minutes after the API starts. Not reference data, so these are fixed here.</summary>
+    public static readonly Guid SoonService = new("00000004-0000-4000-8000-0000000000a1");
+
+    public static Guid SoonStop(int sequence) => new($"00000005-0000-4000-8000-{0xa00 + sequence:x12}");
+
     public const string AssignedBy = "demo-seed";
 }

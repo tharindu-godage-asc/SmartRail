@@ -23,6 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
+dist-display
+
 # Playwright output
 test-results
 playwright-report

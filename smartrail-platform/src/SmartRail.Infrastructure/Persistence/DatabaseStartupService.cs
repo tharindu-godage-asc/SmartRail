@@ -47,6 +47,10 @@ public sealed class DatabaseStartupService(
         {
             var created = await new DemoSeeder(db, clock).SeedAsync(seeding.Value.DemoOperatorSubject, cancellationToken);
             logger.LogInformation("Demo seed applied (journey {Outcome}).", created ? "created" : "already existed");
+
+            // Spec 09 section 16: a demo train that leaves a few minutes after every start, so a station display always has one soon.
+            var soon = await new DemoSeeder(db, clock).SeedSoonTrainAsync(cancellationToken);
+            logger.LogInformation("Demo train 8070 leaves Veyangoda at {Departure}.", soon);
         }
     }
 

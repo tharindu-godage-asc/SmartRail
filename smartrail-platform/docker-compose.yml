@@ -20,6 +20,8 @@ services:
       Authentication__RequireHttpsMetadata: "false"
       # The controller web app (Vite dev server) may call the API from this origin. Off when unset (the cluster).
       Cors__AllowedOrigins__0: http://localhost:5173
+      # The station displays (the `display` service below) read the public board from this origin.
+      Cors__AllowedOrigins__1: http://localhost:5174
       # Compose only: exposes GET /api/v1/whoami for manual testing.
       Diagnostics__WhoAmI: "true"
     ports: ["8080:8080"]
@@ -30,6 +32,12 @@ services:
       otel-collector: { condition: service_started }
       # Started, not healthy: the API fetches the discovery document on first use, so a slow Keycloak does not block it.
       keycloak: { condition: service_started }
+  # The station displays as their own service (spec 09 section 15): the display-only build of web/ops, served by nginx. It needs only
+  # the API (in the browser, not at start-up), so it keeps running when the controller dashboard is down. http://localhost:5174/display/platform/GPH/1
+  display:
+    build: { context: ../web/ops, dockerfile: Dockerfile.display, args: { VITE_API_BASE_URL: "http://localhost:8080" } }
+    ports: ["5174:80"]
+    restart: unless-stopped
   postgres:
     # PostgreSQL 13 or later is required (gen_random_uuid() is built in from 13).
     image: postgres:17

@@ -27,5 +27,12 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # The station displays are a separate service (spec 09 section 15): their bundle must hold nothing of the sign-in or the dashboard.
+      - run: npm run build:display
+      - name: The display bundle has no sign-in code
+        run: |
+          if grep -rilE "oidc|signin|keycloak" dist-display; then echo "sign-in code found in the display bundle"; exit 1; fi
+      - name: The display image builds
+        run: docker build -f Dockerfile.display -t smartrail-display .
       # Known vulnerable packages (the same idea as the vulnerable-package check of the .NET build).
       - run: npm audit --audit-level=high
