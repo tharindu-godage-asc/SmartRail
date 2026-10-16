@@ -10,6 +10,7 @@ import '../../../core/widgets/widgets.dart';
 import '../../journey/presentation/help_screen.dart';
 import '../../reports/domain/report.dart';
 import '../../reports/presentation/delivery_chip.dart';
+import '../../reports/presentation/report_label.dart';
 import '../domain/auth.dart';
 import 'auth_controller.dart';
 
@@ -261,7 +262,7 @@ class _SessionExpired extends ConsumerWidget {
                                 spacing: 4,
                                 children: [
                                   Text(
-                                    Strings.departedLabel(report.stationName),
+                                    reportLabel(report),
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,

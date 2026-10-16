@@ -301,10 +301,9 @@ public sealed class ReportDepartureTests(PostgresFixture postgres) : JourneyApiT
     }
 
     [Theory]
-    [InlineData("Arrived")]
     [InlineData("departed")]
     [InlineData(null)]
-    public async Task An_event_type_other_than_departed_is_a_422(string? eventType)
+    public async Task An_unknown_or_missing_event_type_is_a_422(string? eventType)
     {
         var response = await Report(Stops[0], Local(8, 28), eventType: eventType);
 

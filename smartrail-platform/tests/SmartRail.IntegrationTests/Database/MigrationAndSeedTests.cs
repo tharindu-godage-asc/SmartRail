@@ -21,7 +21,7 @@ public sealed class MigrationAndSeedTests(PostgresFixture postgres) : IAsyncLife
     public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
-    public async Task Migration_creates_exactly_the_13_core_tables_and_no_others()
+    public async Task Migration_creates_exactly_the_core_tables_and_the_exception_table_and_no_others()
     {
         var tables = await _db.ColumnAsync(
             "select table_name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE'");
@@ -30,6 +30,7 @@ public sealed class MigrationAndSeedTests(PostgresFixture postgres) : IAsyncLife
         [
             "__EFMigrationsHistory", "language", "line", "line_translation", "station", "station_translation", "platform",
             "line_station", "train_service", "service_stop", "journey", "operator_assignment", "journey_stop_state", "train_event",
+            "journey_exception",
         ];
         Assert.Equal(expected.Order(StringComparer.Ordinal), tables.Order(StringComparer.Ordinal));
         Assert.DoesNotContain("controller_assignment", tables);
@@ -37,7 +38,7 @@ public sealed class MigrationAndSeedTests(PostgresFixture postgres) : IAsyncLife
     }
 
     [Fact]
-    public async Task Reference_seed_has_languages_line_stations_platforms_and_the_two_services()
+    public async Task Reference_seed_has_languages_line_stations_platforms_and_the_three_services()
     {
         await using var db = _db.AdminContext();
 
@@ -48,7 +49,7 @@ public sealed class MigrationAndSeedTests(PostgresFixture postgres) : IAsyncLife
         Assert.Equal(10, await db.StationTranslations.CountAsync()); // Sinhala and Tamil for each of the 5 stations
         Assert.Equal(2, await db.LineTranslations.CountAsync());
         Assert.Equal(10, await db.Platforms.CountAsync());           // platforms 1 and 2 at each station
-        Assert.Equal(2, await db.TrainServices.CountAsync());
+        Assert.Equal(3, await db.TrainServices.CountAsync()); // 8058, the 8061 express and the 8075 night train (spec 09 section 16)
 
         // Colombo Fort is the line origin.
         var origin = await db.LineStations.SingleAsync(l => l.Sequence == 1);

@@ -100,6 +100,36 @@ public abstract class JourneyApiTestBase(PostgresFixture postgres) : IAsyncLifet
         return await Client.SendAsync(request);
     }
 
+    /// <summary>A delay report (spec 06, A2). Fields left null are left out of the JSON, so the shape rules can be tested.</summary>
+    protected async Task<HttpResponseMessage> ReportDelay(
+        DateTimeOffset occurredAt,
+        string? reason = "SignalIssue",
+        int? total = 10,
+        bool? unknown = null,
+        Guid? clientEventId = null,
+        string? token = null,
+        Guid? stopId = null,
+        bool noToken = false)
+    {
+        var body = new Dictionary<string, object?>
+        {
+            ["clientEventId"] = clientEventId ?? Guid.NewGuid(),
+            ["eventType"] = "DelayReported",
+            ["occurredAt"] = occurredAt,
+        };
+        if (reason is not null) { body["reason"] = reason; }
+        if (total is not null) { body["totalDelayMinutes"] = total; }
+        if (unknown is not null) { body["delayUnknown"] = unknown; }
+        if (stopId is not null) { body["serviceStopId"] = stopId; }
+
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/journeys/{JourneyId}/events") { Content = JsonContent.Create(body) };
+        if (!noToken)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token ?? OperatorToken);
+        }
+
+        return await Client.SendAsync(request);
+    }
     protected async Task<HttpResponseMessage> Get(string path, string? token = null)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, path);

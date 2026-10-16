@@ -1,0 +1,41 @@
+@import 'tailwindcss';
+@import './styles/tokens.css';
+
+/* Spec 09 section 16: the upcoming trains rise into place when the list changes. Off for people who asked their system for less motion. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-rise {
+  animation: rise 0.6s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise {
+    animation: none;
+  }
+}
+
+@layer base {
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    background: var(--color-page);
+    color: var(--color-ink);
+    line-height: var(--line-height-mobile-latin);
+  }
+
+  /* A visible focus ring on everything that can be tabbed to (NFR-32). */
+  :focus-visible {
+    outline: 3px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+}

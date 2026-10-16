@@ -4,7 +4,7 @@ branch: claude/feature/operator-arrival-delay-reports
 spec: _specs/06-operator-arrival-delay-reports.md
 owner: tharindu
 date: 2026-10-15
-status: draft (not approved, do not build)
+status: ready, approved 2026-10-15 (owner approval given in chat with the recommended answers to Q2, Q3 and Q4). Built as A1 (arrival and Completed) then A2 (delay).
 
 ---
 
@@ -134,24 +134,25 @@ Slice 1 rules R1 (assignment at occurrence time), R2 (idempotency), R3 (time lim
 - Two reports at the same moment: version conflict retried up to 3 times (R11), then 409 `version_conflict`.
 
 ## 9) Acceptance Criteria
-- [ ] AC-E03-03 (1): Arrived at Gampaha 08:40 is recorded with that occurrence time; the status read shows `lastKnownPosition` state Arrived at 08:40.
-- [ ] AC-E03-03 (2): an arrival at Ragama (not designated) is 422 `not_arrival_station`; `GET /operator/journey` shows `isArrivalStation` true only for Gampaha and Colombo Fort.
-- [ ] AC-E03-03 (3): an arrival with an earlier occurrence time that arrives later is accepted and the state equals the in-order result.
-- [ ] AC-E03-03 (4): Arrived at Colombo Fort sets the journey Completed; `statusKey` is `Completed`; a further report is 409.
-- [ ] AC-E03-04 (1): a delay with reason SignalIssue and total 10 is recorded; the status read shows delay 10 and `statusKey` Delayed.
-- [ ] AC-E03-04 (2) and AC-E04-03 (4): with a delay of 10 reported, Gampaha shows 08:40; a total of 10 after a measured delay of 8 gives 10, not 18.
-- [ ] AC-E03-04 (3): no read returns the reason (a test scans the JSON).
-- [ ] AC-E03-04 (5): `delayUnknown: true` gives `delayKnown` false, `statusKey` Delayed and no `primaryEta`; a later measured report clears it.
-- [ ] AC-E03-04 (6): with 8 running, a total of 8 or 5 is 409 `delay_not_greater`, 10 is accepted; after "Unknown", a total equal to the last numeric delay is accepted.
-- [ ] AC-E04-01 (1): a repeat of an arrival and of a delay report returns 200 and stores nothing twice; a different ID for the same stop and time is also 200.
-- [ ] AC-E04-02 (1) (2): times 2 minutes ahead and 9 hours back are 422 for the new types.
-- [ ] AC-E04-03 (2): an arrival at 08:28 against 08:30 gives delay 0 and keeps the departure at 08:31.
-- [ ] A delay report before any departure is accepted, the journey stays Scheduled and `statusKey` is Delayed (R8, R9).
-- [ ] The train lookup does not return a Completed journey as "in progress"; a finished night train does not hide the next day's journey; a running train later than its last estimate is still returned (R11).
-- [ ] The events counter shows `Arrived` and `DelayReported`; `smartrail.journeys.completed` moves; both are visible in Grafana.
+- [x] AC-E03-03 (1): Arrived at Gampaha 08:40 is recorded with that occurrence time; the status read shows `lastKnownPosition` state Arrived at 08:40. **A1: ReportArrivalTests, and on the real stack.**
+- [x] AC-E03-03 (2): an arrival at Ragama (not designated) is 422 `not_arrival_station`; `GET /operator/journey` shows `isArrivalStation` true only for Gampaha and Colombo Fort. **A1: ReportArrivalTests (not_arrival_station at Veyangoda, Ragama and Maradana; isArrivalStation flags).**
+- [x] AC-E03-03 (3): an arrival with an earlier occurrence time that arrives later is accepted and the state equals the in-order result. **A1: ReportArrivalTests (a late arrival gives the in-order state).**
+- [x] AC-E03-03 (4): Arrived at Colombo Fort sets the journey Completed; `statusKey` is `Completed`; a further report is 409. **A1: unit and integration tests, and on the real stack (Arrived Colombo Fort gave Completed).**
+- [x] AC-E03-04 (1): a delay with reason SignalIssue and total 10 is recorded; the status read shows delay 10 and `statusKey` Delayed. **A2: ReportDelayTests (A_delay_with_a_reason_and_a_total...).**
+- [x] AC-E03-04 (2) and AC-E04-03 (4): with a delay of 10 reported, Gampaha shows 08:40; a total of 10 after a measured delay of 8 gives 10, not 18. **A2: ReportDelayTests and DelayRulesTests: Gampaha 08:40, and 10 not 18.**
+- [x] AC-E03-04 (3): no read returns the reason (a test scans the JSON). **A2: ReportDelayTests scans the status, train, line, search, stations, operator journey and the report response.**
+- [x] AC-E03-04 (5): `delayUnknown: true` gives `delayKnown` false, `statusKey` Delayed and no `primaryEta`; a later measured report clears it. **A2: ReportDelayTests: delayKnown false, Delayed, no primaryEta, no estimates; a later measurement or total clears it.**
+- [x] AC-E03-04 (6): with 8 running, a total of 8 or 5 is 409 `delay_not_greater`, 10 is accepted; after "Unknown", a total equal to the last numeric delay is accepted. **A2: ReportDelayTests: 8 and 5 are 409, 10 accepted, after Unknown equal accepted and lower refused.**
+- [x] AC-E04-01 (1): a repeat of an arrival and of a delay report returns 200 and stores nothing twice; a different ID for the same stop and time is also 200. **A1: arrival repeats by id and by content; the delay part is A2.**
+- [x] AC-E04-02 (1) (2): times 2 minutes ahead and 9 hours back are 422 for the new types. **A1: tested for Arrived; DelayReported is A2.**
+- [x] AC-E04-03 (2): an arrival at 08:28 against 08:30 gives delay 0 and keeps the departure at 08:31. **A1: ReportArrivalTests and ArrivalRulesTests.**
+- [x] A delay report before any departure is accepted, the journey stays Scheduled and `statusKey` is Delayed (R8, R9). **A2: ReportDelayTests and ReportDelayBeforeDepartureTests (the passenger search shows it as Delayed).**
+- [x] The train lookup does not return a Completed journey as "in progress"; a finished night train does not hide the next day's journey; a running train later than its last estimate is still returned (R11). **A1: ArrivalRulesTests (JourneySelection) and ReportArrivalTests.**
+- [x] The events counter shows `Arrived` and `DelayReported`; `smartrail.journeys.completed` moves; both are visible in Grafana. **A1: Arrived and smartrail.journeys.completed read in Grafana on the Compose stack; DelayReported counted by outcome too (3 recorded, 2 refused) on the Compose stack after the A2 run, 15 Oct.**
+  - Live check of A2 on the Compose stack, 15 Oct 2026 (fresh database, real clock): a delay before any departure gave Delayed with the journey still Scheduled; after a measured +134 a total of 139 was accepted and a total of 139 again was 409; "unknown" gave delayKnown false, no ETA and no estimates; a later measurement made it known again; a bad shape was 422; no public read contained a reason; the stored events had a jsonb payload and no stop.
 - [ ] `dotnet build -warnaserror` and `dotnet test` pass and CI is green. The slice 1 tests still pass unchanged apart from the renamed handler and the generalised order function.
-- [ ] End to end on the emulator after the app change: arrival, delay and completion from the app appear in `GET /api/v1/trains/8058/status`.
-- [ ] App (after the app change): with +8 running the estimate screen offers +10, +15, +20, +30, +45 and Unknown; with +25 running it offers +30, +45 and Unknown.
+- [ ] End to end on the emulator after the app change: arrival, delay and completion from the app appear in `GET /api/v1/trains/8058/status`. **Partly done: the owner sent delays (a total and Unknown) from the app on the emulator on 15 Oct and they reached the server. Arrival and completion from the app are covered by widget tests and the API by the live check, but have not been tapped through on the emulator yet.**
+- [x] App: with +8 running the estimate screen offers +10, +15, +20, +30, +45, +1 hour and Unknown; with +25 running it offers +30, +45, +1 hour and Unknown; with an hour or more running only Unknown (the buttons stop at 1 hour, owner decision 15 Oct). **Widget tests, and the owner confirmed the buttons and the delivered confirmation on the emulator on 15 Oct.**
 
 ## 10) Test Plan
 ### 10.1 Seed and fixture data
@@ -174,9 +175,9 @@ Happy paths for both types; duplicate by ID and by content; same ID with differe
 ## 12) Open Questions
 Decision owner: tharindu.
 - **Q1 (the freeze): decided 2026-10-15 by the owner, following the recommendation.** Slice A is allowed past the freeze, built as two pull requests: A1 arrival and Completed (can land on 15 Oct), A2 the delay report (the only part after the freeze). Everything else stays frozen. If A2 is not finished by the owner's cut-off, the delay report stays in the Non-Goals and FR-20 stays recorded as partly met.
-- **Q2 (designated stations):** The flag exists and the seed already marks Gampaha. Recommendation: Gampaha plus the final stop by rule, with no data change. The alternative, also flagging Colombo Fort in the seed, needs a data migration for no gain.
-- **Q3 (exceptions):** Recommendation: leave every exception, including the Critical one for a technical fault, to slice B. Here the reason is stored in the payload so slice B can read it.
-- **Q4 (Completed and visibility):** Completed comes in this slice (AC-E03-03 4 asks for it). Recommendation: Completed ends "in progress" but `VisibleAfterEndMinutes` stays 15, not 0 (R11), because 0 would hide a train that runs past its last estimate. This changes D8 and the CLAUDE.md note; do you agree?
+- **Q2 (designated stations): decided 2026-10-15 by the owner, following the recommendation.** The flag exists and the seed already marks Gampaha. Recommendation: Gampaha plus the final stop by rule, with no data change. The alternative, also flagging Colombo Fort in the seed, needs a data migration for no gain.
+- **Q3 (exceptions): decided 2026-10-15 by the owner, following the recommendation.** Recommendation: leave every exception, including the Critical one for a technical fault, to slice B. Here the reason is stored in the payload so slice B can read it.
+- **Q4 (Completed and visibility): decided 2026-10-15 by the owner, following the recommendation.** Completed comes in this slice (AC-E03-03 4 asks for it). Recommendation: Completed ends "in progress" but `VisibleAfterEndMinutes` stays 15, not 0 (R11), because 0 would hide a train that runs past its last estimate. This changes D8 and the CLAUDE.md note; do you agree?
 - **Q5 (EC-16): decided 2026-10-15 by the owner, following the recommendation.** The server refuses a numeric delay that is not greater than the delay in force (409 `delay_not_greater`, R6), because exceptions do not exist yet. Slice B may change this to "accept and flag" (EC-16).
-- **Q6 (options above +20): decided 2026-10-15 by the owner.** The app adds +30 and +45 to the design's +10, +15, +20 and Unknown. The server needs no change (1 to 240). The hi-fi board `Nimal-DelayEstimate` is redrawn to match.
+- **Q6 (options above +20): decided 2026-10-15 by the owner, narrowed the same day after the first emulator run.** The buttons stop at 60, and 60 reads "1 hour": +10, +15, +20, +30, +45, +1 hour and Unknown. Longer delays are not offered as buttons (a delay already above 1 hour leaves only Unknown). The text below is the first decision, kept for the record. The app adds +30 and +45 to the design's +10, +15, +20 and Unknown. The server needs no change (1 to 240). The hi-fi board `Nimal-DelayEstimate` is redrawn to match.
 - **Q7 (Unknown delay): decided 2026-10-15 by the owner, following the recommendation.** An Unknown delay removes the estimated times and the primary ETA and sets `delayKnown` false (R7).

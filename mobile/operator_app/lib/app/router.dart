@@ -50,6 +50,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/delay/estimate',
         builder: (context, state) => const DelayEstimateScreen(),
       ),
+      GoRoute(
+        path: '/delay/sent',
+        builder: (context, state) =>
+            DelaySentScreen(clientEventId: state.extra! as String),
+      ),
     ],
   );
 });

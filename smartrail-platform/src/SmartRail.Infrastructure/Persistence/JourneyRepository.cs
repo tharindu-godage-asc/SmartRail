@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using SmartRail.Application.Features.Events.ReportEvent;
 using SmartRail.Application.Features.Journeys;
 using SmartRail.Domain.Journeys;
 
@@ -31,6 +32,23 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
         return result;
     }
 
+    public async Task<IReadOnlyList<JourneyData>> GetUnfinishedAsync(DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken)
+    {
+        var headers = await Header()
+            .Where(h => h.OperatingDate >= fromDate && h.OperatingDate <= toDate && h.Status != JourneyStatus.Completed)
+            .OrderBy(h => h.TrainNumber)
+            .ToListAsync(cancellationToken);
+
+        // One small group of queries per journey: fine for a few dozen journeys a day (a batch load can replace it if that grows).
+        var result = new List<JourneyData>(headers.Count);
+        foreach (var header in headers)
+        {
+            result.Add(await LoadAsync(header, includeEventsAndAssignments: false, cancellationToken));
+        }
+
+        return result;
+    }
+
     public async Task<JourneyData?> GetAssignedAsync(string operatorUserId, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var assignedJourney = await db.OperatorAssignments.AsNoTracking()
@@ -42,7 +60,7 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
         return assignedJourney is { } id ? await GetAsync(id, cancellationToken) : null;
     }
 
-    public async Task<SaveOutcome> SaveDepartureAsync(DepartureChange change, CancellationToken cancellationToken)
+    public async Task<SaveOutcome> SaveReportAsync(ReportChange change, CancellationToken cancellationToken)
     {
         var journey = await db.Journeys.SingleAsync(j => j.Id == change.JourneyId, cancellationToken);
         if (journey.Version != change.ExpectedVersion)
@@ -60,14 +78,35 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
             Id = change.EventId,
             JourneyId = change.JourneyId,
             ClientEventId = change.ClientEventId,
-            EventType = EventType.Departed,
+            EventType = change.Kind switch
+            {
+                ReportKind.Arrived => EventType.Arrived,
+                ReportKind.DelayReported => EventType.DelayReported,
+                _ => EventType.Departed,
+            },
             ServiceStopId = change.ServiceStopId,
             OccurredAt = change.OccurredAt,
             ReceivedAt = change.ReceivedAt,
             Source = EventSource.Operator,
             CreatedBy = change.CreatedBy,
+            Payload = change.Payload,
             JourneyVersionAfter = journey.Version,
         });
+
+        // The exception is saved with the event in the same SaveChanges, so either both exist or neither does (spec 07 R5).
+        if (change.Raised is { } raised)
+        {
+            db.JourneyExceptions.Add(new JourneyException
+            {
+                Id = Guid.CreateVersion7(change.ReceivedAt),
+                JourneyId = change.JourneyId,
+                RelatedEventId = change.EventId,
+                StationId = raised.StationId,
+                Type = raised.Exception.Type,
+                Severity = raised.Exception.Severity,
+                CreatedAt = change.ReceivedAt,
+            });
+        }
 
         var rows = await db.JourneyStopStates.Where(s => s.JourneyId == change.JourneyId).ToDictionaryAsync(s => s.ServiceStopId, cancellationToken);
         foreach (var progress in change.NewStopStates)
@@ -81,6 +120,7 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
             row.Confirmation = progress.Confirmation;
             row.EstimatedArrival = progress.EstimatedArrival;
             row.EstimatedDeparture = progress.EstimatedDeparture;
+            row.ActualArrival = progress.ActualArrival;
             row.ActualDeparture = progress.ActualDeparture;
         }
 
@@ -136,36 +176,58 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
             join station in db.Stations.AsNoTracking() on stop.StationId equals station.Id
             where stop.ServiceId == header.ServiceId
             orderby stop.Sequence
-            select new { stop.Id, stop.Sequence, station.Code, station.Name, stop.ScheduledArrival, stop.ScheduledDeparture })
+            select new { stop.Id, stop.Sequence, station.Code, station.Name, StationId = station.Id, stop.ScheduledArrival, stop.ScheduledDeparture, stop.ArrivalReportRequired })
             .ToListAsync(cancellationToken);
         var lastSequence = rawStops.Count == 0 ? 0 : rawStops.Max(s => s.Sequence);
         var stops = rawStops
-            .Select(s => new StopInfo(s.Id, s.Sequence, s.Code, s.Name, s.ScheduledArrival, s.ScheduledDeparture, s.Sequence == lastSequence))
+            .Select(s => new StopInfo(
+                s.Id, s.Sequence, s.Code, s.Name, s.ScheduledArrival, s.ScheduledDeparture, s.Sequence == lastSequence, s.ArrivalReportRequired, s.StationId))
             .ToList();
 
         var states = await db.JourneyStopStates.AsNoTracking()
             .Where(s => s.JourneyId == header.Id)
-            .Select(s => new StopStateInfo(s.ServiceStopId, s.Confirmation, s.EstimatedArrival, s.EstimatedDeparture, s.ActualDeparture))
+            .Select(s => new StopStateInfo(
+                s.ServiceStopId, s.Confirmation, s.EstimatedArrival, s.EstimatedDeparture, s.ActualDeparture, s.ActualArrival,
+                db.Platforms.Where(p => p.Id == s.PlatformId).Select(p => p.Code).FirstOrDefault()))
             .ToListAsync(cancellationToken);
 
-        IReadOnlyList<RecordedEvent> events = [];
+        // Events are always loaded: whether a delay is known is worked out from them (no extra column), and the public status needs it.
+        var stored = await db.TrainEvents.AsNoTracking()
+            .Where(e => e.JourneyId == header.Id
+                && (e.EventType == EventType.Departed || e.EventType == EventType.Arrived || e.EventType == EventType.DelayReported))
+            .OrderBy(e => e.OccurredAt)
+            .Select(e => new { e.Id, e.ClientEventId, e.ServiceStopId, e.OccurredAt, e.JourneyVersionAfter, e.EventType, e.Payload, e.ReceivedAt })
+            .ToListAsync(cancellationToken);
+        IReadOnlyList<RecordedEvent> events = stored
+            .Where(e => e.EventType == EventType.DelayReported || e.ServiceStopId is not null)
+            .Select(e => new RecordedEvent(
+                e.Id, e.ClientEventId, e.ServiceStopId, e.OccurredAt, e.JourneyVersionAfter,
+                e.EventType switch
+                {
+                    EventType.Arrived => ReportKind.Arrived,
+                    EventType.DelayReported => ReportKind.DelayReported,
+                    _ => ReportKind.Departed,
+                },
+                e.EventType == EventType.DelayReported ? EventRules.FromJson(e.Payload) : null,
+                e.ReceivedAt))
+            .ToList();
+
         IReadOnlyList<AssignmentInfo> assignments = [];
         if (includeEventsAndAssignments)
         {
-            events = await db.TrainEvents.AsNoTracking()
-                .Where(e => e.JourneyId == header.Id && e.EventType == EventType.Departed && e.ServiceStopId != null)
-                .OrderBy(e => e.OccurredAt)
-                .Select(e => new RecordedEvent(e.Id, e.ClientEventId, e.ServiceStopId!.Value, e.OccurredAt, e.JourneyVersionAfter))
-                .ToListAsync(cancellationToken);
-
             assignments = await db.OperatorAssignments.AsNoTracking()
                 .Where(a => a.JourneyId == header.Id)
                 .Select(a => new AssignmentInfo(a.OperatorUserId, a.ValidFrom, a.ValidTo))
                 .ToListAsync(cancellationToken);
         }
 
-        return new JourneyData(
+        var data = new JourneyData(
             header.Id, header.TrainNumber, header.OperatingDate, header.Status, header.Version, header.CurrentDelayMinutes,
             stops, states, events, assignments);
+
+        // Is the length of the delay known? Only an operator report of "unknown" makes it unknown (spec 06 R7).
+        var stopEvents = events.Where(e => e.Kind != ReportKind.DelayReported).Select(e => new ReportedStopEvent(e.ServiceStopId!.Value, e.Kind, e.OccurredAt)).ToList();
+        var delays = events.Where(e => e.Kind == ReportKind.DelayReported).Select(e => new ReportedDelay(e.OccurredAt, e.Delay!.TotalDelayMinutes, e.Delay.DelayUnknown)).ToList();
+        return stops.Count == 0 ? data : data with { DelayKnown = JourneyProgress.DelayInForce(data.Schedule(), stopEvents, delays).Known };
     }
 }

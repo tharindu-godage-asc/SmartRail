@@ -30,6 +30,16 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<ReportKind, int> kind =
+      GeneratedColumn<int>(
+        'kind',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      ).withConverter<ReportKind>($ReportsTable.$converterkind);
   static const VerificationMeta _serviceStopIdMeta = const VerificationMeta(
     'serviceStopId',
   );
@@ -37,9 +47,9 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
   late final GeneratedColumn<String> serviceStopId = GeneratedColumn<String>(
     'service_stop_id',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _stationNameMeta = const VerificationMeta(
     'stationName',
@@ -50,7 +60,30 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _delayReasonMeta = const VerificationMeta(
+    'delayReason',
+  );
+  @override
+  late final GeneratedColumn<String> delayReason = GeneratedColumn<String>(
+    'delay_reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _totalDelayMinutesMeta = const VerificationMeta(
+    'totalDelayMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> totalDelayMinutes = GeneratedColumn<int>(
+    'total_delay_minutes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _occurredAtMeta = const VerificationMeta(
     'occurredAt',
@@ -110,8 +143,11 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
   List<GeneratedColumn> get $columns => [
     clientEventId,
     journeyId,
+    kind,
     serviceStopId,
     stationName,
+    delayReason,
+    totalDelayMinutes,
     occurredAt,
     state,
     attempts,
@@ -157,8 +193,6 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
           _serviceStopIdMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_serviceStopIdMeta);
     }
     if (data.containsKey('station_name')) {
       context.handle(
@@ -168,8 +202,24 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
           _stationNameMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_stationNameMeta);
+    }
+    if (data.containsKey('delay_reason')) {
+      context.handle(
+        _delayReasonMeta,
+        delayReason.isAcceptableOrUnknown(
+          data['delay_reason']!,
+          _delayReasonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_delay_minutes')) {
+      context.handle(
+        _totalDelayMinutesMeta,
+        totalDelayMinutes.isAcceptableOrUnknown(
+          data['total_delay_minutes']!,
+          _totalDelayMinutesMeta,
+        ),
+      );
     }
     if (data.containsKey('occurred_at')) {
       context.handle(
@@ -214,14 +264,28 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
         DriftSqlType.string,
         data['${effectivePrefix}journey_id'],
       )!,
+      kind: $ReportsTable.$converterkind.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}kind'],
+        )!,
+      ),
       serviceStopId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}service_stop_id'],
-      )!,
+      ),
       stationName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}station_name'],
       )!,
+      delayReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}delay_reason'],
+      ),
+      totalDelayMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_delay_minutes'],
+      ),
       occurredAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}occurred_at'],
@@ -252,6 +316,8 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
     return $ReportsTable(attachedDatabase, alias);
   }
 
+  static JsonTypeConverter2<ReportKind, int, int> $converterkind =
+      const EnumIndexConverter<ReportKind>(ReportKind.values);
   static JsonTypeConverter2<ReportState, int, int> $converterstate =
       const EnumIndexConverter<ReportState>(ReportState.values);
 }
@@ -259,8 +325,17 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
 class Report extends DataClass implements Insertable<Report> {
   final String clientEventId;
   final String journeyId;
-  final String serviceStopId;
+
+  /// What was reported. Version 2 (spec 06): arrivals and delays join departures.
+  final ReportKind kind;
+
+  /// Null for a delay report, which belongs to the journey and not to a stop.
+  final String? serviceStopId;
   final String stationName;
+
+  /// A delay report only: the reason code, and the total in minutes (null means "unknown").
+  final String? delayReason;
+  final int? totalDelayMinutes;
   final DateTime occurredAt;
   final ReportState state;
   final int attempts;
@@ -269,8 +344,11 @@ class Report extends DataClass implements Insertable<Report> {
   const Report({
     required this.clientEventId,
     required this.journeyId,
-    required this.serviceStopId,
+    required this.kind,
+    this.serviceStopId,
     required this.stationName,
+    this.delayReason,
+    this.totalDelayMinutes,
     required this.occurredAt,
     required this.state,
     required this.attempts,
@@ -282,8 +360,19 @@ class Report extends DataClass implements Insertable<Report> {
     final map = <String, Expression>{};
     map['client_event_id'] = Variable<String>(clientEventId);
     map['journey_id'] = Variable<String>(journeyId);
-    map['service_stop_id'] = Variable<String>(serviceStopId);
+    {
+      map['kind'] = Variable<int>($ReportsTable.$converterkind.toSql(kind));
+    }
+    if (!nullToAbsent || serviceStopId != null) {
+      map['service_stop_id'] = Variable<String>(serviceStopId);
+    }
     map['station_name'] = Variable<String>(stationName);
+    if (!nullToAbsent || delayReason != null) {
+      map['delay_reason'] = Variable<String>(delayReason);
+    }
+    if (!nullToAbsent || totalDelayMinutes != null) {
+      map['total_delay_minutes'] = Variable<int>(totalDelayMinutes);
+    }
     map['occurred_at'] = Variable<DateTime>(occurredAt);
     {
       map['state'] = Variable<int>($ReportsTable.$converterstate.toSql(state));
@@ -302,8 +391,17 @@ class Report extends DataClass implements Insertable<Report> {
     return ReportsCompanion(
       clientEventId: Value(clientEventId),
       journeyId: Value(journeyId),
-      serviceStopId: Value(serviceStopId),
+      kind: Value(kind),
+      serviceStopId: serviceStopId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serviceStopId),
       stationName: Value(stationName),
+      delayReason: delayReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(delayReason),
+      totalDelayMinutes: totalDelayMinutes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(totalDelayMinutes),
       occurredAt: Value(occurredAt),
       state: Value(state),
       attempts: Value(attempts),
@@ -324,8 +422,13 @@ class Report extends DataClass implements Insertable<Report> {
     return Report(
       clientEventId: serializer.fromJson<String>(json['clientEventId']),
       journeyId: serializer.fromJson<String>(json['journeyId']),
-      serviceStopId: serializer.fromJson<String>(json['serviceStopId']),
+      kind: $ReportsTable.$converterkind.fromJson(
+        serializer.fromJson<int>(json['kind']),
+      ),
+      serviceStopId: serializer.fromJson<String?>(json['serviceStopId']),
       stationName: serializer.fromJson<String>(json['stationName']),
+      delayReason: serializer.fromJson<String?>(json['delayReason']),
+      totalDelayMinutes: serializer.fromJson<int?>(json['totalDelayMinutes']),
       occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
       state: $ReportsTable.$converterstate.fromJson(
         serializer.fromJson<int>(json['state']),
@@ -341,8 +444,11 @@ class Report extends DataClass implements Insertable<Report> {
     return <String, dynamic>{
       'clientEventId': serializer.toJson<String>(clientEventId),
       'journeyId': serializer.toJson<String>(journeyId),
-      'serviceStopId': serializer.toJson<String>(serviceStopId),
+      'kind': serializer.toJson<int>($ReportsTable.$converterkind.toJson(kind)),
+      'serviceStopId': serializer.toJson<String?>(serviceStopId),
       'stationName': serializer.toJson<String>(stationName),
+      'delayReason': serializer.toJson<String?>(delayReason),
+      'totalDelayMinutes': serializer.toJson<int?>(totalDelayMinutes),
       'occurredAt': serializer.toJson<DateTime>(occurredAt),
       'state': serializer.toJson<int>(
         $ReportsTable.$converterstate.toJson(state),
@@ -356,8 +462,11 @@ class Report extends DataClass implements Insertable<Report> {
   Report copyWith({
     String? clientEventId,
     String? journeyId,
-    String? serviceStopId,
+    ReportKind? kind,
+    Value<String?> serviceStopId = const Value.absent(),
     String? stationName,
+    Value<String?> delayReason = const Value.absent(),
+    Value<int?> totalDelayMinutes = const Value.absent(),
     DateTime? occurredAt,
     ReportState? state,
     int? attempts,
@@ -366,8 +475,15 @@ class Report extends DataClass implements Insertable<Report> {
   }) => Report(
     clientEventId: clientEventId ?? this.clientEventId,
     journeyId: journeyId ?? this.journeyId,
-    serviceStopId: serviceStopId ?? this.serviceStopId,
+    kind: kind ?? this.kind,
+    serviceStopId: serviceStopId.present
+        ? serviceStopId.value
+        : this.serviceStopId,
     stationName: stationName ?? this.stationName,
+    delayReason: delayReason.present ? delayReason.value : this.delayReason,
+    totalDelayMinutes: totalDelayMinutes.present
+        ? totalDelayMinutes.value
+        : this.totalDelayMinutes,
     occurredAt: occurredAt ?? this.occurredAt,
     state: state ?? this.state,
     attempts: attempts ?? this.attempts,
@@ -380,12 +496,19 @@ class Report extends DataClass implements Insertable<Report> {
           ? data.clientEventId.value
           : this.clientEventId,
       journeyId: data.journeyId.present ? data.journeyId.value : this.journeyId,
+      kind: data.kind.present ? data.kind.value : this.kind,
       serviceStopId: data.serviceStopId.present
           ? data.serviceStopId.value
           : this.serviceStopId,
       stationName: data.stationName.present
           ? data.stationName.value
           : this.stationName,
+      delayReason: data.delayReason.present
+          ? data.delayReason.value
+          : this.delayReason,
+      totalDelayMinutes: data.totalDelayMinutes.present
+          ? data.totalDelayMinutes.value
+          : this.totalDelayMinutes,
       occurredAt: data.occurredAt.present
           ? data.occurredAt.value
           : this.occurredAt,
@@ -403,8 +526,11 @@ class Report extends DataClass implements Insertable<Report> {
     return (StringBuffer('Report(')
           ..write('clientEventId: $clientEventId, ')
           ..write('journeyId: $journeyId, ')
+          ..write('kind: $kind, ')
           ..write('serviceStopId: $serviceStopId, ')
           ..write('stationName: $stationName, ')
+          ..write('delayReason: $delayReason, ')
+          ..write('totalDelayMinutes: $totalDelayMinutes, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('state: $state, ')
           ..write('attempts: $attempts, ')
@@ -418,8 +544,11 @@ class Report extends DataClass implements Insertable<Report> {
   int get hashCode => Object.hash(
     clientEventId,
     journeyId,
+    kind,
     serviceStopId,
     stationName,
+    delayReason,
+    totalDelayMinutes,
     occurredAt,
     state,
     attempts,
@@ -432,8 +561,11 @@ class Report extends DataClass implements Insertable<Report> {
       (other is Report &&
           other.clientEventId == this.clientEventId &&
           other.journeyId == this.journeyId &&
+          other.kind == this.kind &&
           other.serviceStopId == this.serviceStopId &&
           other.stationName == this.stationName &&
+          other.delayReason == this.delayReason &&
+          other.totalDelayMinutes == this.totalDelayMinutes &&
           other.occurredAt == this.occurredAt &&
           other.state == this.state &&
           other.attempts == this.attempts &&
@@ -444,8 +576,11 @@ class Report extends DataClass implements Insertable<Report> {
 class ReportsCompanion extends UpdateCompanion<Report> {
   final Value<String> clientEventId;
   final Value<String> journeyId;
-  final Value<String> serviceStopId;
+  final Value<ReportKind> kind;
+  final Value<String?> serviceStopId;
   final Value<String> stationName;
+  final Value<String?> delayReason;
+  final Value<int?> totalDelayMinutes;
   final Value<DateTime> occurredAt;
   final Value<ReportState> state;
   final Value<int> attempts;
@@ -455,8 +590,11 @@ class ReportsCompanion extends UpdateCompanion<Report> {
   const ReportsCompanion({
     this.clientEventId = const Value.absent(),
     this.journeyId = const Value.absent(),
+    this.kind = const Value.absent(),
     this.serviceStopId = const Value.absent(),
     this.stationName = const Value.absent(),
+    this.delayReason = const Value.absent(),
+    this.totalDelayMinutes = const Value.absent(),
     this.occurredAt = const Value.absent(),
     this.state = const Value.absent(),
     this.attempts = const Value.absent(),
@@ -467,8 +605,11 @@ class ReportsCompanion extends UpdateCompanion<Report> {
   ReportsCompanion.insert({
     required String clientEventId,
     required String journeyId,
-    required String serviceStopId,
-    required String stationName,
+    this.kind = const Value.absent(),
+    this.serviceStopId = const Value.absent(),
+    this.stationName = const Value.absent(),
+    this.delayReason = const Value.absent(),
+    this.totalDelayMinutes = const Value.absent(),
     required DateTime occurredAt,
     required ReportState state,
     this.attempts = const Value.absent(),
@@ -477,15 +618,16 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     this.rowid = const Value.absent(),
   }) : clientEventId = Value(clientEventId),
        journeyId = Value(journeyId),
-       serviceStopId = Value(serviceStopId),
-       stationName = Value(stationName),
        occurredAt = Value(occurredAt),
        state = Value(state);
   static Insertable<Report> custom({
     Expression<String>? clientEventId,
     Expression<String>? journeyId,
+    Expression<int>? kind,
     Expression<String>? serviceStopId,
     Expression<String>? stationName,
+    Expression<String>? delayReason,
+    Expression<int>? totalDelayMinutes,
     Expression<DateTime>? occurredAt,
     Expression<int>? state,
     Expression<int>? attempts,
@@ -496,8 +638,11 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     return RawValuesInsertable({
       if (clientEventId != null) 'client_event_id': clientEventId,
       if (journeyId != null) 'journey_id': journeyId,
+      if (kind != null) 'kind': kind,
       if (serviceStopId != null) 'service_stop_id': serviceStopId,
       if (stationName != null) 'station_name': stationName,
+      if (delayReason != null) 'delay_reason': delayReason,
+      if (totalDelayMinutes != null) 'total_delay_minutes': totalDelayMinutes,
       if (occurredAt != null) 'occurred_at': occurredAt,
       if (state != null) 'state': state,
       if (attempts != null) 'attempts': attempts,
@@ -510,8 +655,11 @@ class ReportsCompanion extends UpdateCompanion<Report> {
   ReportsCompanion copyWith({
     Value<String>? clientEventId,
     Value<String>? journeyId,
-    Value<String>? serviceStopId,
+    Value<ReportKind>? kind,
+    Value<String?>? serviceStopId,
     Value<String>? stationName,
+    Value<String?>? delayReason,
+    Value<int?>? totalDelayMinutes,
     Value<DateTime>? occurredAt,
     Value<ReportState>? state,
     Value<int>? attempts,
@@ -522,8 +670,11 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     return ReportsCompanion(
       clientEventId: clientEventId ?? this.clientEventId,
       journeyId: journeyId ?? this.journeyId,
+      kind: kind ?? this.kind,
       serviceStopId: serviceStopId ?? this.serviceStopId,
       stationName: stationName ?? this.stationName,
+      delayReason: delayReason ?? this.delayReason,
+      totalDelayMinutes: totalDelayMinutes ?? this.totalDelayMinutes,
       occurredAt: occurredAt ?? this.occurredAt,
       state: state ?? this.state,
       attempts: attempts ?? this.attempts,
@@ -542,11 +693,22 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     if (journeyId.present) {
       map['journey_id'] = Variable<String>(journeyId.value);
     }
+    if (kind.present) {
+      map['kind'] = Variable<int>(
+        $ReportsTable.$converterkind.toSql(kind.value),
+      );
+    }
     if (serviceStopId.present) {
       map['service_stop_id'] = Variable<String>(serviceStopId.value);
     }
     if (stationName.present) {
       map['station_name'] = Variable<String>(stationName.value);
+    }
+    if (delayReason.present) {
+      map['delay_reason'] = Variable<String>(delayReason.value);
+    }
+    if (totalDelayMinutes.present) {
+      map['total_delay_minutes'] = Variable<int>(totalDelayMinutes.value);
     }
     if (occurredAt.present) {
       map['occurred_at'] = Variable<DateTime>(occurredAt.value);
@@ -576,8 +738,11 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     return (StringBuffer('ReportsCompanion(')
           ..write('clientEventId: $clientEventId, ')
           ..write('journeyId: $journeyId, ')
+          ..write('kind: $kind, ')
           ..write('serviceStopId: $serviceStopId, ')
           ..write('stationName: $stationName, ')
+          ..write('delayReason: $delayReason, ')
+          ..write('totalDelayMinutes: $totalDelayMinutes, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('state: $state, ')
           ..write('attempts: $attempts, ')
@@ -810,8 +975,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 typedef $$ReportsTableCreateCompanionBuilder = ReportsCompanion Function({
   required String clientEventId,
   required String journeyId,
-  required String serviceStopId,
-  required String stationName,
+  Value<ReportKind> kind,
+  Value<String?> serviceStopId,
+  Value<String> stationName,
+  Value<String?> delayReason,
+  Value<int?> totalDelayMinutes,
   required DateTime occurredAt,
   required ReportState state,
   Value<int> attempts,
@@ -822,8 +990,11 @@ typedef $$ReportsTableCreateCompanionBuilder = ReportsCompanion Function({
 typedef $$ReportsTableUpdateCompanionBuilder = ReportsCompanion Function({
   Value<String> clientEventId,
   Value<String> journeyId,
-  Value<String> serviceStopId,
+  Value<ReportKind> kind,
+  Value<String?> serviceStopId,
   Value<String> stationName,
+  Value<String?> delayReason,
+  Value<int?> totalDelayMinutes,
   Value<DateTime> occurredAt,
   Value<ReportState> state,
   Value<int> attempts,
@@ -851,6 +1022,12 @@ class $$ReportsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnWithTypeConverterFilters<ReportKind, ReportKind, int> get kind =>
+      $composableBuilder(
+        column: $table.kind,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
   ColumnFilters<String> get serviceStopId => $composableBuilder(
     column: $table.serviceStopId,
     builder: (column) => ColumnFilters(column),
@@ -858,6 +1035,16 @@ class $$ReportsTableFilterComposer
 
   ColumnFilters<String> get stationName => $composableBuilder(
     column: $table.stationName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get delayReason => $composableBuilder(
+    column: $table.delayReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalDelayMinutes => $composableBuilder(
+    column: $table.totalDelayMinutes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -907,6 +1094,11 @@ class $$ReportsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get serviceStopId => $composableBuilder(
     column: $table.serviceStopId,
     builder: (column) => ColumnOrderings(column),
@@ -914,6 +1106,16 @@ class $$ReportsTableOrderingComposer
 
   ColumnOrderings<String> get stationName => $composableBuilder(
     column: $table.stationName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get delayReason => $composableBuilder(
+    column: $table.delayReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalDelayMinutes => $composableBuilder(
+    column: $table.totalDelayMinutes,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -960,6 +1162,9 @@ class $$ReportsTableAnnotationComposer
   GeneratedColumn<String> get journeyId =>
       $composableBuilder(column: $table.journeyId, builder: (column) => column);
 
+  GeneratedColumnWithTypeConverter<ReportKind, int> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
   GeneratedColumn<String> get serviceStopId => $composableBuilder(
     column: $table.serviceStopId,
     builder: (column) => column,
@@ -967,6 +1172,16 @@ class $$ReportsTableAnnotationComposer
 
   GeneratedColumn<String> get stationName => $composableBuilder(
     column: $table.stationName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get delayReason => $composableBuilder(
+    column: $table.delayReason,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalDelayMinutes => $composableBuilder(
+    column: $table.totalDelayMinutes,
     builder: (column) => column,
   );
 
@@ -1020,8 +1235,11 @@ class $$ReportsTableTableManager
               ({
                 Value<String> clientEventId = const Value.absent(),
                 Value<String> journeyId = const Value.absent(),
-                Value<String> serviceStopId = const Value.absent(),
+                Value<ReportKind> kind = const Value.absent(),
+                Value<String?> serviceStopId = const Value.absent(),
                 Value<String> stationName = const Value.absent(),
+                Value<String?> delayReason = const Value.absent(),
+                Value<int?> totalDelayMinutes = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
                 Value<ReportState> state = const Value.absent(),
                 Value<int> attempts = const Value.absent(),
@@ -1031,8 +1249,11 @@ class $$ReportsTableTableManager
               }) => ReportsCompanion(
                 clientEventId: clientEventId,
                 journeyId: journeyId,
+                kind: kind,
                 serviceStopId: serviceStopId,
                 stationName: stationName,
+                delayReason: delayReason,
+                totalDelayMinutes: totalDelayMinutes,
                 occurredAt: occurredAt,
                 state: state,
                 attempts: attempts,
@@ -1044,8 +1265,11 @@ class $$ReportsTableTableManager
               ({
                 required String clientEventId,
                 required String journeyId,
-                required String serviceStopId,
-                required String stationName,
+                Value<ReportKind> kind = const Value.absent(),
+                Value<String?> serviceStopId = const Value.absent(),
+                Value<String> stationName = const Value.absent(),
+                Value<String?> delayReason = const Value.absent(),
+                Value<int?> totalDelayMinutes = const Value.absent(),
                 required DateTime occurredAt,
                 required ReportState state,
                 Value<int> attempts = const Value.absent(),
@@ -1055,8 +1279,11 @@ class $$ReportsTableTableManager
               }) => ReportsCompanion.insert(
                 clientEventId: clientEventId,
                 journeyId: journeyId,
+                kind: kind,
                 serviceStopId: serviceStopId,
                 stationName: stationName,
+                delayReason: delayReason,
+                totalDelayMinutes: totalDelayMinutes,
                 occurredAt: occurredAt,
                 state: state,
                 attempts: attempts,

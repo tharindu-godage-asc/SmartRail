@@ -19,18 +19,23 @@ public static class ServiceCalendar
     };
 }
 
-/// <summary>A stop of a journey and whether anything was recorded for it (Pending means nothing).</summary>
-public sealed record StopMark(int Sequence, StopConfirmation Confirmation);
+/// <summary>
+/// A stop of a journey and whether anything was recorded for it (Pending means nothing). <paramref name="Left"/> is true when
+/// the train's departure from the stop was reported; a stop with only an arrival is Reported but not left.
+/// </summary>
+public sealed record StopMark(int Sequence, StopConfirmation Confirmation, bool Left = true);
 
 public static class StopPassed
 {
     /// <summary>
-    /// R4.1: the train has already left the stop when that stop, or any later stop, has a report or was inferred.
-    /// A report is a departure, so a Reported stop has been left; an Inferred stop was skipped, which only happens
-    /// when a later stop was reported.
+    /// R4.1: the train has already left a stop when a LATER stop has any report or was inferred (it cannot be further on
+    /// without having left), or when this stop itself was inferred (skipped) or its departure was reported. A stop with
+    /// only an arrival report has not been left yet.
     /// </summary>
     public static bool HasDeparted(IEnumerable<StopMark> stops, int stopSequence) =>
-        stops.Any(s => s.Sequence >= stopSequence && s.Confirmation != StopConfirmation.Pending);
+        stops.Any(s => s.Confirmation != StopConfirmation.Pending
+            && (s.Sequence > stopSequence
+                || (s.Sequence == stopSequence && (s.Confirmation == StopConfirmation.Inferred || s.Left))));
 }
 
 /// <summary>R12: how an <c>If-None-Match</c> header is compared with the current entity tag.</summary>

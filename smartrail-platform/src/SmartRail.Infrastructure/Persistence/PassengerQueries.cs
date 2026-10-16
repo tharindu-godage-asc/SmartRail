@@ -92,11 +92,27 @@ public sealed class PassengerQueries(SmartrailDbContext db) : IPassengerQueries
         return journeys.Select(j => new JourneyRecord(
             j.Id, j.ServiceId, j.OperatingDate, j.Status, j.Version, j.CurrentDelayMinutes,
             states.Where(s => s.JourneyId == j.Id)
-                .Select(s => new StopStateInfo(s.ServiceStopId, s.Confirmation, s.EstimatedArrival, s.EstimatedDeparture, s.ActualDeparture))
+                .Select(s => new StopStateInfo(s.ServiceStopId, s.Confirmation, s.EstimatedArrival, s.EstimatedDeparture, s.ActualDeparture, s.ActualArrival))
                 .ToList(),
             lastReceived.TryGetValue(j.Id, out var at) ? at : null))
             .ToList();
     }
+
+    public async Task<IReadOnlyList<ServiceRecord>> GetServicesAtAsync(string stationCode, CancellationToken cancellationToken)
+    {
+        var stations = await db.Stations.AsNoTracking().ToDictionaryAsync(s => s.Id, s => s.Code, cancellationToken);
+        var stationId = stations.FirstOrDefault(s => s.Value == stationCode).Key;
+        var serviceIds = await db.ServiceStops.AsNoTracking().Where(s => s.StationId == stationId).Select(s => s.ServiceId).Distinct().ToListAsync(cancellationToken);
+
+        return await LoadServicesAsync(db.TrainServices.AsNoTracking().Where(s => serviceIds.Contains(s.Id)), stations, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<string>> GetPlatformCodesAsync(string stationCode, CancellationToken cancellationToken) =>
+        await (from platform in db.Platforms.AsNoTracking()
+               join station in db.Stations.AsNoTracking() on platform.StationId equals station.Id
+               where station.Code == stationCode
+               orderby platform.Code
+               select platform.Code).ToListAsync(cancellationToken);
 
     private async Task<IReadOnlyList<ServiceRecord>> LoadServicesAsync(
         IQueryable<Domain.Reference.TrainService> services, Dictionary<Guid, string> stationCodes, CancellationToken cancellationToken)
@@ -110,11 +126,14 @@ public sealed class PassengerQueries(SmartrailDbContext db) : IPassengerQueries
         var ids = list.Select(s => s.Id).ToList();
         var stops = await db.ServiceStops.AsNoTracking().Where(s => ids.Contains(s.ServiceId)).ToListAsync(cancellationToken);
         var lineCodes = await db.Lines.AsNoTracking().ToDictionaryAsync(l => l.Id, l => l.Code, cancellationToken);
+        var platformCodes = await db.Platforms.AsNoTracking().ToDictionaryAsync(p => p.Id, p => p.Code, cancellationToken);
 
         return list.Select(s => new ServiceRecord(
             s.Id, s.TrainNumber, lineCodes[s.LineId], s.ServiceType.ToString(), s.RunsOn,
             stops.Where(p => p.ServiceId == s.Id).OrderBy(p => p.Sequence)
-                .Select(p => new ServiceStopRecord(p.Id, p.Sequence, stationCodes[p.StationId], p.ScheduledArrival, p.ScheduledDeparture))
+                .Select(p => new ServiceStopRecord(
+                    p.Id, p.Sequence, stationCodes[p.StationId], p.ScheduledArrival, p.ScheduledDeparture,
+                    p.PlannedPlatformId is { } platformId && platformCodes.TryGetValue(platformId, out var code) ? code : null))
                 .ToList()))
             .ToList();
     }

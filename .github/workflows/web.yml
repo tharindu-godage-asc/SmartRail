@@ -1,0 +1,38 @@
+name: web
+# Controller web app (React): token check, lint, type-check, unit tests and a production build whenever it changes, or when the shared
+# token file changes. The Playwright test runs by hand against Docker Compose, not here (same position as scripts/smoke-auth.sh).
+# Spec: _specs/08-controller-web.md.
+on:
+  push:
+    branches: [main, develop, dev]
+    paths: ["web/ops/**", "mobile/operator_app/smartrail-tokens.json", ".github/workflows/web.yml"]
+  pull_request:
+    paths: ["web/ops/**", "mobile/operator_app/smartrail-tokens.json", ".github/workflows/web.yml"]
+permissions:
+  contents: read
+jobs:
+  ops-web:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: web/ops } }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm, cache-dependency-path: web/ops/package-lock.json }
+      - run: npm ci
+      # The CSS tokens are generated from the one token file the operator app also uses. This fails if someone changed
+      # smartrail-tokens.json and forgot to regenerate.
+      - run: npm run tokens
+      - run: git diff --exit-code -- src/styles/tokens.css
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      # The station displays are a separate service (spec 09 section 15): their bundle must hold nothing of the sign-in or the dashboard.
+      - run: npm run build:display
+      - name: The display bundle has no sign-in code
+        run: |
+          if grep -rilE "oidc|signin|keycloak" dist-display; then echo "sign-in code found in the display bundle"; exit 1; fi
+      - name: The display image builds
+        run: docker build -f Dockerfile.display -t smartrail-display .
+      # Known vulnerable packages (the same idea as the vulnerable-package check of the .NET build).
+      - run: npm audit --audit-level=high

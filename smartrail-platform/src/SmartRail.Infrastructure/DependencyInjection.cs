@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SmartRail.Application.Features.Exceptions;
 using SmartRail.Application.Features.Journeys;
 using SmartRail.Application.Features.Passenger;
 using SmartRail.Infrastructure.Persistence;
@@ -24,6 +25,7 @@ public static class DependencyInjection
             services.AddDbContext<SmartrailDbContext>(options => SmartrailDbContextOptions.Configure(options, runtimeConnection));
             services.AddScoped<IJourneyRepository, JourneyRepository>();
             services.AddScoped<IPassengerQueries, PassengerQueries>();
+            services.AddScoped<IExceptionRepository, ExceptionRepository>();
             services.AddHealthChecks().AddCheck<DatabaseReadinessCheck>("database", tags: ["ready"]);
             services.AddHostedService<DatabaseStartupService>();
         }

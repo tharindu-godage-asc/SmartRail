@@ -87,6 +87,88 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SmartRail.Domain.Journeys.JourneyException", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("JourneyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("journey_id");
+
+                    b.Property<Guid?>("RelatedEventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("related_event_id");
+
+                    b.Property<string>("Resolution")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("resolution");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<string>("ResolvedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("resolved_by");
+
+                    b.Property<string>("ResolvedByName")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("resolved_by_name");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("severity");
+
+                    b.Property<Guid?>("StationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("station_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_journey_exception");
+
+                    b.HasIndex("JourneyId")
+                        .HasDatabaseName("ix_journey_exception_journey_id");
+
+                    b.HasIndex("StationId")
+                        .HasDatabaseName("ix_journey_exception_station_id");
+
+                    b.HasIndex("RelatedEventId", "Type")
+                        .IsUnique()
+                        .HasDatabaseName("ux_exception_event_type");
+
+                    b.HasIndex("Severity", "CreatedAt")
+                        .HasDatabaseName("ix_exception_open")
+                        .HasFilter("resolved_at IS NULL");
+
+                    b.ToTable("journey_exception", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_journey_exception_severity", "severity IN ('Critical', 'High')");
+
+                            t.HasCheckConstraint("ck_journey_exception_type", "type IN ('ReasonAwaitingVerification', 'EarlyDeparture')");
+                        });
+                });
+
             modelBuilder.Entity("SmartRail.Domain.Journeys.JourneyStopState", b =>
                 {
                     b.Property<Guid>("JourneyId")
@@ -637,6 +719,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-00000000000b"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000033"),
                             ScheduledDeparture = new TimeOnly(8, 20, 0),
                             Sequence = 1,
                             ServiceId = new Guid("00000004-0000-4000-8000-000000000001"),
@@ -647,6 +730,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-00000000000c"),
                             ArrivalReportRequired = true,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000029"),
                             ScheduledArrival = new TimeOnly(8, 30, 0),
                             ScheduledDeparture = new TimeOnly(8, 31, 0),
                             Sequence = 2,
@@ -658,6 +742,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-00000000000d"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-00000000001f"),
                             ScheduledArrival = new TimeOnly(8, 42, 0),
                             ScheduledDeparture = new TimeOnly(8, 43, 0),
                             Sequence = 3,
@@ -669,6 +754,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-00000000000e"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000015"),
                             ScheduledArrival = new TimeOnly(8, 50, 0),
                             ScheduledDeparture = new TimeOnly(8, 51, 0),
                             Sequence = 4,
@@ -680,6 +766,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-00000000000f"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-00000000000b"),
                             ScheduledArrival = new TimeOnly(8, 55, 0),
                             Sequence = 5,
                             ServiceId = new Guid("00000004-0000-4000-8000-000000000001"),
@@ -690,6 +777,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-000000000015"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000033"),
                             ScheduledDeparture = new TimeOnly(7, 50, 0),
                             Sequence = 1,
                             ServiceId = new Guid("00000004-0000-4000-8000-000000000002"),
@@ -700,6 +788,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-000000000016"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000029"),
                             ScheduledArrival = new TimeOnly(8, 0, 0),
                             ScheduledDeparture = new TimeOnly(8, 1, 0),
                             Sequence = 2,
@@ -711,9 +800,68 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             Id = new Guid("00000005-0000-4000-8000-000000000017"),
                             ArrivalReportRequired = false,
                             CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-00000000000b"),
                             ScheduledArrival = new TimeOnly(8, 30, 0),
                             Sequence = 3,
                             ServiceId = new Guid("00000004-0000-4000-8000-000000000002"),
+                            StationId = new Guid("00000002-0000-4000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("00000005-0000-4000-8000-00000000001f"),
+                            ArrivalReportRequired = false,
+                            CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000033"),
+                            ScheduledDeparture = new TimeOnly(22, 10, 0),
+                            Sequence = 1,
+                            ServiceId = new Guid("00000004-0000-4000-8000-000000000003"),
+                            StationId = new Guid("00000002-0000-4000-8000-000000000005")
+                        },
+                        new
+                        {
+                            Id = new Guid("00000005-0000-4000-8000-000000000020"),
+                            ArrivalReportRequired = false,
+                            CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000029"),
+                            ScheduledArrival = new TimeOnly(22, 20, 0),
+                            ScheduledDeparture = new TimeOnly(22, 21, 0),
+                            Sequence = 2,
+                            ServiceId = new Guid("00000004-0000-4000-8000-000000000003"),
+                            StationId = new Guid("00000002-0000-4000-8000-000000000004")
+                        },
+                        new
+                        {
+                            Id = new Guid("00000005-0000-4000-8000-000000000021"),
+                            ArrivalReportRequired = false,
+                            CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-00000000001f"),
+                            ScheduledArrival = new TimeOnly(22, 32, 0),
+                            ScheduledDeparture = new TimeOnly(22, 33, 0),
+                            Sequence = 3,
+                            ServiceId = new Guid("00000004-0000-4000-8000-000000000003"),
+                            StationId = new Guid("00000002-0000-4000-8000-000000000003")
+                        },
+                        new
+                        {
+                            Id = new Guid("00000005-0000-4000-8000-000000000022"),
+                            ArrivalReportRequired = false,
+                            CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-000000000015"),
+                            ScheduledArrival = new TimeOnly(22, 40, 0),
+                            ScheduledDeparture = new TimeOnly(22, 41, 0),
+                            Sequence = 4,
+                            ServiceId = new Guid("00000004-0000-4000-8000-000000000003"),
+                            StationId = new Guid("00000002-0000-4000-8000-000000000002")
+                        },
+                        new
+                        {
+                            Id = new Guid("00000005-0000-4000-8000-000000000023"),
+                            ArrivalReportRequired = false,
+                            CollectionEligible = false,
+                            PlannedPlatformId = new Guid("00000003-0000-4000-8000-00000000000b"),
+                            ScheduledArrival = new TimeOnly(22, 45, 0),
+                            Sequence = 5,
+                            ServiceId = new Guid("00000004-0000-4000-8000-000000000003"),
                             StationId = new Guid("00000002-0000-4000-8000-000000000001")
                         });
                 });
@@ -977,6 +1125,17 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                             ServiceType = "Express",
                             TrainNumber = "8061",
                             UnreservedCapacity = 0
+                        },
+                        new
+                        {
+                            Id = new Guid("00000004-0000-4000-8000-000000000003"),
+                            Direction = "Inbound",
+                            LineId = new Guid("00000001-0000-4000-8000-000000000001"),
+                            RunsOn = "Daily",
+                            ServiceCategory = "Regional",
+                            ServiceType = "Slow",
+                            TrainNumber = "8075",
+                            UnreservedCapacity = 0
                         });
                 });
 
@@ -988,6 +1147,28 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("fk_journey_train_services_service_id");
+                });
+
+            modelBuilder.Entity("SmartRail.Domain.Journeys.JourneyException", b =>
+                {
+                    b.HasOne("SmartRail.Domain.Journeys.Journey", null)
+                        .WithMany()
+                        .HasForeignKey("JourneyId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_journey_exception_journey_journey_id");
+
+                    b.HasOne("SmartRail.Domain.Journeys.TrainEvent", null)
+                        .WithMany()
+                        .HasForeignKey("RelatedEventId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_journey_exception_train_events_related_event_id");
+
+                    b.HasOne("SmartRail.Domain.Reference.Station", null)
+                        .WithMany()
+                        .HasForeignKey("StationId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_journey_exception_stations_station_id");
                 });
 
             modelBuilder.Entity("SmartRail.Domain.Journeys.JourneyStopState", b =>

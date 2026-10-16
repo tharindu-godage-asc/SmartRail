@@ -8,8 +8,17 @@ part 'app_database.g.dart';
 class Reports extends Table {
   TextColumn get clientEventId => text()();
   TextColumn get journeyId => text()();
-  TextColumn get serviceStopId => text()();
-  TextColumn get stationName => text()();
+
+  /// What was reported. Version 2 (spec 06): arrivals and delays join departures.
+  IntColumn get kind => intEnum<ReportKind>().withDefault(const Constant(0))();
+
+  /// Null for a delay report, which belongs to the journey and not to a stop.
+  TextColumn get serviceStopId => text().nullable()();
+  TextColumn get stationName => text().withDefault(const Constant(''))();
+
+  /// A delay report only: the reason code, and the total in minutes (null means "unknown").
+  TextColumn get delayReason => text().nullable()();
+  IntColumn get totalDelayMinutes => integer().nullable()();
   DateTimeColumn get occurredAt => dateTime()();
   IntColumn get state => intEnum<ReportState>()();
   IntColumn get attempts => integer().withDefault(const Constant(0))();
@@ -34,5 +43,25 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // Version 1 held only departures, with a stop on every row. Rebuild the table with the new shape and keep every
+        // row: reports waiting to be sent must survive an app update (AC-E03-05 6).
+        await m.alterTable(
+          TableMigration(
+            reports,
+            newColumns: [
+              reports.kind,
+              reports.delayReason,
+              reports.totalDelayMinutes,
+            ],
+          ),
+        );
+      }
+    },
+  );
 }
