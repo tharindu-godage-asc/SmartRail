@@ -911,7 +911,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                         {
                             Id = new Guid("00000002-0000-4000-8000-000000000001"),
                             Code = "CF",
-                            HasCateringFacility = false,
+                            HasCateringFacility = true,
                             Name = "Colombo Fort"
                         },
                         new

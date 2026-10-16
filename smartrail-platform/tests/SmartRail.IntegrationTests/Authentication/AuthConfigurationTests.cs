@@ -36,6 +36,7 @@ public sealed class AuthConfigurationTests(PostgresFixture postgres) : IDisposab
         "/api/v1/trains",
         "/api/v1/lines/{code}/status",
         "/api/v1/stations/{code}/board",
+        "/api/v1/trains/{trainNumber}/menu",
     ];
 
     [Fact]
