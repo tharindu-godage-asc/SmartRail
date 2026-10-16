@@ -226,3 +226,24 @@ Caterer starts and sends; the app shows the list; toggle Fruit cup; the app show
 
 ## 13) Owner decisions of 16 Oct 2026
 - Q1 to Q9 as recommended. Spec 11 starts from `claude/feature/passenger-app` (spec 10 is not merged yet), so its pull request is merged after spec 10's.
+
+## 14) Change of approach (owner, 16 Oct 2026): SmallBites is its own system and SmartRail pulls its menu
+The caterer is a separate company, **SmallBites**, with its own service, API and data. SmartRail does not host any caterer code or tables. This **replaces** sections 4.1, 5, and the feed parts of 2, 3, 6, 7, 9 and 10; everything about the passenger read, eligibility, freshness, the link and the app stays.
+
+**SmallBites** (folder `smallbites/` at the repo root, its own .NET project, Dockerfile and Compose service on port 8090; not part of `smartrail-platform/src`):
+- `GET /api/menus/{stationCode}`: `{ station, version, updatedAt, items: [{ id, names: { en, si, ta }, priceLkr, available }] }`; 404 when the station has no menu. Public, read-only (a real caterer would require a key; not built).
+- `GET /` its customer website page (menu list, says it is a demonstration, takes no orders or payments, shows the `station` and `train` it was opened with); `GET /admin` plain page with an Available toggle per item; `POST /admin/items/{id}/available` changes it and raises `version`. Menu for Colombo Fort held in memory, loaded from a JSON file (placeholder data, `si` and `ta` names unverified); resets on restart.
+- It receives nothing from SmartRail and has no train data (D-72).
+
+**SmartRail** (no new tables, **one migration only**: `station.has_catering_facility = true` for Colombo Fort):
+- `IMenuSource` (Application) and `SmallBitesMenuSource` (Infrastructure, `HttpClient`, `Catering:SmallBitesUrl`, 3 s timeout). It keeps the last good menu per station in memory with the time it was fetched, and fetches again at most every 15 s per station. If SmallBites does not answer, the last good menu is returned.
+- `GET /api/v1/trains/{trainNumber}/menu?from=&to=` as in 4.2, with `menuUpdatedAt` (SmallBites `updatedAt`), `fetchedAt` (when SmartRail last got it) and `stale` = `now - fetchedAt` over `Catering:MenuFreshnessMinutes` (60). A station whose menu was never fetched is left out. No version or messageId in the response.
+- **Removed:** `PUT /api/v1/caterer/menus/{stationCode}`, the `caterer` policy use, message IDs, version rules, the three menu tables and the message table.
+
+**Requirements affected, stated plainly in the report:** FR-07 (caterer authenticates to SmartRail with client credentials) and AC-E08-08 (1 to 3: authenticated, repeat-safe, newest version) are **not built**, because SmartRail pulls and SmallBites sends nothing. AC-E08-08 4 (a changed availability reaches the screen within 60 s) is kept: SmartRail refetches at most every 15 s and the app every 60 s. Keycloak's `smartrail-caterer` client stays unused.
+
+**Acceptance criteria (replace the first four of section 9):**
+- [ ] SmallBites runs as its own container, serves the menu and the admin page, and shares no code or database with SmartRail.
+- [ ] The menu read for 8058 Veyangoda to Colombo Fort lists Colombo Fort as `Destination` with SmallBites items, price and availability; marking an item sold out in the admin page shows `available: false` within about 20 s and "Sold out" in the app within 60 s.
+- [ ] With SmallBites stopped, the read still returns the last menu with `stale` true after the freshness limit (controllable clock in the tests); with no menu ever fetched the station is left out.
+- [ ] Unit tests: the stop rule, the link builder, the staleness rule; integration tests: the read with a fake `IMenuSource`; SmallBites tests: toggle raises the version, every demo item has `si` and `ta` names.
