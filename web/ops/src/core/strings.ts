@@ -3,6 +3,7 @@
  * words them. An unknown code is shown as it is, so a new type or status on the server never breaks a screen.
  */
 import type { OverviewJourney } from './api/types'
+import { formatMinutes } from './time'
 
 export const t = {
   appName: 'SmartRail',
@@ -157,7 +158,7 @@ export const sourceLabel = (code: string): string => sourceLabels[code] ?? code
 /** The status words for a journey row. An unknown length of delay is said as such, never as a number (spec 06 R7). */
 export function journeyStatusLabel(journey: Pick<OverviewJourney, 'statusKey' | 'delayKnown' | 'delayMinutes'>): string {
   if (journey.statusKey === 'Delayed') {
-    return journey.delayKnown ? `Delayed ${journey.delayMinutes} min` : 'Delay unknown'
+    return journey.delayKnown ? `Delayed ${formatMinutes(journey.delayMinutes)}` : 'Delay unknown'
   }
 
   const labels: Record<string, string> = { Scheduled: 'Scheduled', OnTime: 'On time', Completed: 'Completed' }

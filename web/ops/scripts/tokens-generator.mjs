@@ -56,6 +56,18 @@ const SPACING = ['xs', 'sm', 'md', 'lg', 'xl']
 const RADII = ['sm', 'md', 'lg', 'pill']
 const TEXT_SIZES = { heading: 'mobile.heading', body: 'mobile.body', label: 'mobile.label', caption: 'mobile.caption' }
 
+// The display scale for station displays at 1080p (discovery 20.3, D-50): utilities text-level1-time, text-level1-status, text-level2 ... text-level4.
+const DISPLAY_SIZES = {
+  'level1-time': 'display.level1Time',
+  'level1-status': 'display.level1Status',
+  level2: 'display.level2',
+  level3: 'display.level3',
+  level4: 'display.level4',
+}
+
+/** The dark value of a colour token ($extensions.smartrail.dark), or undefined when it has none. */
+const darkValue = (entry) => entry?.token?.$extensions?.smartrail?.dark
+
 export function generate(tokens) {
   const entries = leaves(tokens).filter(isCss)
   const byPath = new Map(entries.map((e) => [e.path.join('.'), e]))
@@ -74,6 +86,16 @@ export function generate(tokens) {
     ...RADII.map((name) => `  --radius-${name}: ${need(`radius.${name}`)};`),
     `  --font-sans: ${need('font.family.latin')};`,
     ...Object.entries(TEXT_SIZES).map(([name, path]) => `  --text-${name}: ${need(`type.${path}.size`)};`),
+    ...Object.entries(DISPLAY_SIZES).map(([name, path]) => `  --text-${name}: ${need(`type.${path}.size`)};`),
+  ].join('\n')
+
+  // Dark theme (the station displays are dark, as drawn on the canvas). Putting the class `theme-dark` on an element swaps every colour
+  // below it: the token variables and the short Tailwind names. A colour with no dark value in the token file is left alone.
+  const dark = [
+    ...entries.filter((e) => darkValue(e)).map((e) => `  ${variableName(e.path)}: ${darkValue(e)};`),
+    ...Object.entries(COLOR_ALIASES)
+      .filter(([, path]) => darkValue(byPath.get(path)))
+      .map(([name, path]) => `  --color-${name}: ${darkValue(byPath.get(path))};`),
   ].join('\n')
 
   return `${HEADER}
@@ -83,6 +105,10 @@ ${root}
 
 @theme {
 ${theme}
+}
+
+.theme-dark {
+${dark}
 }
 
 @utility min-h-touch {

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { Icon } from '../../core/Icon'
 import { t } from '../../core/strings'
-import { Button, Footer, SafetyBar, Wordmark } from '../../core/ui'
+import { Button, Footer, SafetyBar } from '../../core/ui'
+import { Wordmark } from '../../core/Wordmark'
 
 /** The screens a person sees before they are in: sign in, no access, session ended (designs Dash-Login, Dash-NoAccess). */
 function CenteredCard({ width, children }: { width: string; children: ReactNode }) {

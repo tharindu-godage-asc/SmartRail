@@ -1,5 +1,8 @@
 import { InMemoryWebStorage, WebStorageStateStore, type UserManagerSettings } from 'oidc-client-ts'
-import { config } from '../../core/config'
+
+/** Where the identity provider is, and which client this app is (a public client: no secret). */
+const oidcAuthority = import.meta.env.VITE_OIDC_AUTHORITY ?? 'http://localhost:8180/realms/smartrail'
+const oidcClientId = import.meta.env.VITE_OIDC_CLIENT_ID ?? 'smartrail-ops-web'
 
 /**
  * Authorization Code with PKCE, as a public client (no secret). Q4 of spec 08:
@@ -10,8 +13,8 @@ import { config } from '../../core/config'
  */
 export function createOidcSettings(origin: string = window.location.origin): UserManagerSettings {
   return {
-    authority: config.oidcAuthority,
-    client_id: config.oidcClientId,
+    authority: oidcAuthority,
+    client_id: oidcClientId,
     redirect_uri: `${origin}/`,
     post_logout_redirect_uri: `${origin}/`,
     response_type: 'code',

@@ -77,7 +77,7 @@ export function createApi(options: ApiOptions): Api {
   }
 }
 
-async function reasonOf(response: Response): Promise<string | null> {
+export async function reasonOf(response: Response): Promise<string | null> {
   try {
     const body: unknown = await response.json()
     if (typeof body === 'object' && body !== null && 'reason' in body && typeof body.reason === 'string') {

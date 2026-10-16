@@ -89,6 +89,45 @@
   --text-body: 16px;
   --text-label: 14px;
   --text-caption: 12px;
+  --text-level1-time: 160px;
+  --text-level1-status: 96px;
+  --text-level2: 64px;
+  --text-level3: 48px;
+  --text-level4: 28px;
+}
+
+.theme-dark {
+  --color-bg-page: #1B1F24;
+  --color-bg-surface: #262B32;
+  --color-text-primary: #F2F4F6;
+  --color-text-secondary: #C4C8CC;
+  --color-border-default: #3A4048;
+  --color-status-normal-fg: #6EA8FF;
+  --color-status-normal-chip-bg: #252F3E;
+  --color-status-warning-fg: #FFB74D;
+  --color-status-warning-chip-bg: #363129;
+  --color-status-unknown-fg: #C4C8CC;
+  --color-status-unknown-chip-bg: #25292E;
+  --color-status-disrupted-fg: #FF6B8B;
+  --color-status-disrupted-chip-bg: #362830;
+  --color-status-disrupted-on-filled: #1B1F24;
+  --color-brand-accent: #4FC3CC;
+  --color-brand-on-accent: #1B1F24;
+  --color-brand-accent-surface: #12363A;
+  --color-page: #1B1F24;
+  --color-surface: #262B32;
+  --color-ink: #F2F4F6;
+  --color-muted: #C4C8CC;
+  --color-line: #3A4048;
+  --color-normal: #6EA8FF;
+  --color-normal-bg: #252F3E;
+  --color-warning: #FFB74D;
+  --color-warning-bg: #363129;
+  --color-unknown: #C4C8CC;
+  --color-unknown-bg: #25292E;
+  --color-disrupted: #FF6B8B;
+  --color-disrupted-bg: #362830;
+  --color-on-disrupted: #1B1F24;
 }
 
 @utility min-h-touch {

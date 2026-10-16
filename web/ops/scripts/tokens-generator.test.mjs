@@ -31,10 +31,28 @@ describe('token generator', () => {
     expect(css).toContain('min-height: 44px;')
   })
 
-  it('leaves out the dark values and the icon names', () => {
+  it('keeps the dark values out of the light theme and puts them in .theme-dark, for the variables and the short names', () => {
     const css = generate(tokens)
-    expect(css).not.toContain('#262B32')
-    expect(css).not.toContain('pause_circle')
+    const [light, dark] = css.split('.theme-dark {')
+    expect(light).not.toContain('#262B32')
+    expect(dark).toContain('--color-bg-surface: #262B32;')
+    expect(dark).toContain('--color-page: #1B1F24;')
+    expect(dark).toContain('--color-status-warning-fg: #FFB74D;')
+    expect(dark).toContain('--color-warning: #FFB74D;')
+    expect(dark).not.toContain('--space-md') // only colours change
+  })
+
+  it('leaves out the icon names', () => {
+    expect(generate(tokens)).not.toContain('pause_circle')
+  })
+
+  it('gives Tailwind the display scale for station displays at 1080p (D-50)', () => {
+    const css = generate(tokens)
+    expect(css).toContain('--text-level1-time: 160px;')
+    expect(css).toContain('--text-level1-status: 96px;')
+    expect(css).toContain('--text-level2: 64px;')
+    expect(css).toContain('--text-level3: 48px;')
+    expect(css).toContain('--text-level4: 28px;')
   })
 
   it('stops with a clear message when a token the app needs is missing', () => {

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { ApiError, createApi } from './api/client'
 import { freshnessOf } from './freshness'
 import { exceptionTypeLabel, journeyStatusLabel, severityLabel, sourceLabel } from './strings'
-import { formatAge, formatClock, formatClockShort } from './time'
+import { formatAge, formatClock, formatClockShort, formatMinutes } from './time'
 import { rolesOf, isController } from '../features/auth/roles'
 import { announcementFor } from '../features/exceptions/announcements'
 import { exception, makeToken } from '../test/helpers'
@@ -24,6 +24,22 @@ describe('time', () => {
     [-5, '0 s'],
   ])('formats an age of %s seconds as %s', (seconds, text) => {
     expect(formatAge(seconds)).toBe(text)
+  })
+})
+
+describe('formatMinutes (delays in hours and minutes, never 240 min)', () => {
+  it.each([
+    [0, '0 min'],
+    [8, '8 min'],
+    [59, '59 min'],
+    [60, '1 h'],
+    [65, '1 h 05 min'],
+    [90, '1 h 30 min'],
+    [240, '4 h'],
+    [245.4, '4 h 05 min'],
+    [-3, '0 min'],
+  ])('formats %s minutes as %s', (minutes, text) => {
+    expect(formatMinutes(minutes)).toBe(text)
   })
 })
 
@@ -59,6 +75,8 @@ describe('labels', () => {
 
   it('says "Delay unknown" and never a number when the length is not known', () => {
     expect(journeyStatusLabel({ statusKey: 'Delayed', delayKnown: true, delayMinutes: 6 })).toBe('Delayed 6 min')
+    expect(journeyStatusLabel({ statusKey: 'Delayed', delayKnown: true, delayMinutes: 240 })).toBe('Delayed 4 h')
+    expect(journeyStatusLabel({ statusKey: 'Delayed', delayKnown: true, delayMinutes: 75 })).toBe('Delayed 1 h 15 min')
     expect(journeyStatusLabel({ statusKey: 'Delayed', delayKnown: false, delayMinutes: 6 })).toBe('Delay unknown')
     expect(journeyStatusLabel({ statusKey: 'OnTime', delayKnown: true, delayMinutes: 0 })).toBe('On time')
     expect(journeyStatusLabel({ statusKey: 'Suspended', delayKnown: true, delayMinutes: 0 })).toBe('Suspended')
