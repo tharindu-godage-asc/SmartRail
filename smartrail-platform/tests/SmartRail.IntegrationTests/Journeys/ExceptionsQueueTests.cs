@@ -193,9 +193,9 @@ public sealed class ExceptionsQueueTests(PostgresFixture postgres) : JourneyApiT
     }
 
     [Fact]
-    public async Task Any_status_other_than_open_is_422()
+    public async Task Any_status_other_than_open_or_resolved_is_422()
     {
-        var response = await Get("/api/v1/exceptions?status=resolved", ControllerToken);
+        var response = await Get("/api/v1/exceptions?status=closed", ControllerToken);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
     }

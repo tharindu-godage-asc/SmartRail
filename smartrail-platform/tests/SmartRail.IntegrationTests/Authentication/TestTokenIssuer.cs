@@ -26,7 +26,8 @@ public sealed class TestTokenIssuer : IDisposable
         string issuer = Issuer,
         TimeSpan? lifetime = null,
         DateTime? issuedAt = null,
-        SecurityKey? signWith = null)
+        SecurityKey? signWith = null,
+        string? username = null)
     {
         var now = issuedAt ?? DateTime.UtcNow;
         var life = lifetime ?? TimeSpan.FromMinutes(15);
@@ -38,14 +39,25 @@ public sealed class TestTokenIssuer : IDisposable
             IssuedAt = now,
             NotBefore = now,
             Expires = now + life,
-            Claims = new Dictionary<string, object> { ["roles"] = roles ?? ["operator"] },
+            Claims = BuildClaims(roles, username),
             SigningCredentials = new SigningCredentials(signWith ?? SigningKey, SecurityAlgorithms.RsaSha256),
         };
         return new JsonWebTokenHandler().CreateToken(descriptor);
     }
 
+    private static Dictionary<string, object> BuildClaims(string[]? roles, string? username)
+    {
+        var claims = new Dictionary<string, object> { ["roles"] = roles ?? ["operator"] };
+        if (username is not null)
+        {
+            claims["preferred_username"] = username;
+        }
+
+        return claims;
+    }
+
     public string Operator() => Create(roles: ["operator"]);
-    public string Controller() => Create(subject: "d0d0d0d0-0000-4000-8000-000000000003", roles: ["controller"]);
+    public string Controller(string? username = "jayasinghe") => Create(subject: "d0d0d0d0-0000-4000-8000-000000000003", roles: ["controller"], username: username);
     public string Caterer() => Create(subject: "service-account-smartrail-caterer", roles: ["caterer"]);
 
     public void Dispose() => _rsa.Dispose();

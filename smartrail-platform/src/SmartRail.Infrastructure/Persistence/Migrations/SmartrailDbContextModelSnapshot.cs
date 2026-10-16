@@ -123,6 +123,11 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("resolved_by");
 
+                    b.Property<string>("ResolvedByName")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("resolved_by_name");
+
                     b.Property<string>("Severity")
                         .IsRequired()
                         .HasMaxLength(10)
