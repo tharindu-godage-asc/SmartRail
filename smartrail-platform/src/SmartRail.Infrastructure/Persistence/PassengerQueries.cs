@@ -80,6 +80,7 @@ public sealed class PassengerQueries(SmartrailDbContext db) : IPassengerQueries
         }
 
         var ids = journeys.Select(j => j.Id).ToList();
+        var platformCodes = await db.Platforms.AsNoTracking().ToDictionaryAsync(p => p.Id, p => p.Code, cancellationToken);
         var states = await db.JourneyStopStates.AsNoTracking().Where(s => ids.Contains(s.JourneyId)).ToListAsync(cancellationToken);
 
         // The latest time the server received a report for each journey (null when it has none).
@@ -92,7 +93,9 @@ public sealed class PassengerQueries(SmartrailDbContext db) : IPassengerQueries
         return journeys.Select(j => new JourneyRecord(
             j.Id, j.ServiceId, j.OperatingDate, j.Status, j.Version, j.CurrentDelayMinutes,
             states.Where(s => s.JourneyId == j.Id)
-                .Select(s => new StopStateInfo(s.ServiceStopId, s.Confirmation, s.EstimatedArrival, s.EstimatedDeparture, s.ActualDeparture, s.ActualArrival))
+                .Select(s => new StopStateInfo(
+                    s.ServiceStopId, s.Confirmation, s.EstimatedArrival, s.EstimatedDeparture, s.ActualDeparture, s.ActualArrival,
+                    s.PlatformId is { } platformId && platformCodes.TryGetValue(platformId, out var code) ? code : null))
                 .ToList(),
             lastReceived.TryGetValue(j.Id, out var at) ? at : null))
             .ToList();

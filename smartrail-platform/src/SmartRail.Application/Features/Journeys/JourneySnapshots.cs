@@ -41,7 +41,8 @@ public sealed record JourneyStatusSnapshot(
     EtaSnapshot? PrimaryEta,
     PositionSnapshot? LastKnownPosition,
     IReadOnlyList<StopSnapshot> Stops,
-    bool DelayKnown = true);
+    bool DelayKnown = true,
+    DateTimeOffset? LastEventAt = null);
 
 public static class SnapshotBuilder
 {
@@ -100,7 +101,9 @@ public static class SnapshotBuilder
 
         return new JourneyStatusSnapshot(
             data.JourneyId, data.TrainNumber, data.OperatingDate, data.Version, now,
-            group.ToString(), key.ToString(), data.DelayMinutes, eta, position, stops, data.DelayKnown);
+            group.ToString(), key.ToString(), data.DelayMinutes, eta, position, stops, data.DelayKnown,
+            // The time the server received the latest accepted report (null before the first): "Updated 08:42" on the passenger app (FR-72).
+            data.Events.Max(e => e.ReceivedAt));
     }
 }
 
