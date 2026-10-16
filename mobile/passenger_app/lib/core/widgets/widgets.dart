@@ -298,7 +298,12 @@ class InnerHeader extends StatelessWidget implements PreferredSizeWidget {
   final Widget? trailing;
 
   @override
-  Size get preferredSize => const Size.fromHeight(56);
+  Size get preferredSize {
+    // The slot is the bar plus the status bar above it (a Scaffold gives the app bar no inset of its own).
+    final view = WidgetsBinding.instance.platformDispatcher.implicitView;
+    final top = view == null ? 0.0 : view.padding.top / view.devicePixelRatio;
+    return Size.fromHeight(56 + top);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -306,7 +311,9 @@ class InnerHeader extends StatelessWidget implements PreferredSizeWidget {
     return Material(
       color: c.bgPage,
       child: Container(
-        height: 56,
+        // The bar starts below the status bar (and any camera cut-out).
+        padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
+        height: 56 + MediaQuery.paddingOf(context).top,
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: c.borderDefault)),
         ),
