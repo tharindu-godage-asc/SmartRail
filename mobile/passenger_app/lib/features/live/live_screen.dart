@@ -12,6 +12,7 @@ import '../../core/time.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models.dart';
 import '../../domain/logic.dart';
+import '../food/food_menu_screen.dart';
 import '../search/search_screens.dart';
 
 /// One train's live status (AC-E06-02, AC-E06-03). The primary ETA is at the passenger's station until the train leaves it, then at the
@@ -235,6 +236,11 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     },
                   ),
                 const SizedBox(height: Space.md),
+                FoodMenuRow(
+                  number: widget.number,
+                  from: widget.from,
+                  to: widget.to,
+                ),
                 _StopList(
                   s: s,
                   data: data,

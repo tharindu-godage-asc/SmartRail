@@ -98,4 +98,9 @@ class Preferences {
       _p.getString('$_snapshotPrefix$trainNumber');
   Future<void> setSnapshot(String trainNumber, String json) =>
       _p.setString('$_snapshotPrefix$trainNumber', json);
+
+  /// The last food menu of a train, kept so the list still opens offline (spec 11).
+  String? menuSnapshot(String trainNumber) => _p.getString('menu_$trainNumber');
+  Future<void> setMenuSnapshot(String trainNumber, String json) =>
+      _p.setString('menu_$trainNumber', json);
 }
