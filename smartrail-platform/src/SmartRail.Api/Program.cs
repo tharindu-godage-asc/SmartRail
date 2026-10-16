@@ -20,6 +20,7 @@ var env = builder.Configuration["DEPLOYMENT_ENVIRONMENT"] ?? builder.Environment
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSmartRailAuthentication(builder.Configuration);
+builder.Services.AddSmartRailCors(builder.Configuration);
 
 // The journey endpoints need a database. Without one (the cluster today) they are not registered or mapped at all (R14).
 var databaseConfigured = !string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Smartrail"));
@@ -42,6 +43,7 @@ builder.Services.AddOpenTelemetry()
 builder.Logging.AddOpenTelemetry(o => { o.IncludeScopes = true; o.AddOtlpExporter(); });
 
 var app = builder.Build();
+app.UseSmartRailCors();
 app.UseAuthentication();
 app.UseAuthorization();
 

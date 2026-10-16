@@ -52,6 +52,8 @@ public sealed class OverviewTests(PostgresFixture postgres) : JourneyApiTestBase
         Assert.Equal(0, overview.GetProperty("openExceptionCount").GetInt32());
         var journey = Assert.Single(overview.GetProperty("journeys").EnumerateArray());
         Assert.Equal("8058", journey.GetProperty("trainNumber").GetString());
+        Assert.Equal("Veyangoda", journey.GetProperty("from").GetString());
+        Assert.Equal("Colombo Fort", journey.GetProperty("to").GetString());
         Assert.Equal(JsonValueKind.Null, journey.GetProperty("lastEvent").ValueKind);
         Assert.Equal(JsonValueKind.Null, journey.GetProperty("nextStop").ValueKind);
         Assert.Equal(JsonValueKind.Null, journey.GetProperty("secondsSinceUpdate").ValueKind);
