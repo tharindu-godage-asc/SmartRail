@@ -8,6 +8,7 @@
     "tokens": "node scripts/generate-tokens.mjs",
     "typecheck": "tsc -b",
     "build": "tsc -b && vite build",
+    "build:display": "tsc -b && vite build --config vite.display.config.ts",
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",

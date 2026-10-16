@@ -12,6 +12,9 @@ export default defineConfig({
   retries: 0,
   reporter: [['list']],
   use: { baseURL: 'http://localhost:5173', trace: 'retain-on-failure' },
-  webServer: { command: 'npm run dev', url: 'http://localhost:5173', reuseExistingServer: true, timeout: 60_000 },
+  // DISPLAY_ONLY=1 skips the dashboard's dev server: the station displays are their own service and must work without it.
+  webServer: process.env.DISPLAY_ONLY
+    ? undefined
+    : { command: 'npm run dev', url: 'http://localhost:5173', reuseExistingServer: true, timeout: 60_000 },
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
 })
