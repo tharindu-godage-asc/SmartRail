@@ -201,3 +201,19 @@ export interface CreateResult {
   journeysGenerated: number
   warnings: ValidationIssue[]
 }
+
+export interface CancelResult {
+  cancellationId: string
+  cancelledJourneys: number
+  from: string
+  to: string | null
+}
+
+export interface AmendResult {
+  serviceId: string
+  version: number
+  journeysUpdated: number
+  journeysCancelled: number
+  journeysGenerated: number
+  warnings: ValidationIssue[]
+}

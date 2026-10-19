@@ -192,6 +192,49 @@ export const t = {
       journeysNote: 'Journeys of this service are generated 7 days ahead. They have no operator until one is assigned.',
       unknownService: 'This service was not found.',
     },
+    actions: {
+      cancelService: 'Cancel service',
+      amendService: 'Amend service',
+      notSentYet: 'Messages to passengers are not sent yet. Passengers see the change at their next refresh.',
+      extraNoAmend: 'To change an extra train, cancel it and add another.',
+      oldVersion: 'This is an older version.',
+      goCurrent: 'Go to the current version',
+    },
+    cancel: {
+      title: (train: string) => `Cancel service ${train}?`,
+      help: 'The service and its history stay. Journeys without reports on those dates are cancelled.',
+      modeDate: 'This date only',
+      modeOnward: 'From this date onward',
+      date: 'Date',
+      reason: 'Reason',
+      reasonHint: '1 to 200 characters, plain text.',
+      counter: (n: number) => `${n} / 200`,
+      confirm: 'Confirm cancellation',
+      sending: 'Cancelling…',
+      keep: 'Keep the service',
+      close: 'Close',
+      tryOther: 'Try another date',
+      refused: (date: string) => `A journey on ${date} already has reports. Nothing was changed.`,
+      refusedHelp: 'Reports are never removed. Choose dates before the first report, or use an override once it exists.',
+      already: 'Already cancelled. No journeys changed.',
+      failed: 'Could not cancel. Nothing was changed. Try again.',
+      done: (n: number) => (n === 1 ? 'Cancelled 1 journey.' : `Cancelled ${n} journeys.`),
+      doneNone: 'Cancelled. No journey existed on those dates yet; none will be created.',
+    },
+    amend: {
+      title: 'Amend service',
+      newTitle: (train: string) => `Amend ${train}`,
+      effectiveFrom: 'Effective from',
+      effectiveHint: 'Tomorrow or later. Journeys before this date keep the current version.',
+      readOnly: 'The train number, category and type cannot change in an amendment.',
+      save: 'Save new version',
+      saving: 'Saving…',
+      saved: (version: number, updated: number, cancelled: number) =>
+        `Version ${version} saved. ${updated === 1 ? '1 journey' : `${updated} journeys`} updated${cancelled > 0 ? `, ${cancelled} cancelled` : ''}.`,
+      failed: 'Could not save the amendment. Nothing was changed. Try again.',
+      blocked: (date: string) => `A journey on ${date} already has reports, so this amendment cannot start then. Nothing was changed.`,
+      reload: 'Reload the service',
+    },
     wizard: {
       newTitle: 'New service',
       newExtraTitle: 'New extra train',
@@ -216,6 +259,7 @@ export const t = {
       addDate: 'Add date',
       removeDate: (date: string) => `Remove ${date}`,
       noDates: 'No date chosen yet.',
+      datesHint: 'Pick a date and press Add date. To add several dates, repeat. Next adds the date shown in the box if you have not.',
       days: { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday' } as Record<string, string>,
       everyStop: 'Every stop',
       everyStopHint: 'The train stops at every station on the line, in line order.',
@@ -265,6 +309,15 @@ export const t = {
       line_not_found: 'The line was not found.',
       service_not_found: 'This service was not found.',
       invalid_tab: 'That tab does not exist.',
+      nothing_to_cancel: 'The service does not run on any date in that range.',
+      invalid_reason: 'Give a reason of 1 to 200 characters.',
+      date_in_past: 'The date is in the past. An amendment starts tomorrow or later.',
+      invalid_range: 'The end date is before the start date.',
+      journey_has_events: 'A journey in that range already has reports.',
+      amend_extra_not_supported: 'An extra train cannot be amended. Cancel it and add another.',
+      service_ended: 'This service has ended.',
+      identity_changed: 'The train number cannot change in an amendment.',
+      effective_date_not_after_current: 'The effective date must be after the start of the current version.',
     },
     issues: {
       train_number_invalid: 'The train number is 1 to 10 letters or digits.',
@@ -319,3 +372,6 @@ export function journeyStatusLabel(journey: Pick<OverviewJourney, 'statusKey' | 
   const labels: Record<string, string> = { Scheduled: 'Scheduled', OnTime: 'On time', Completed: 'Completed' }
   return labels[journey.statusKey] ?? journey.statusKey
 }
+
+/** The sentence for a reason code of the timetable API, or undefined for a code this screen does not know. */
+export const timetableReason = (reason: string | null): string | undefined => (t.timetable.reasons as Record<string, string>)[reason ?? '']

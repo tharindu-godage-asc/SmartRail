@@ -1,32 +1,44 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../../../core/api/client'
-import type { CreateResult, LineOptions, ValidationResult } from '../../../core/api/types'
+import type { AmendResult, CreateResult, LineOptions, ServiceDetail, ValidationResult } from '../../../core/api/types'
 import { Icon } from '../../../core/Icon'
-import { t } from '../../../core/strings'
-import { todayInColombo } from '../../../core/time'
+import { t, timetableReason } from '../../../core/strings'
+import { nextDay, todayInColombo } from '../../../core/time'
 import { Button, Panel } from '../../../core/ui'
-import { useCreateService, useTimetableOptions, useValidate } from '../queries'
+import { useAmendService, useCreateService, useServiceDetail, useTimetableOptions, useValidate } from '../queries'
 import { DetailsStep } from './DetailsStep'
-import { detailsProblems, initialDraft, reduce, stopsProblems, toRequest, type Kind } from './draft'
+import { detailsProblems, draftFromDetail, initialDraft, reduce, stopsProblems, toRequest, type Kind } from './draft'
+import { formatDate } from '../dates'
 import { Stepper } from './parts'
 import { ReviewStep } from './ReviewStep'
 import { StopsStep } from './StopsStep'
 
 /** The service wizard, for a weekly service or an extra train (spec 15). It loads the line, then hands over to the steps. */
 export function NewServicePage({ kind }: { kind: Kind }) {
+  return <WizardLoader kind={kind} amendId={undefined} />
+}
+
+/** The same wizard filled with the current version of a weekly service, to amend it (spec 15 W4). */
+export function AmendServicePage() {
+  const { serviceId = '' } = useParams()
+  return <WizardLoader kind="Weekly" amendId={serviceId} />
+}
+
+function WizardLoader({ kind, amendId }: { kind: Kind; amendId: string | undefined }) {
   const options = useTimetableOptions()
+  const detail = useServiceDetail(amendId ?? '', amendId !== undefined)
 
   return (
     <div className="flex flex-col gap-[14px]">
       <Link to={kind === 'Weekly' ? '/timetable' : '/timetable/extra'} className="inline-flex min-h-touch items-center text-[15px] font-semibold text-ink underline">
         ← {t.timetable.back}
       </Link>
-      {options.data ? (
-        <Wizard kind={kind} options={options.data} />
+      {options.data && (amendId === undefined || detail.data) ? (
+        <Wizard kind={kind} options={options.data} amending={detail.data} />
       ) : (
         <Panel>
-          {options.isError ? (
+          {options.isError || detail.isError ? (
             <div className="flex flex-wrap items-center gap-md">
               <p role="alert" className="m-0 flex items-center gap-sm text-[15px] font-semibold">
                 <Icon name="warning" size={20} />
@@ -43,18 +55,23 @@ export function NewServicePage({ kind }: { kind: Kind }) {
   )
 }
 
-function Wizard({ kind, options }: { kind: Kind; options: LineOptions }) {
+function Wizard({ kind, options, amending }: { kind: Kind; options: LineOptions; amending?: ServiceDetail }) {
   const w = t.timetable.wizard
   const navigate = useNavigate()
-  const [draft, dispatch] = useReducer(reduce, undefined, () => initialDraft(kind, options, todayInColombo()))
+  const [draft, dispatch] = useReducer(reduce, undefined, () =>
+    amending ? draftFromDetail(amending, options, nextDay(todayInColombo())) : initialDraft(kind, options, todayInColombo()),
+  )
   const [step, setStep] = useState(0)
   const [problems, setProblems] = useState<string[]>([])
   const [confirmed, setConfirmed] = useState(false)
+  // The date in the date box of an extra train that was picked but not yet added with "Add date".
+  const [pendingDate, setPendingDate] = useState('')
   // What the server said when Schedule itself was refused: it replaces the check of the Review step until the next check.
   const [refused, setRefused] = useState<ValidationResult | undefined>(undefined)
   const [scheduleError, setScheduleError] = useState<string | null>(null)
   const validate = useValidate()
   const create = useCreateService()
+  const amend = useAmendService(amending?.serviceId ?? '')
   const heading = useRef<HTMLHeadingElement>(null)
   const summary = useRef<HTMLDivElement>(null)
 
@@ -86,15 +103,55 @@ function Wizard({ kind, options }: { kind: Kind; options: LineOptions }) {
   }, [step, result])
 
   const goNext = () => {
-    const found = step === 0 ? detailsProblems(draft) : stopsProblems(draft)
+    // A date picked in the box but not added yet is added by Next, so choosing a date is never lost (an extra train, step 1).
+    const withPending = step === 0 && draft.kind === 'Extra' && pendingDate !== '' && pendingDate >= todayInColombo()
+    const current = withPending ? reduce(draft, { type: 'addDate', date: pendingDate }) : draft
+    const found = step === 0 ? detailsProblems(current) : stopsProblems(current)
     setProblems(found)
-    if (found.length === 0) setStep(step + 1)
+    if (found.length === 0) {
+      if (withPending) {
+        dispatch({ type: 'addDate', date: pendingDate })
+        setPendingDate('')
+      }
+
+      setStep(step + 1)
+    }
+  }
+
+  const onFailure = (error: unknown) => {
+    const body = error instanceof ApiError && typeof error.body === 'object' && error.body !== null ? (error.body as Record<string, unknown>) : {}
+    if (error instanceof ApiError && error.reason === 'invalid_service') {
+      setRefused({ valid: false, errors: (body.errors as ValidationResult['errors']) ?? [], warnings: (body.warnings as ValidationResult['warnings']) ?? [] })
+    } else if (error instanceof ApiError && error.reason === 'warnings_not_acknowledged') {
+      // The data changed under the screen: ask again so the advice shown is the current one.
+      setScheduleError(t.timetable.reasons.warnings_not_acknowledged)
+      validate.mutate(toRequest(draft))
+      setConfirmed(false)
+    } else if (error instanceof ApiError && error.reason === 'journey_has_events' && typeof body.date === 'string') {
+      setScheduleError(t.timetable.amend.blocked(formatDate(body.date)))
+    } else if (error instanceof ApiError && timetableReason(error.reason) && amending) {
+      setScheduleError(timetableReason(error.reason) ?? t.timetable.amend.failed)
+    } else if (error instanceof ApiError && error.reason === 'train_number_in_use') {
+      setScheduleError(t.timetable.reasons.train_number_in_use)
+    } else {
+      setScheduleError(amending ? t.timetable.amend.failed : w.scheduleFailed)
+    }
   }
 
   const onSchedule = () => {
-    if (create.isPending) return
+    if (create.isPending || amend.isPending) return
     setScheduleError(null)
-    create.mutate(toRequest(draft, confirmed), {
+    const request = toRequest(draft, confirmed)
+    if (amending) {
+      amend.mutate(request, {
+        onSuccess: (saved: AmendResult) =>
+          navigate(`/timetable/${saved.serviceId}`, { state: { message: t.timetable.amend.saved(saved.version, saved.journeysUpdated, saved.journeysCancelled) } }),
+        onError: onFailure,
+      })
+      return
+    }
+
+    create.mutate(request, {
       onSuccess: (created: CreateResult) => {
         if (draft.kind === 'Weekly') {
           navigate(`/timetable/${created.serviceIds[0]}`, { state: { message: w.scheduled(created.trainNumber, created.journeysGenerated) } })
@@ -102,21 +159,7 @@ function Wizard({ kind, options }: { kind: Kind; options: LineOptions }) {
           navigate('/timetable/extra', { state: { message: w.scheduledExtra(created.serviceIds.length) } })
         }
       },
-      onError: (error) => {
-        const body = error instanceof ApiError && typeof error.body === 'object' && error.body !== null ? (error.body as Record<string, unknown>) : {}
-        if (error instanceof ApiError && error.reason === 'invalid_service') {
-          setRefused({ valid: false, errors: (body.errors as ValidationResult['errors']) ?? [], warnings: (body.warnings as ValidationResult['warnings']) ?? [] })
-        } else if (error instanceof ApiError && error.reason === 'warnings_not_acknowledged') {
-          // The data changed under the screen: ask again so the advice shown is the current one.
-          setScheduleError(t.timetable.reasons.warnings_not_acknowledged)
-          validate.mutate(toRequest(draft))
-          setConfirmed(false)
-        } else if (error instanceof ApiError && error.reason === 'train_number_in_use') {
-          setScheduleError(t.timetable.reasons.train_number_in_use)
-        } else {
-          setScheduleError(w.scheduleFailed)
-        }
-      },
+      onError: onFailure,
     })
   }
 
@@ -127,7 +170,7 @@ function Wizard({ kind, options }: { kind: Kind; options: LineOptions }) {
           {t.timetable.title} · {draft.kind === 'Weekly' ? t.timetable.tabs.weekly : t.timetable.tabs.extra}
           {draft.trainNumber ? ` · ${draft.trainNumber}` : ''}
         </div>
-        <h1 className="m-0 text-heading">{draft.kind === 'Weekly' ? w.newTitle : w.newExtraTitle}</h1>
+        <h1 className="m-0 text-heading">{amending ? t.timetable.amend.newTitle(draft.trainNumber) : draft.kind === 'Weekly' ? w.newTitle : w.newExtraTitle}</h1>
       </div>
 
       <Stepper step={step} />
@@ -137,7 +180,7 @@ function Wizard({ kind, options }: { kind: Kind; options: LineOptions }) {
           {w.steps[step]}
         </h2>
 
-        {step === 0 ? <DetailsStep draft={draft} dispatch={dispatch} issues={[]} /> : null}
+        {step === 0 ? <DetailsStep draft={draft} dispatch={dispatch} issues={[]} pending={pendingDate} onPending={setPendingDate} amending={amending !== undefined} /> : null}
         {step === 1 ? <StopsStep draft={draft} options={options} dispatch={dispatch} issues={result?.errors ?? []} /> : null}
         {step === 2 ? (
           <ReviewStep
@@ -149,7 +192,7 @@ function Wizard({ kind, options }: { kind: Kind; options: LineOptions }) {
             result={result}
             confirmed={confirmed}
             onConfirm={setConfirmed}
-            scheduling={create.isPending}
+            scheduling={create.isPending || amend.isPending}
             scheduleError={scheduleError}
             onRetryCheck={check}
             onSchedule={onSchedule}

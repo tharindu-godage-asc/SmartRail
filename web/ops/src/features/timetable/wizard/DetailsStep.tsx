@@ -1,4 +1,4 @@
-import { useState, type Dispatch } from 'react'
+import type { Dispatch } from 'react'
 import type { ValidationIssue } from '../../../core/api/types'
 import { t } from '../../../core/strings'
 import { nextDay, todayInColombo } from '../../../core/time'
@@ -10,9 +10,24 @@ import { Field } from './parts'
 import { inputClass } from './styles'
 
 /** Step 1: train number, category, type, direction, and the days (weekly) or the dates (extra train). */
-export function DetailsStep({ draft, dispatch, issues }: { draft: Draft; dispatch: Dispatch<Action>; issues: ValidationIssue[] }) {
+export function DetailsStep({
+  draft,
+  dispatch,
+  issues,
+  pending,
+  onPending,
+  amending = false,
+}: {
+  draft: Draft
+  dispatch: Dispatch<Action>
+  issues: ValidationIssue[]
+  /** The date shown in the date box of an extra train that has not been added to the list yet (Next adds it). */
+  pending: string
+  onPending: (date: string) => void
+  /** An amendment: the train number, category and type are shown but cannot change (spec 15 Q7). */
+  amending?: boolean
+}) {
   const w = t.timetable.wizard
-  const [pending, setPending] = useState('')
   const today = todayInColombo()
   const at = (field: Parameters<typeof issuesForDetails>[2]) => issuesForDetails(issues, draft, field)
 
@@ -24,10 +39,13 @@ export function DetailsStep({ draft, dispatch, issues }: { draft: Draft; dispatc
           className={`${inputClass} max-w-[220px]`}
           value={draft.trainNumber}
           maxLength={10}
+          readOnly={amending}
           aria-describedby="train-number-hint"
           onChange={(e) => dispatch({ type: 'set', field: 'trainNumber', value: e.target.value })}
         />
       </Field>
+
+      {amending ? <p className="m-0 text-label text-muted">{t.timetable.amend.readOnly}</p> : null}
 
       <div className="flex flex-wrap gap-md">
         <Field id="category" label={w.category} issues={at('category')}>
@@ -35,6 +53,7 @@ export function DetailsStep({ draft, dispatch, issues }: { draft: Draft; dispatc
             id="category"
             className={inputClass}
             value={draft.category}
+            disabled={amending}
             onChange={(e) => dispatch({ type: 'category', value: e.target.value as Draft['category'] })}
           >
             <option value="Regional">{t.timetable.categories.Regional}</option>
@@ -46,6 +65,7 @@ export function DetailsStep({ draft, dispatch, issues }: { draft: Draft; dispatc
             id="service-type"
             className={inputClass}
             value={draft.serviceType}
+            disabled={amending}
             onChange={(e) => dispatch({ type: 'serviceType', value: e.target.value as Draft['serviceType'] })}
           >
             <option value="Slow">{t.timetable.types.Slow}</option>
@@ -68,13 +88,13 @@ export function DetailsStep({ draft, dispatch, issues }: { draft: Draft; dispatc
 
       {draft.kind === 'Weekly' ? (
         <>
-          <Field id="effective-from" label={w.firstDate} issues={at('effectiveFrom')}>
+          <Field id="effective-from" label={amending ? t.timetable.amend.effectiveFrom : w.firstDate} hint={amending ? t.timetable.amend.effectiveHint : undefined} issues={at('effectiveFrom')}>
             <input
               id="effective-from"
               type="date"
               className={`${inputClass} max-w-[220px]`}
               value={draft.effectiveFrom}
-              min={today}
+              min={amending ? nextDay(today) : today}
               onChange={(e) => dispatch({ type: 'set', field: 'effectiveFrom', value: e.target.value })}
             />
           </Field>
@@ -103,19 +123,20 @@ export function DetailsStep({ draft, dispatch, issues }: { draft: Draft; dispatc
                 className={inputClass}
                 value={pending}
                 min={today}
-                onChange={(e) => setPending(e.target.value)}
+                onChange={(e) => onPending(e.target.value)}
               />
             </Field>
             <Button
               onClick={() => {
                 dispatch({ type: 'addDate', date: pending })
-                setPending(nextDay(pending || today))
+                onPending(nextDay(pending || today))
               }}
               disabled={pending === ''}
             >
               {w.addDate}
             </Button>
           </div>
+          <p className="m-0 text-caption text-muted">{w.datesHint}</p>
           {draft.dates.length === 0 ? (
             <p className="m-0 text-label text-muted">{w.noDates}</p>
           ) : (

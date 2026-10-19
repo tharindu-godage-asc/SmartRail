@@ -1,5 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { CancellationView, CreateResult, LineOptions, ServiceDetail, ServiceRequest, ServiceRow, ValidationResult } from '../../core/api/types'
+import type {
+  AmendResult,
+  CancelResult,
+  CancellationView,
+  CreateResult,
+  LineOptions,
+  ServiceDetail,
+  ServiceRequest,
+  ServiceRow,
+  ValidationResult,
+} from '../../core/api/types'
 import { useApi } from '../auth/apiContext'
 
 /**
@@ -46,10 +56,11 @@ export function useCancelled() {
   })
 }
 
-export function useServiceDetail(serviceId: string) {
+export function useServiceDetail(serviceId: string, enabled = true) {
   const { api } = useApi()
   return useQuery({
     queryKey: ['timetable', 'service', serviceId],
+    enabled,
     queryFn: ({ signal }) => api.get<ServiceDetail>(`${base}/services/${serviceId}`, signal),
     retry: false,
   })
@@ -69,6 +80,33 @@ export function useCreateService() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (request: ServiceRequest) => api.post(`${base}/services`, request) as Promise<CreateResult>,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['timetable'] }),
+  })
+}
+
+export interface CancelRequest {
+  from: string
+  /** null means "from this date onward". */
+  to: string | null
+  reason: string
+}
+
+/** Cancels a service for a range of dates. Win or lose, the timetable reads are refreshed. */
+export function useCancelService(serviceId: string) {
+  const { api } = useApi()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (request: CancelRequest) => api.post(`${base}/services/${serviceId}/cancel`, request) as Promise<CancelResult>,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['timetable'] }),
+  })
+}
+
+/** Amends a weekly service from a date: the result is a new version. */
+export function useAmendService(serviceId: string) {
+  const { api } = useApi()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (request: ServiceRequest) => api.post(`${base}/services/${serviceId}/amend`, request) as Promise<AmendResult>,
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['timetable'] }),
   })
 }

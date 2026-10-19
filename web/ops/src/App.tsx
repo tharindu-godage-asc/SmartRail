@@ -9,7 +9,7 @@ import { ExtraTab } from './features/timetable/ExtraTab'
 import { ServiceDetailPage } from './features/timetable/ServiceDetailPage'
 import { TimetablePage } from './features/timetable/TimetablePage'
 import { WeeklyTab } from './features/timetable/WeeklyTab'
-import { NewServicePage } from './features/timetable/wizard/NewServicePage'
+import { AmendServicePage, NewServicePage } from './features/timetable/wizard/NewServicePage'
 import { MainBoard } from './modes/display/MainBoard'
 import { PlatformDisplay } from './modes/display/PlatformDisplay'
 import { OpsShell } from './modes/ops/OpsShell'
@@ -46,6 +46,7 @@ function OpsRoutes() {
           <Route path="timetable/new" element={<NewServicePage kind="Weekly" />} />
           <Route path="timetable/extra/new" element={<NewServicePage kind="Extra" />} />
           <Route path="timetable/:serviceId" element={<ServiceDetailPage />} />
+          <Route path="timetable/:serviceId/amend" element={<AmendServicePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
