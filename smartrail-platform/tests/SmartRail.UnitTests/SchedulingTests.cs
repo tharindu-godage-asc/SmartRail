@@ -110,6 +110,27 @@ public sealed class SchedulingTests
         Assert.Null(ServiceRuns.On("Holidays", from, null, new DateOnly(2026, 10, 22), cancelled));
     }
 
+    // ---- the readable summary of an amendment ----
+
+    private static ExistingStop St(string code, string? platform, string? arrival, string? departure) =>
+        new(code, platform, arrival is null ? null : TimeOnly.Parse(arrival), departure is null ? null : TimeOnly.Parse(departure));
+
+    private static readonly Dictionary<string, string> Names = new() { ["VYG"] = "Veyangoda", ["GPH"] = "Gampaha", ["RGM"] = "Ragama", ["CF"] = "Colombo Fort" };
+
+    [Fact]
+    public void A_changed_time_platform_added_and_removed_stop_and_days_are_described()
+    {
+        var before = new[] { St("VYG", "1", null, "08:20"), St("GPH", "1", "08:30", "08:38"), St("CF", "1", "08:55", null) };
+        var after = new[] { St("VYG", "1", null, "08:20"), St("GPH", "2", "08:30", "08:42"), St("RGM", null, "08:46", "08:47"), St("CF", "1", "08:55", null) };
+
+        var changes = AmendmentDiff.Describe(before, after, Names, "Weekdays", "Mon,Tue");
+
+        Assert.Equal(
+            ["Gampaha 08:42 (was 08:38)", "Gampaha platform 2 (was 1)", "Added stop Ragama 08:46", "Days Mon,Tue (was Weekdays)"], changes);
+        Assert.Equal(["Removed stop Gampaha"], AmendmentDiff.Describe(before, [before[0], before[2]], Names, "Daily", "daily"));
+        Assert.Empty(AmendmentDiff.Describe(before, before, Names, "Daily", "Daily"));
+    }
+
     // ---- the rules ----
 
     [Fact]

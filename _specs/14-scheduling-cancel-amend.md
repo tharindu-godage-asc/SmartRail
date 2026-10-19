@@ -131,20 +131,20 @@ Body as create (spec 13 section 4.5) for a **weekly** service, with `effectiveFr
 | Reason with `<script>` | Stored and returned as text; the UI shows it as text (spec 08 escaping) |
 
 ## 9) Acceptance Criteria
-- [ ] A controller can cancel a service for one date or from a date onward with a reason; the service and every version remain (FR-11C, D-70).
-- [ ] Journeys in the range with no events become `Cancelled`; others are untouched; the generator creates none on cancelled dates, also after a restart (FR-11C, AC-E02-01).
-- [ ] A range containing a journey with events is refused with 409 and nothing changes (all or none).
-- [ ] Repeating the same cancel changes nothing and writes no second row.
-- [ ] The Cancelled tab lists cancellations that cover a date today or later with train, route, range, reason, who and when; the service detail lists them (FR-11C).
-- [ ] A controller can amend a weekly service from a date tomorrow or later; the result is a new version, the old one is kept with its dates (FR-11B, D-70).
-- [ ] Journeys before the effective date keep the old service version and times; journeys from it show the new times; no date has two journeys of the same train (FR-11B).
-- [ ] The Versions list shows each version with who and when and a readable summary of what changed.
-- [ ] Amend runs the same validation as create (dates, stop order, increasing times, platform of its station) and the platform advice needs acknowledging (FR-11D).
-- [ ] The passenger search, the station board and the status read follow the version in force and omit cancelled trains (spec 13 rule 14).
-- [ ] A `Cancelled` journey cannot receive operator reports and is not in the operator's active list.
-- [ ] Operator, passenger and caterer tokens get 403, no token 401, on both routes.
-- [ ] Every cancel and amend has one audit row with the actor; a failed call has none.
-- [ ] The existing suites (261 unit, 305 integration at the end of spec 13) still pass, plus the new tests.
+- [x] A controller can cancel a service for one date or from a date onward with a reason; the service and every version remain (FR-11C, D-70).
+- [x] Journeys in the range with no events become `Cancelled`; others are untouched; the generator creates none on cancelled dates, also after a restart (FR-11C, AC-E02-01).
+- [x] A range containing a journey with events is refused with 409 and nothing changes (all or none).
+- [x] Repeating the same cancel changes nothing and writes no second row.
+- [x] The Cancelled tab lists cancellations that cover a date today or later with train, route, range, reason, who and when; the service detail lists them (FR-11C).
+- [x] A controller can amend a weekly service from a date tomorrow or later; the result is a new version, the old one is kept with its dates (FR-11B, D-70).
+- [x] Journeys before the effective date keep the old service version and times; journeys from it show the new times; no date has two journeys of the same train (FR-11B).
+- [x] The Versions list shows each version with who and when and a readable summary of what changed.
+- [x] Amend runs the same validation as create (dates, stop order, increasing times, platform of its station) and the platform advice needs acknowledging (FR-11D).
+- [x] The passenger search, the station board and the status read follow the version in force and omit cancelled trains (spec 13 rule 14).
+- [x] A `Cancelled` journey cannot receive operator reports and is not in the operator's active list.
+- [x] Operator, passenger and caterer tokens get 403, no token 401, on both routes.
+- [x] Every cancel and amend has one audit row with the actor; a failed call has none.
+- [x] The existing suites (261 unit, 305 integration at the end of spec 13) still pass, plus the new tests.
 - [ ] The report states plainly that passenger notification, refunds, caterer messages, the controller screens, amending extra trains and showing "Cancelled" to passengers are not built.
 
 ## 10) Test Plan
@@ -175,3 +175,10 @@ Compose smoke by hand: create 8072, cancel 23 Oct, amend 8058, read the passenge
 ## 13) Owner decisions of 19 Oct 2026
 - Q1 to Q8 as recommended: backend only; cancel by train number and line; no amending of extra trains; a cancelled train is absent from passenger reads (not shown as Cancelled); a removed day's journeys become Cancelled ("Removed by amendment"); `Cancelled` is added as the last `JourneyStatus` value and every use is checked; a range with a journey that has events is refused whole (409); the reason is visible to controllers only.
 - Branch `claude/feature/scheduling-cancel-amend` starts from `dev`, which already holds specs 10 to 13.
+
+## 14) Delivery notes (19 Oct 2026)
+- **Built (backend):** `POST /api/v1/timetable/services/{id}/cancel` and `/amend`; migration `AddCancellation` (`service_cancellation`, `Cancelled` in the journey status check); `JourneyStatus.Cancelled` handled in every use (operator report refused with `journey_not_reportable`, operator active journey, passenger status by id and by number, search, line status, station board, controller overview); the generator and the passenger reads skip cancelled dates (`ServiceRuns.On` with cancellations); the Cancelled tab, `cancellations[]` and `cancelledRanges` on reads; version `summary` from the audit row; the weekly list shows the newest version per train number. 30 new tests (264 unit and 336 integration in all) pass.
+- **Checked live on Compose** as `jayasinghe`: cancelling 8072 for 23 October returned 1 cancelled journey, the Cancelled tab lists it with the reason and 8072 is absent from the passenger search for that date; amending 8072 from 26 October returned version 2 with 1 journey updated.
+- **Not ticked:** the report criterion (this section is its start). Everything else in section 9 has a test.
+- **Not built (as agreed):** controller screens; telling passengers (FR-11B, FR-11C notification), refunds, messages to the caterer; un-cancelling; cancelling a running or finished journey (an override); showing "Cancelled" to passengers (a cancelled train is simply absent); amending an extra train; services that pass midnight; operator assignment.
+- **Decisions made while building:** a journey that is Running or Completed also blocks cancel and amend, even without a report row. The amendment date must be after the start of the latest version and tomorrow or later (`date_in_past`, `effective_date_not_after_current`). Two amendments at once: the second one builds on the first, or is refused with `effective_date_not_after_current` when its date is not after the first one's start. A cancellation covers every version and every extra date of the train number on that line.

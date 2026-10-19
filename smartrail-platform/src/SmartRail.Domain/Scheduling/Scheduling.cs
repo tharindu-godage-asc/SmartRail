@@ -429,3 +429,52 @@ public static partial class ServiceValidator
         }
     }
 }
+
+/// <summary>What changed between two versions of a service, as short readable lines for the Versions list (spec 14 section 7).</summary>
+public static class AmendmentDiff
+{
+    public static IReadOnlyList<string> Describe(
+        IReadOnlyList<ExistingStop> before, IReadOnlyList<ExistingStop> after, IReadOnlyDictionary<string, string> names, string? runsBefore, string? runsAfter)
+    {
+        var changes = new List<string>();
+        string Name(string code) => names.GetValueOrDefault(code, code);
+        string Time(TimeOnly? t) => t is { } v ? v.ToString("HH\\:mm", CultureInfo.InvariantCulture) : "-";
+
+        foreach (var stop in before.Where(b => after.All(a => a.StationCode != b.StationCode)))
+        {
+            changes.Add($"Removed stop {Name(stop.StationCode)}");
+        }
+
+        foreach (var stop in after)
+        {
+            var was = before.FirstOrDefault(b => b.StationCode == stop.StationCode);
+            if (was is null)
+            {
+                changes.Add($"Added stop {Name(stop.StationCode)} {Time(stop.Arrival ?? stop.Departure)}");
+                continue;
+            }
+
+            if (was.Arrival != stop.Arrival)
+            {
+                changes.Add($"{Name(stop.StationCode)} arrives {Time(stop.Arrival)} (was {Time(was.Arrival)})");
+            }
+
+            if (was.Departure != stop.Departure)
+            {
+                changes.Add($"{Name(stop.StationCode)} {Time(stop.Departure)} (was {Time(was.Departure)})");
+            }
+
+            if (!string.Equals(was.Platform, stop.Platform, StringComparison.OrdinalIgnoreCase))
+            {
+                changes.Add($"{Name(stop.StationCode)} platform {stop.Platform ?? "not set"} (was {was.Platform ?? "not set"})");
+            }
+        }
+
+        if (!string.Equals(runsBefore, runsAfter, StringComparison.OrdinalIgnoreCase))
+        {
+            changes.Add($"Days {runsAfter} (was {runsBefore})");
+        }
+
+        return changes;
+    }
+}

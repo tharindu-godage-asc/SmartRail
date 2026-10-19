@@ -38,6 +38,7 @@ public static class TimetableFeatures
         services.AddScoped<ValidateServiceHandler>();
         services.AddScoped<CreateServiceHandler>();
         services.AddScoped<CancelServiceHandler>();
+        services.AddScoped<AmendServiceHandler>();
         services.AddScoped<JourneyGenerationHandler>();
         services.AddHostedService<TimetableGeneratorService>();
         return services;
@@ -52,6 +53,7 @@ public static class TimetableFeatures
         group.MapPost("/validate", Validate).WithName("ValidateTimetableService");
         group.MapPost("/services", Create).WithName("CreateTimetableService");
         group.MapPost("/services/{serviceId:guid}/cancel", Cancel).WithName("CancelTimetableService");
+        group.MapPost("/services/{serviceId:guid}/amend", Amend).WithName("AmendTimetableService");
         return app;
     }
 
@@ -151,6 +153,60 @@ public static class TimetableFeatures
                 return Problem(StatusCodes.Status422UnprocessableEntity, "The end date is before the start date", "invalid_range");
             case CancelError.NothingToCancel:
                 return Problem(StatusCodes.Status422UnprocessableEntity, "The service does not run on any date in that range", "nothing_to_cancel");
+            default:
+                return TypedResults.Problem(
+                    title: $"A journey on {result.EventDate:yyyy-MM-dd} already has reports", statusCode: StatusCodes.Status409Conflict,
+                    extensions: new Dictionary<string, object?> { ["reason"] = "journey_has_events", ["date"] = result.EventDate });
+        }
+    }
+
+    private static async Task<IResult> Amend(
+        Guid serviceId, ServiceBody body, HttpContext http, AmendServiceHandler handler, ILoggerFactory loggers, CancellationToken cancellationToken)
+    {
+        var subject = http.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(subject))
+        {
+            return Problem(StatusCodes.Status403Forbidden, "Forbidden", "no_subject");
+        }
+
+        var result = await handler.HandleAsync(serviceId, ToDraft(body), body.AcknowledgeWarnings == true, subject, cancellationToken);
+        switch (result.Error)
+        {
+            case AmendError.None:
+                loggers.CreateLogger("SmartRail.Timetable").LogInformation(
+                    "Service {TrainNumber} amended to version {Version} by {Actor}: {Updated} journeys updated, {Cancelled} cancelled, {Generated} created.",
+                    LogSafe.Clean(body.TrainNumber), result.Version, LogSafe.Clean(subject), result.JourneysUpdated, result.JourneysCancelled, result.JourneysGenerated);
+                return TypedResults.Created(
+                    $"/api/v1/timetable/services/{result.NewServiceId}",
+                    new
+                    {
+                        serviceId = result.NewServiceId,
+                        version = result.Version,
+                        journeysUpdated = result.JourneysUpdated,
+                        journeysCancelled = result.JourneysCancelled,
+                        journeysGenerated = result.JourneysGenerated,
+                        warnings = result.Validation!.Warnings,
+                    });
+            case AmendError.NotFound:
+                return Problem(StatusCodes.Status404NotFound, "Service not found", "service_not_found");
+            case AmendError.ExtraNotSupported:
+                return Problem(StatusCodes.Status422UnprocessableEntity, "An extra train cannot be amended: cancel it and create another", "amend_extra_not_supported");
+            case AmendError.ServiceEnded:
+                return Problem(StatusCodes.Status422UnprocessableEntity, "The service has ended", "service_ended");
+            case AmendError.IdentityChanged:
+                return Problem(StatusCodes.Status422UnprocessableEntity, "The train number, line and kind cannot change in an amendment", "identity_changed");
+            case AmendError.DateTooEarly:
+                return Problem(StatusCodes.Status422UnprocessableEntity, "An amendment starts tomorrow or later", "date_in_past");
+            case AmendError.NotAfterCurrent:
+                return Problem(StatusCodes.Status422UnprocessableEntity, "The effective date must be after the start of the current version", "effective_date_not_after_current");
+            case AmendError.Invalid:
+                return TypedResults.Problem(
+                    title: "The service is not valid", statusCode: StatusCodes.Status422UnprocessableEntity,
+                    extensions: new Dictionary<string, object?> { ["reason"] = "invalid_service", ["errors"] = result.Validation?.Errors ?? [], ["warnings"] = result.Validation?.Warnings ?? [] });
+            case AmendError.WarningsNotAcknowledged:
+                return TypedResults.Problem(
+                    title: "The service has warnings to confirm", statusCode: StatusCodes.Status409Conflict,
+                    extensions: new Dictionary<string, object?> { ["reason"] = "warnings_not_acknowledged", ["warnings"] = result.Validation!.Warnings });
             default:
                 return TypedResults.Problem(
                     title: $"A journey on {result.EventDate:yyyy-MM-dd} already has reports", statusCode: StatusCodes.Status409Conflict,
