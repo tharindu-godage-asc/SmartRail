@@ -229,6 +229,39 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
         // Is the length of the delay known? Only an operator report of "unknown" makes it unknown (spec 06 R7).
         var stopEvents = events.Where(e => e.Kind != ReportKind.DelayReported).Select(e => new ReportedStopEvent(e.ServiceStopId!.Value, e.Kind, e.OccurredAt)).ToList();
         var delays = events.Where(e => e.Kind == ReportKind.DelayReported).Select(e => new ReportedDelay(e.OccurredAt, e.Delay!.TotalDelayMinutes, e.Delay.DelayUnknown)).ToList();
+        data = data with { VerifiedReason = await LoadVerifiedReasonAsync(header.Id, stored.Where(e => e.EventType == EventType.DelayReported).OrderBy(e => e.OccurredAt).Select(e => (Guid?)e.Id).LastOrDefault(), cancellationToken) };
         return stops.Count == 0 ? data : data with { DelayKnown = JourneyProgress.DelayInForce(data.Schedule(), stopEvents, delays).Known };
+    }
+
+    /// <summary>The verification that belongs to the latest delay report; a newer report makes the reason unverified again (spec 16 section 5).</summary>
+    private async Task<VerifiedReasonInfo?> LoadVerifiedReasonAsync(Guid journeyId, Guid? latestDelayEventId, CancellationToken cancellationToken)
+    {
+        if (latestDelayEventId is null)
+        {
+            return null;
+        }
+
+        var verified = await db.TrainEvents.AsNoTracking()
+            .Where(e => e.JourneyId == journeyId && e.EventType == EventType.ReasonVerified)
+            .OrderByDescending(e => e.ReceivedAt)
+            .Select(e => new { e.Payload, e.ReceivedAt })
+            .ToListAsync(cancellationToken);
+        foreach (var e in verified)
+        {
+            if (e.Payload is null)
+            {
+                continue;
+            }
+
+            using var document = System.Text.Json.JsonDocument.Parse(e.Payload);
+            var root = document.RootElement;
+            if (root.TryGetProperty("delayEventId", out var delayId) && delayId.GetGuid() == latestDelayEventId
+                && root.TryGetProperty("reasonCode", out var code) && code.GetString() is { } reason)
+            {
+                return new VerifiedReasonInfo(reason, e.ReceivedAt);
+            }
+        }
+
+        return null;
     }
 }

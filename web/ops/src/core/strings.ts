@@ -89,10 +89,40 @@ export const t = {
     resolveWith: 'Resolve as',
     descriptions: {
       ReasonAwaitingVerification: (train: string, station: string | null) =>
-        `A delay was reported for train ${train}${station ? `, last reported at ${station}` : ''}. The reason is waiting for verification. Showing and verifying the reason comes in a later release.`,
+        `A delay was reported for train ${train}${station ? `, last reported at ${station}` : ''}. The reason is waiting for verification.`,
       EarlyDeparture: (train: string, station: string | null) =>
         `Train ${train} left ${station ?? 'a stop'} before its scheduled time.`,
     } as Record<string, (train: string, station: string | null) => string>,
+  },
+
+  verify: {
+    heading: 'Delay reason',
+    reported: (reason: string) => `Reported by the operator: ${reason}`,
+    reasons: {
+      SignalIssue: 'Signal issue',
+      TechnicalFault: 'Technical fault',
+      Obstruction: 'Obstruction',
+      Weather: 'Weather',
+      Unknown: 'Unknown',
+    } as Record<string, string>,
+    preview: (reason: string) => `Passengers will see: “${reason}” with “Verified by Operations” and the time.`,
+    locked: 'This reason cannot be published as reported. Edit it to an approved reason first.',
+    verify: 'Verify and publish reason',
+    edit: 'Edit reason',
+    editLabel: 'Approved reason',
+    choose: 'Choose a reason',
+    publish: 'Publish this reason',
+    reject: 'Reject report',
+    rejectNote: 'Reject closes this item and publishes no reason. The delay itself is kept.',
+    sending: 'Sending…',
+    alreadyResolved: 'Another controller already dealt with this item. The list was refreshed.',
+    notApproved: 'Only an approved reason can be published.',
+    failed: 'Could not send this. Try again.',
+    selectMany: 'Select several to verify',
+    selectOne: (train: string) => `Select train ${train} for verification`,
+    verifySelected: (n: number) => `Verify selected (${n})`,
+    lockedRow: 'Locked: change the reason first',
+    bulkDone: (verified: number, skipped: number) => `${verified} verified, ${skipped} skipped.`,
   },
 
   closed: {

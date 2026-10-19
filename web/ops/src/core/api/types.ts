@@ -14,6 +14,16 @@ export interface ExceptionItem {
   createdAt: string
   ageSeconds: number
   relatedEventId: string | null
+  /** The reason the operator reported (delay exceptions only); controller-only, public reads never carry it. */
+  reportedReason?: string | null
+  /** True when the reported reason is on the approved list and can be published as it is. */
+  canVerify?: boolean
+}
+
+export type VerifyAction = 'verify' | 'change' | 'reject'
+
+export interface BulkVerifyResult {
+  results: { id: string; status: 'verified' | 'skipped'; reason?: string }[]
 }
 
 export interface ClosedException {

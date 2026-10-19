@@ -11,7 +11,8 @@ public sealed record OpenExceptionRow(
     ExceptionType Type,
     ExceptionSeverity Severity,
     DateTimeOffset CreatedAt,
-    Guid? RelatedEventId);
+    Guid? RelatedEventId,
+    string? ReportedReason = null);
 
 /// <summary>One closed exception, newest closure first (spec 07 section 14). The reason is not here: no read returns it (D-10).</summary>
 public sealed record ResolvedExceptionRow(
@@ -60,7 +61,9 @@ public sealed record OpenExceptionItem(
     string Severity,
     DateTimeOffset CreatedAt,
     long AgeSeconds,
-    Guid? RelatedEventId);
+    Guid? RelatedEventId,
+    string? ReportedReason = null,
+    bool CanVerify = false);
 
 public sealed record OpenExceptionsResponse(IReadOnlyList<OpenExceptionItem> Items, int OpenCount);
 
@@ -74,7 +77,8 @@ public sealed class ListOpenExceptionsHandler(IExceptionRepository repository, T
         var items = rows
             .Select(r => new OpenExceptionItem(
                 r.Id, r.JourneyId, r.TrainNumber, r.StationName, r.Type.ToString(), r.Severity.ToString(),
-                r.CreatedAt, (long)Math.Max(0, (now - r.CreatedAt).TotalSeconds), r.RelatedEventId))
+                r.CreatedAt, (long)Math.Max(0, (now - r.CreatedAt).TotalSeconds), r.RelatedEventId,
+                r.ReportedReason, VerificationRules.IsApproved(r.ReportedReason)))
             .ToList();
         return new OpenExceptionsResponse(items, items.Count);
     }
