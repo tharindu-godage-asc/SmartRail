@@ -174,6 +174,8 @@ class TrainStatus {
     this.lastSeen,
     this.lastEventAt,
     required this.operatingDate,
+    this.reasonCode,
+    this.reasonVerifiedAt,
     this.raw = const {},
   });
 
@@ -204,6 +206,12 @@ class TrainStatus {
       lastSeen: seen,
       lastEventAt: _time(j['lastEventAt']),
       operatingDate: j['operatingDate'] as String,
+      reasonCode: j['reason'] == null
+          ? null
+          : _map(j['reason'])['code'] as String?,
+      reasonVerifiedAt: j['reason'] == null
+          ? null
+          : _time(_map(j['reason'])['verifiedAt']),
       raw: j,
     );
   }
@@ -219,6 +227,10 @@ class TrainStatus {
   final LastSeen? lastSeen;
   final DateTime? lastEventAt;
   final String operatingDate;
+
+  /// The delay reason Operations verified (spec 16 F2), and when. Null until a controller verifies it: passengers never see an unverified reason.
+  final String? reasonCode;
+  final DateTime? reasonVerifiedAt;
 
   /// The answer as the server sent it, kept as the offline snapshot.
   final Map<String, dynamic> raw;

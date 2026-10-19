@@ -122,6 +122,7 @@ public static class JourneyFeatures
         RejectReason.InvalidRequest => (StatusCodes.Status422UnprocessableEntity, "Invalid report", "invalid_request"),
         RejectReason.JourneyNotFound => (StatusCodes.Status404NotFound, "Journey not found", "journey_not_found"),
         RejectReason.NotAssigned => (StatusCodes.Status403Forbidden, "Not assigned to this journey", "not_assigned"),
+        RejectReason.AssignmentEnded => (StatusCodes.Status403Forbidden, "This assignment was ended", "assignment_ended"),
         RejectReason.TimeOutOfRange => (StatusCodes.Status422UnprocessableEntity, "Reported time is outside the allowed range", "time_out_of_range"),
         RejectReason.StopNotInService => (StatusCodes.Status422UnprocessableEntity, "Stop is not part of this journey", "stop_not_in_service"),
         RejectReason.FinalStop => (StatusCodes.Status422UnprocessableEntity, "No departure from the final stop", "final_stop"),

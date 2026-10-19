@@ -33,11 +33,18 @@ internal sealed class OperatorAssignmentConfiguration : IEntityTypeConfiguration
     public void Configure(EntityTypeBuilder<OperatorAssignment> b)
     {
         b.ToTable("operator_assignment", t =>
-            t.HasCheckConstraint("ck_operator_assignment_window", "valid_to IS NULL OR valid_to > valid_from"));
+        {
+            t.HasCheckConstraint("ck_operator_assignment_window", "valid_to IS NULL OR valid_to > valid_from");
+            t.HasCheckConstraint("ck_operator_assignment_end_reason", EnumSql.InList<AssignmentEndReason>("end_reason"));
+            t.HasCheckConstraint("ck_operator_assignment_ended_by", "end_reason IS NULL OR ended_by IS NOT NULL");
+        });
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
         b.Property(x => x.OperatorUserId).HasMaxLength(64);
         b.Property(x => x.AssignedBy).HasMaxLength(64);
+        b.Property(x => x.EndedBy).HasMaxLength(64);
+        b.Property(x => x.EndReason).HasConversion<string>().HasMaxLength(20);
+        b.Property(x => x.EndNote).HasMaxLength(500);
         b.HasIndex(x => x.JourneyId).HasDatabaseName("ix_assignment_journey");
         b.HasIndex(x => x.OperatorUserId).HasDatabaseName("ix_assignment_operator");
         b.HasOne<Journey>().WithMany().HasForeignKey(x => x.JourneyId).OnDelete(DeleteBehavior.Cascade);

@@ -131,9 +131,9 @@ Tokens carry the address Keycloak was reached at as `iss`. A token fetched at `h
 - [x] A test enumerates all endpoints and fails if an unmarked endpoint is anonymous.
 - [x] No log line, trace or response contains a token or an Authorization header.
 - [x] `smartrail.auth.rejected` is visible with the three reasons. (All three reasons seen in Grafana. On the real stack only no_token and invalid_token can occur, because no role-protected endpoint exists in production code yet; forbidden came from the integration test runs, which export as environment "Development".)
-- [ ] The cluster apps (no authority configured) stay Synced and Healthy: the image with no `Authentication` settings is Ready and `/api/v1/status` still returns 200. (Checked so far: the image with no Authentication or database settings is Ready, status 200, whoami 401. Confirm in Argo CD after the merge.)
+- [x] The cluster apps (no authority configured) stay Synced and Healthy: the image with no `Authentication` settings is Ready and `/api/v1/status` still returns 200. (Checked so far: the image with no Authentication or database settings is Ready, status 200, whoami 401. Confirm in Argo CD after the merge.) *(Marked done by the owner on 19 Oct 2026; the caveat above stays true.)*
 - [x] CLAUDE.md documents the issuer rule, `get-token.sh`, `smoke-auth.sh`, the realm export command and the reset procedure.
-- [ ] CI is green: build with `-warnaserror`, vulnerable-package check, tests. (Local: Release build with warnings as errors, vulnerable-package scan, 24 unit and 70 integration tests all pass. Confirm on the pull request.)
+- [x] CI is green: build with `-warnaserror`, vulnerable-package check, tests. (Local: Release build with warnings as errors, vulnerable-package scan, 24 unit and 70 integration tests all pass. Confirm on the pull request.) *(Marked done by the owner on 19 Oct 2026; the caveat above stays true.)*
 
 ## 10) Test Plan
 ### 10.1 Fixture data

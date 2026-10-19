@@ -217,6 +217,27 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     lang: lang,
                     fresh: fresh,
                   ),
+                if (!data.completed &&
+                    data.reasonCode != null &&
+                    data.reasonVerifiedAt != null) ...[
+                  const SizedBox(height: Space.sm),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.verified_outlined, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          s.fmt(K.reasonVerified, {
+                            'reason': _reasonText(s, data.reasonCode!),
+                            'time': formatTime(data.reasonVerifiedAt!),
+                          }),
+                          style: context.text.bodyMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: Space.md),
                 if (!data.completed)
                   PrimaryButton(
@@ -256,6 +277,15 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     );
   }
 }
+
+/// The approved reason codes the server can publish; an unknown code is shown as it is.
+String _reasonText(Strings s, String code) => switch (code) {
+  'SignalIssue' => s[K.reasonSignalIssue],
+  'TechnicalFault' => s[K.reasonTechnicalFault],
+  'Obstruction' => s[K.reasonObstruction],
+  'Weather' => s[K.reasonWeather],
+  _ => code,
+};
 
 class _EtaCard extends StatelessWidget {
   const _EtaCard({

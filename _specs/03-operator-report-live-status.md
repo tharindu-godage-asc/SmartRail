@@ -192,7 +192,7 @@ Deferred to slice 2: EC-05, EC-07, EC-08 (exceptions).
 - [x] The two status GETs work with no token, and the allow-list test, run with a database configured, passes with exactly those two additions.
 - [x] `smartrail.events.received` is visible in Grafana with the outcomes recorded, duplicate and rejected. (Seen in Grafana for environment local on 2026-10-14, together with the report_to_visible histogram.)
 - [x] With no database configured the new endpoints do not exist, and `/health/ready` and `/api/v1/status` behave as before (the cluster apps stay Synced and Healthy). (Checked locally: without a database the routes are absent and readiness is unchanged. The cluster apps themselves can only be confirmed in Argo CD after the merge.)
-- [ ] CI is green: build with `-warnaserror`, vulnerable-package check, and all tests.
+- [x] CI is green: build with `-warnaserror`, vulnerable-package check, and all tests. *(Marked done by the owner on 19 Oct 2026; the caveat above stays true.)*
 
 ## 10) Test Plan
 ### 10.1 Seed and fixture data

@@ -4,6 +4,15 @@ import { ClosedExceptionsTab } from './features/exceptions/ClosedExceptionsTab'
 import { ExceptionsPage } from './features/exceptions/ExceptionsPage'
 import { OpenExceptionsTab } from './features/exceptions/OpenExceptionsTab'
 import { OverviewPage } from './features/overview/OverviewPage'
+import { AssignPage } from './features/assignments/AssignPage'
+import { JourneyCrewPage } from './features/assignments/JourneyCrewPage'
+import { JourneysPage } from './features/assignments/JourneysPage'
+import { CancelledTab } from './features/timetable/CancelledTab'
+import { ExtraTab } from './features/timetable/ExtraTab'
+import { ServiceDetailPage } from './features/timetable/ServiceDetailPage'
+import { TimetablePage } from './features/timetable/TimetablePage'
+import { WeeklyTab } from './features/timetable/WeeklyTab'
+import { AmendServicePage, NewServicePage } from './features/timetable/wizard/NewServicePage'
 import { MainBoard } from './modes/display/MainBoard'
 import { PlatformDisplay } from './modes/display/PlatformDisplay'
 import { OpsShell } from './modes/ops/OpsShell'
@@ -32,6 +41,19 @@ function OpsRoutes() {
             <Route index element={<OpenExceptionsTab />} />
             <Route path="closed" element={<ClosedExceptionsTab />} />
           </Route>
+          <Route path="journeys" element={<JourneysPage />} />
+          <Route path="journeys/all" element={<JourneysPage all />} />
+          <Route path="journeys/:journeyId" element={<JourneyCrewPage />} />
+          <Route path="journeys/:journeyId/assign" element={<AssignPage />} />
+          <Route path="timetable" element={<TimetablePage />}>
+            <Route index element={<WeeklyTab />} />
+            <Route path="extra" element={<ExtraTab />} />
+            <Route path="cancelled" element={<CancelledTab />} />
+          </Route>
+          <Route path="timetable/new" element={<NewServicePage kind="Weekly" />} />
+          <Route path="timetable/extra/new" element={<NewServicePage kind="Extra" />} />
+          <Route path="timetable/:serviceId" element={<ServiceDetailPage />} />
+          <Route path="timetable/:serviceId/amend" element={<AmendServicePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

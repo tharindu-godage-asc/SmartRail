@@ -110,6 +110,16 @@ public static class ServiceRuns
         // The three fixed words keep their older reading in one place; a day list is read here.
         return RunDays.Parse(runsOn) is { } days ? days.Contains(date.DayOfWeek) : null;
     }
+
+    /// <summary>The same decision, also false on a cancelled date of the train number (spec 14 rule 7).</summary>
+    public static bool? On(string? runsOn, DateOnly effectiveFrom, DateOnly? effectiveTo, DateOnly date, IEnumerable<CancellationRange>? cancellations) =>
+        cancellations is not null && cancellations.Any(c => c.Covers(date)) ? false : On(runsOn, effectiveFrom, effectiveTo, date);
+}
+
+/// <summary>A cancelled range of dates of a train number: one date, or from a date onward when <paramref name="To"/> is null (spec 14).</summary>
+public sealed record CancellationRange(DateOnly From, DateOnly? To)
+{
+    public bool Covers(DateOnly date) => date >= From && (To is null || date <= To);
 }
 
 public sealed record StopDraft(string StationCode, string? Arrival, string? Departure, string? Platform);
@@ -417,5 +427,54 @@ public static partial class ServiceValidator
                 }
             }
         }
+    }
+}
+
+/// <summary>What changed between two versions of a service, as short readable lines for the Versions list (spec 14 section 7).</summary>
+public static class AmendmentDiff
+{
+    public static IReadOnlyList<string> Describe(
+        IReadOnlyList<ExistingStop> before, IReadOnlyList<ExistingStop> after, IReadOnlyDictionary<string, string> names, string? runsBefore, string? runsAfter)
+    {
+        var changes = new List<string>();
+        string Name(string code) => names.GetValueOrDefault(code, code);
+        string Time(TimeOnly? t) => t is { } v ? v.ToString("HH\\:mm", CultureInfo.InvariantCulture) : "-";
+
+        foreach (var stop in before.Where(b => after.All(a => a.StationCode != b.StationCode)))
+        {
+            changes.Add($"Removed stop {Name(stop.StationCode)}");
+        }
+
+        foreach (var stop in after)
+        {
+            var was = before.FirstOrDefault(b => b.StationCode == stop.StationCode);
+            if (was is null)
+            {
+                changes.Add($"Added stop {Name(stop.StationCode)} {Time(stop.Arrival ?? stop.Departure)}");
+                continue;
+            }
+
+            if (was.Arrival != stop.Arrival)
+            {
+                changes.Add($"{Name(stop.StationCode)} arrives {Time(stop.Arrival)} (was {Time(was.Arrival)})");
+            }
+
+            if (was.Departure != stop.Departure)
+            {
+                changes.Add($"{Name(stop.StationCode)} {Time(stop.Departure)} (was {Time(was.Departure)})");
+            }
+
+            if (!string.Equals(was.Platform, stop.Platform, StringComparison.OrdinalIgnoreCase))
+            {
+                changes.Add($"{Name(stop.StationCode)} platform {stop.Platform ?? "not set"} (was {was.Platform ?? "not set"})");
+            }
+        }
+
+        if (!string.Equals(runsBefore, runsAfter, StringComparison.OrdinalIgnoreCase))
+        {
+            changes.Add($"Days {runsAfter} (was {runsBefore})");
+        }
+
+        return changes;
     }
 }

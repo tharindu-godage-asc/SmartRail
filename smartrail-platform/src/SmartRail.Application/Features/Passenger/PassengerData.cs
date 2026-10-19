@@ -35,11 +35,12 @@ public sealed record ServiceRecord(
     string RunsOn,
     IReadOnlyList<ServiceStopRecord> Stops,
     DateOnly EffectiveFrom = default,
-    DateOnly? EffectiveTo = null)
+    DateOnly? EffectiveTo = null,
+    IReadOnlyList<Domain.Scheduling.CancellationRange>? Cancellations = null)
 {
     /// <summary>Whether the service runs on the date: inside its effective range and on one of its days (spec 13). Null for a calendar that is not understood.</summary>
     public bool? RunsOnDate(DateOnly date) =>
-        Domain.Scheduling.ServiceRuns.On(RunsOn, EffectiveFrom == default ? new DateOnly(2000, 1, 1) : EffectiveFrom, EffectiveTo, date);
+        Domain.Scheduling.ServiceRuns.On(RunsOn, EffectiveFrom == default ? new DateOnly(2000, 1, 1) : EffectiveFrom, EffectiveTo, date, Cancellations);
 }
 
 /// <summary>A journey with its stored stop states and the time its latest report was received (null when none).</summary>

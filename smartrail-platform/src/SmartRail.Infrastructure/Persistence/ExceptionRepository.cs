@@ -22,11 +22,19 @@ public sealed class ExceptionRepository(SmartrailDbContext db) : IExceptionRepos
             })
             .ToListAsync(cancellationToken);
 
+        // The reason the operator reported, for the controller who must verify it. Controller-only; no public read has it (D-10).
+        var eventIds = rows.Where(r => r.Type == ExceptionType.ReasonAwaitingVerification && r.RelatedEventId != null).Select(r => r.RelatedEventId).ToList();
+        var payloads = await db.TrainEvents.AsNoTracking()
+            .Where(e => eventIds.Contains(e.Id))
+            .Select(e => new { e.Id, e.Payload })
+            .ToDictionaryAsync(e => e.Id, e => e.Payload, cancellationToken);
+        string? ReasonOf(Guid? eventId) => eventId is { } id && payloads.TryGetValue(id, out var payload) ? SmartRail.Application.Features.Events.ReportEvent.EventRules.FromJson(payload)?.Reason : null;
+
         // Critical first, then oldest first (AC-E05-02 3). Sorted here because the enum is stored as text.
         return rows
             .OrderBy(r => r.Severity == ExceptionSeverity.Critical ? 0 : 1)
             .ThenBy(r => r.CreatedAt)
-            .Select(r => new OpenExceptionRow(r.Id, r.JourneyId, r.TrainNumber, r.StationName, r.Type, r.Severity, r.CreatedAt, r.RelatedEventId))
+            .Select(r => new OpenExceptionRow(r.Id, r.JourneyId, r.TrainNumber, r.StationName, r.Type, r.Severity, r.CreatedAt, r.RelatedEventId, ReasonOf(r.RelatedEventId)))
             .ToList();
     }
 

@@ -75,6 +75,8 @@ export function OpsShell() {
           <ul className="m-0 flex list-none flex-row p-0 md:flex-col">
             <MenuItem to="/" end label={t.nav.overview} />
             <MenuItem to="/exceptions" label={t.nav.exceptions} count={openCount} />
+            <MenuItem to="/journeys" label={t.nav.journeys} />
+            <MenuItem to="/timetable" label={t.nav.timetable} />
           </ul>
         </nav>
 
