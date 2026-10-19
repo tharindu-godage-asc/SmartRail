@@ -8,6 +8,8 @@ namespace SmartRail.Api.Features.Timetable;
 
 public sealed record StopBody(string? StationCode, string? Arrival, string? Departure, string? Platform);
 
+public sealed record CancelBody(DateOnly? From, DateOnly? To, string? Reason);
+
 /// <summary>The body of validate and create (spec 13 section 4.5). Fields are nullable so a missing one is a validation answer, not a crash.</summary>
 public sealed record ServiceBody(
     string? Kind,
@@ -35,6 +37,7 @@ public static class TimetableFeatures
         services.AddScoped<GetServiceHandler>();
         services.AddScoped<ValidateServiceHandler>();
         services.AddScoped<CreateServiceHandler>();
+        services.AddScoped<CancelServiceHandler>();
         services.AddScoped<JourneyGenerationHandler>();
         services.AddHostedService<TimetableGeneratorService>();
         return services;
@@ -48,6 +51,7 @@ public static class TimetableFeatures
         group.MapGet("/services/{serviceId:guid}", GetService).WithName("GetTimetableService");
         group.MapPost("/validate", Validate).WithName("ValidateTimetableService");
         group.MapPost("/services", Create).WithName("CreateTimetableService");
+        group.MapPost("/services/{serviceId:guid}/cancel", Cancel).WithName("CancelTimetableService");
         return app;
     }
 
@@ -63,7 +67,7 @@ public static class TimetableFeatures
         var result = await handler.HandleAsync(line, tab, cancellationToken);
         return result.Error switch
         {
-            ListError.None => TypedResults.Ok(result.Rows),
+            ListError.None => TypedResults.Ok(result.Cancelled is not null ? (object)result.Cancelled : result.Rows),
             ListError.LineNotFound => Problem(StatusCodes.Status404NotFound, "Line not found", "line_not_found"),
             _ => Problem(StatusCodes.Status422UnprocessableEntity, "tab must be weekly, extra or cancelled", "invalid_tab"),
         };
@@ -116,6 +120,41 @@ public static class TimetableFeatures
                 return TypedResults.Problem(
                     title: $"Train {result.ClashTrainNumber} already runs on these dates", statusCode: StatusCodes.Status409Conflict,
                     extensions: new Dictionary<string, object?> { ["reason"] = "train_number_in_use", ["trainNumber"] = result.ClashTrainNumber });
+        }
+    }
+
+    private static async Task<IResult> Cancel(
+        Guid serviceId, CancelBody body, HttpContext http, CancelServiceHandler handler, ILoggerFactory loggers, CancellationToken cancellationToken)
+    {
+        var subject = http.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(subject))
+        {
+            return Problem(StatusCodes.Status403Forbidden, "Forbidden", "no_subject");
+        }
+
+        var result = await handler.HandleAsync(serviceId, body.From, body.To, body.Reason, subject, cancellationToken);
+        switch (result.Error)
+        {
+            case CancelError.None:
+                // The reason is free text: only its length is logged.
+                loggers.CreateLogger("SmartRail.Timetable").LogInformation(
+                    "Service {ServiceId} cancelled by {Actor}: {Journeys} journeys, reason of {ReasonLength} characters.",
+                    serviceId, LogSafe.Clean(subject), result.CancelledJourneys, body.Reason?.Trim().Length ?? 0);
+                return TypedResults.Ok(new { cancellationId = result.CancellationId, cancelledJourneys = result.CancelledJourneys, from = result.From, to = result.To });
+            case CancelError.NotFound:
+                return Problem(StatusCodes.Status404NotFound, "Service not found", "service_not_found");
+            case CancelError.InvalidReason:
+                return Problem(StatusCodes.Status422UnprocessableEntity, "The reason is 1 to 200 characters", "invalid_reason");
+            case CancelError.DateInPast:
+                return Problem(StatusCodes.Status422UnprocessableEntity, "The date is missing or in the past", "date_in_past");
+            case CancelError.InvalidRange:
+                return Problem(StatusCodes.Status422UnprocessableEntity, "The end date is before the start date", "invalid_range");
+            case CancelError.NothingToCancel:
+                return Problem(StatusCodes.Status422UnprocessableEntity, "The service does not run on any date in that range", "nothing_to_cancel");
+            default:
+                return TypedResults.Problem(
+                    title: $"A journey on {result.EventDate:yyyy-MM-dd} already has reports", statusCode: StatusCodes.Status409Conflict,
+                    extensions: new Dictionary<string, object?> { ["reason"] = "journey_has_events", ["date"] = result.EventDate });
         }
     }
 

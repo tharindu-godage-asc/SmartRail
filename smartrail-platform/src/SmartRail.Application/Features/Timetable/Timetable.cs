@@ -35,7 +35,14 @@ public sealed record ServiceRow(
     string StopsLabel,
     int Version,
     bool Amended,
-    DateOnly EffectiveFrom);
+    DateOnly EffectiveFrom,
+    IReadOnlyList<DateRange> CancelledRanges);
+
+public sealed record DateRange(DateOnly From, DateOnly? To);
+
+/// <summary>One cancellation as the controller sees it (the reason is for controllers only, spec 14 Q8).</summary>
+public sealed record CancellationView(
+    Guid CancellationId, Guid ServiceId, string TrainNumber, string FromName, string ToName, DateOnly From, DateOnly? To, string Reason, string CancelledBy, DateTimeOffset CancelledAt);
 
 public sealed record ServiceStopView(
     int Sequence, string StationCode, IReadOnlyDictionary<string, string> Names, string? Arrival, string? Departure, string? Platform, bool IsFirst, bool IsLast);
@@ -54,7 +61,8 @@ public sealed record ServiceDetail(
     DateOnly? EffectiveTo,
     int Version,
     IReadOnlyList<ServiceStopView> Stops,
-    IReadOnlyList<ServiceVersionView> Versions);
+    IReadOnlyList<ServiceVersionView> Versions,
+    IReadOnlyList<CancellationView> Cancellations);
 
 /// <summary>One service to insert: a weekly service, or one date of an extra train.</summary>
 public sealed record NewService(
@@ -71,6 +79,10 @@ public sealed record NewService(
     IReadOnlyList<StopDraft> Stops);
 
 public sealed record CreateOutcome(bool Created, string? ClashTrainNumber, Guid? ClashServiceId);
+
+public enum CancelResultKind { Done, Repeat, NotFound, NothingToCancel, HasEvents }
+
+public sealed record CancelOutcome(CancelResultKind Kind, Guid? CancellationId, int CancelledJourneys, DateOnly? EventDate);
 
 public interface ITimetableRepository
 {
@@ -91,6 +103,15 @@ public interface ITimetableRepository
     /// state per stop. Idempotent and safe to run twice at once. Returns how many journeys it created.
     /// </summary>
     Task<int> GenerateJourneysAsync(DateOnly from, DateOnly to, IReadOnlyCollection<Guid>? serviceIds, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Cancels a train number on its line for a range of dates, all or none, in one transaction under the train-number lock: the journeys of the
+    /// range without events become Cancelled, a cancellation row and an audit row are written. HasEvents names the first date with a report.
+    /// </summary>
+    Task<CancelOutcome> CancelAsync(Guid serviceId, DateOnly from, DateOnly? to, string reason, string actor, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>Cancellations that cover a date from <paramref name="today"/> on, for the Cancelled tab.</summary>
+    Task<IReadOnlyList<CancellationView>> ListCancellationsAsync(string lineCode, DateOnly today, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<ServiceRow>> ListAsync(string lineCode, string tab, DateOnly today, CancellationToken cancellationToken);
 
@@ -115,7 +136,7 @@ public sealed class GetOptionsHandler(ITimetableRepository repository)
 
 public enum ListError { None, LineNotFound, InvalidTab }
 
-public sealed record ListResult(ListError Error, IReadOnlyList<ServiceRow> Rows);
+public sealed record ListResult(ListError Error, IReadOnlyList<ServiceRow> Rows, IReadOnlyList<CancellationView>? Cancelled = null);
 
 public sealed class ListServicesHandler(ITimetableRepository repository, TimeProvider clock)
 {
@@ -136,8 +157,9 @@ public sealed class ListServicesHandler(ITimetableRepository repository, TimePro
         }
 
         var today = OperatingTime.Today(clock);
-        // Cancelling arrives with S3, so no service is cancelled yet and that tab is empty.
-        return new ListResult(ListError.None, which == "cancelled" ? [] : await repository.ListAsync(line, which, today, cancellationToken));
+        return which == "cancelled"
+            ? new ListResult(ListError.None, [], await repository.ListCancellationsAsync(line, today, cancellationToken))
+            : new ListResult(ListError.None, await repository.ListAsync(line, which, today, cancellationToken));
     }
 }
 
@@ -259,5 +281,54 @@ public sealed class JourneyGenerationHandler(ITimetableRepository repository, Ti
         var created = await repository.GenerateJourneysAsync(today, today.AddDays(settings.HorizonDays), null, cancellationToken);
         TimetableMetrics.Generated.Add(created);
         return created;
+    }
+}
+
+public enum CancelError { None, NotFound, InvalidReason, DateInPast, InvalidRange, NothingToCancel, JourneyHasEvents }
+
+public sealed record CancelResult(CancelError Error, Guid? CancellationId, int CancelledJourneys, DateOnly? From, DateOnly? To, DateOnly? EventDate);
+
+/// <summary>Cancel a service for one date or from a date onward, with a reason (FR-11C, spec 14 section 4.1).</summary>
+public sealed class CancelServiceHandler(ITimetableRepository repository, TimeProvider clock)
+{
+    public async Task<CancelResult> HandleAsync(Guid serviceId, DateOnly? from, DateOnly? to, string? reason, string actor, CancellationToken cancellationToken)
+    {
+        var text = reason?.Trim();
+        if (string.IsNullOrEmpty(text) || text.Length > 200)
+        {
+            return Rejected(CancelError.InvalidReason);
+        }
+
+        var today = OperatingTime.Today(clock);
+        if (from is not { } start || start < today)
+        {
+            return Rejected(CancelError.DateInPast);
+        }
+
+        if (to is { } end && end < start)
+        {
+            return Rejected(CancelError.InvalidRange);
+        }
+
+        var outcome = await repository.CancelAsync(serviceId, start, to, text, actor, clock.GetUtcNow(), cancellationToken);
+        switch (outcome.Kind)
+        {
+            case CancelResultKind.NotFound:
+                return Rejected(CancelError.NotFound);
+            case CancelResultKind.NothingToCancel:
+                return Rejected(CancelError.NothingToCancel);
+            case CancelResultKind.HasEvents:
+                TimetableMetrics.Change("cancelled", "conflict");
+                return new CancelResult(CancelError.JourneyHasEvents, null, 0, start, to, outcome.EventDate);
+            default:
+                TimetableMetrics.Change("cancelled", "ok");
+                return new CancelResult(CancelError.None, outcome.CancellationId, outcome.CancelledJourneys, start, to, null);
+        }
+    }
+
+    private static CancelResult Rejected(CancelError error)
+    {
+        TimetableMetrics.Change("cancelled", "rejected");
+        return new CancelResult(error, null, 0, null, null, null);
     }
 }

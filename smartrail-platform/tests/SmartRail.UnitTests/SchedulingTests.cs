@@ -84,6 +84,32 @@ public sealed class SchedulingTests
         Assert.Null(ServiceCalendar.Runs("Holidays", new DateOnly(2026, 10, 19)));
     }
 
+    [Fact]
+    public void A_cancellation_range_covers_one_date_or_everything_from_a_date()
+    {
+        var one = new CancellationRange(new DateOnly(2026, 10, 23), new DateOnly(2026, 10, 23));
+        var onward = new CancellationRange(new DateOnly(2026, 10, 26), null);
+
+        Assert.True(one.Covers(new DateOnly(2026, 10, 23)));
+        Assert.False(one.Covers(new DateOnly(2026, 10, 24)));
+        Assert.False(onward.Covers(new DateOnly(2026, 10, 25)));
+        Assert.True(onward.Covers(new DateOnly(2026, 10, 26)));
+        Assert.True(onward.Covers(new DateOnly(2030, 1, 1)));
+    }
+
+    [Fact]
+    public void A_service_does_not_run_on_a_cancelled_date_and_runs_on_the_others()
+    {
+        var from = new DateOnly(2026, 10, 19);
+        CancellationRange[] cancelled = [new(new DateOnly(2026, 10, 23), new DateOnly(2026, 10, 23))];
+
+        Assert.False(ServiceRuns.On("Weekdays", from, null, new DateOnly(2026, 10, 23), cancelled)); // a Friday, cancelled
+        Assert.True(ServiceRuns.On("Weekdays", from, null, new DateOnly(2026, 10, 22), cancelled));
+        Assert.True(ServiceRuns.On("Weekdays", from, null, new DateOnly(2026, 10, 26), cancelled));
+        Assert.True(ServiceRuns.On("Weekdays", from, null, new DateOnly(2026, 10, 23), null)); // no cancellations known: the old answer
+        Assert.Null(ServiceRuns.On("Holidays", from, null, new DateOnly(2026, 10, 22), cancelled));
+    }
+
     // ---- the rules ----
 
     [Fact]

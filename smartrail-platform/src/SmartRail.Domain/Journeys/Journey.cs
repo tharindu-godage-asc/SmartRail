@@ -1,6 +1,6 @@
 namespace SmartRail.Domain.Journeys;
 
-public enum JourneyStatus { Unassigned, Scheduled, Running, Completed }
+public enum JourneyStatus { Unassigned, Scheduled, Running, Completed, Cancelled }
 
 /// <summary>One run of a service on a date. Owns all operational data (ADR-11).</summary>
 public sealed class Journey
