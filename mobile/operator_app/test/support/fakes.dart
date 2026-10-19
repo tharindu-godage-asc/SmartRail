@@ -271,6 +271,16 @@ class InMemoryLocalCache implements LocalCache {
   @override
   Future<void> clearJourney() async => journey = null;
 
+  final summaries = <String, JourneySummary>{};
+
+  @override
+  Future<Map<String, JourneySummary>> readJourneySummaries() async =>
+      Map.of(summaries);
+
+  @override
+  Future<void> writeJourneySummary(OperatorJourney journey) async =>
+      summaries[journey.journeyId] = JourneySummary.of(journey);
+
   @override
   Future<Duration?> readClockOffset() async => offset;
 

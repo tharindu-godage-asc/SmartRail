@@ -4,7 +4,7 @@ branch: claude/feature/operator-reports-history
 spec: _specs/12-operator-reports-and-history.md
 owner: tharindu
 date: 2026-10-16
-status: approved 2026-10-19 (owner: Q1 to Q3 and Q5 to Q8 as recommended; Q4: the undrawn screens are in Claude Design; build My reports first)
+status: draft
 
 ---
 
@@ -120,7 +120,7 @@ Both routes are new, read-only, `RequireAuthorization(Policies.Operator)`. They 
 2. **Past means finished for him.** A journey is past when it is Completed, or his assignment has ended. A journey in progress under his current assignment is not in the list (the Journey tab is its home). With a crew change mid-journey (FR-13), the earlier operator sees the journey in history with `assignedUntil` set and only his own reports (EC-21).
 3. **His reports only.** `myReports` and `myReportCount` come from events he created. Stops show everyone's actual times because they are the journey's facts. Another operator's reports are never listed.
 4. **Delivery state (FR-25, AC-E03-05).** "My reports" shows the three states with text, an icon and an outline style, never colour alone (NFR-30): Delivered (check), Not sent yet (dashed outline), Rejected (flag, heavy outline). A pending report that is being retried still says "Not sent yet" (AC-E03-05 2). A duplicate answered by the server shows Delivered (AC-E03-05 3).
-5. **What the Rejected screen says (true to the system).** The board says "A controller will review it", but refused reports are not stored or shown to controllers (spec 07 Q1). So the screen must not say that. Proposed wording: title "Not accepted", body "The server did not accept this report because it conflicts with what is already recorded." plus, when the journey's last status read shows the conflicting time, the second line "Recorded: Departed Veyangoda at 08:28." and "You don't need to send it again. Phone the Main Line desk if the train's status is wrong." The chip keeps the required words "Rejected, requires Operations review" only if a controller can actually see it; since one cannot, the chip reads **"Rejected"** and the line under the title says Operations is **not** told automatically. This changes the wording of AC-E03-05 4 and FR-25; the report must say why (Q1). The reason codes map to plain text: `order_conflict`, `stop_has_different_time`, `delay_not_greater`, `not_arrival_station`, `journey_not_reportable`, `occurrence_time_invalid`, and a generic line for any other code (never the raw code).
+5. **What the Rejected screen says (true to the system).** The board says "A controller will review it", but refused reports are not stored or shown to controllers (spec 07 Q1). So the screen must not say that. Proposed wording: title "Not accepted", body "The server did not accept this report because it conflicts with what is already recorded." plus, when the journey's last status read shows the conflicting time, the second line "Recorded: Departed Veyangoda at 08:28." and "You don't need to send it again. Phone the Main Line desk if the train's status is wrong." The chip keeps the required words "Rejected, requires Operations review" only if a controller can actually see it; since one cannot, the chip reads **"Rejected"** and the line under the title says Operations is **not** told automatically. This changes the wording of AC-E03-05 4 and FR-25; the report must say why (Q1). The reason codes map to plain text: `order_conflict`, `stop_has_different_time`, `delay_not_greater`, `not_arrival_station`, `final_stop`, `stop_not_in_service`, `time_out_of_range`, `journey_not_reportable`, `not_assigned`, `client_event_id_reused`, `invalid_request` (all read from `JourneyEndpoints.Describe`), and a generic line for any other code (never the raw code).
 6. **Order and live update.** Newest `occurredAt` first; ties by creation order. The list is a stream from the queue, so a state change appears at once. Reports never change order because of their state.
 7. **Kept, never lost (FR-31, AC-E03-05 5, 6).** Waiting and refused reports are never deleted. Delivered reports are deleted from the phone after 7 days, because the server has them and the history shows them. Sign-out keeps the queue (spec 05).
 8. **Previous journeys are a record, not a control.** No button changes or re-sends anything. The detail says it cannot be changed.
@@ -141,7 +141,7 @@ Both routes are new, read-only, `RequireAuthorization(Policies.Operator)`. They 
 |---|---|---|
 | EC-01, EC-19 | Offline, queue retrying | Row stays "Not sent yet" and turns Delivered when sent; never dropped (rule 7) |
 | EC-12 | Next action derived from the queue | Unchanged; the tab only reads the queue |
-| EC-21 | Offline report from a previous operator syncs after handover | He sees it in his own list as Delivered; the server raises its own High exception (spec 07 does not cover it yet: stated, not built) |
+| EC-21 | Offline report from a previous operator syncs after handover | He sees it in his own list as Delivered; the High exception for a post-handover report (AC-E04-02 3) is not built; spec 07 does not raise it |
 | EC-23 | Device lost, assignment ended | Earlier reports stay on the server; a new device sees them in Previous journeys after sign-in; the lost phone's local list is not reachable |
 | EC-24 | Token expired offline | Reports tab still works (local); history says it needs sign-in if the token cannot refresh |
 | EC-27 | Opens a journey he was never assigned | 404 `journey_not_found` |
@@ -154,12 +154,12 @@ Both routes are new, read-only, `RequireAuthorization(Policies.Operator)`. They 
 | (new) | Text scaled to 200 % | Rows grow; chip and time never clipped (NFR-33) |
 
 ## 9) Acceptance Criteria
-- [x] The bottom bar has Journey, Reports and Help; Reports opens "My reports" (AC-E03-05 1).
-- [x] A delivered, a waiting and a refused report each show the right chip with text and icon, newest first (AC-E03-05 1, 2, 4; NFR-30).
-- [x] A waiting report turns Delivered in the list without leaving the screen (AC-E03-05 2).
+- [ ] The bottom bar has Journey, Reports and Help; Reports opens "My reports" (AC-E03-05 1).
+- [ ] A delivered, a waiting and a refused report each show the right chip with text and icon, newest first (AC-E03-05 1, 2, 4; NFR-30).
+- [ ] A waiting report turns Delivered in the list without leaving the screen (AC-E03-05 2).
 - [ ] A report kept waiting across an app restart is still listed and still sent (AC-E03-05 6).
-- [x] The refused-report detail says what conflicted when known and never claims a controller will review it; it offers the desk phone number (rule 5).
-- [x] Delivered reports older than 7 days are removed from the phone; waiting and refused ones are not (test with a fake clock).
+- [ ] The refused-report detail says what conflicted when known and never claims a controller will review it; it offers the desk phone number (rule 5).
+- [ ] Delivered reports older than 7 days are removed from the phone; waiting and refused ones are not (test with a fake clock).
 - [ ] `GET /operator/journeys/history` returns only this operator's past journeys, newest first, with `myReportCount` and `arrivalDelayMinutes`; paging works with `before` and `limit`; bad parameters give 400.
 - [ ] `GET /operator/journeys/{id}/record` returns the stops and only this operator's reports; a journey of another operator or a missing one gives 404 with the same body.
 - [ ] No token gives 401; a controller, passenger or caterer token gives 403 on both routes.
@@ -194,11 +194,4 @@ Reports tab with a fake queue stream (state change updates the row); detail scre
 - **Q7. Demo data and performance.** Recommend a one-off demo journey for yesterday in the demo seeder (idempotent) so Previous journeys is not empty in the demo, and a quick query-plan check with a few hundred rows. Alternative: complete today's journey by hand before each demo.
 - **Q8. Cut order and time.** About 1.25 days. If time is short, ship "My reports" first (0.4 day, no backend, closes FR-25 in the app) and then Previous journeys. Cut within it: paging (`before`), the offline cache of the list, the 7-day cleanup. Never cut: own-journeys-only (404), the three states with text and icon, the honest Rejected wording.
 
-## 13) Owner decisions of 19 Oct 2026
-- Q1 to Q3 and Q5 to Q8 as recommended. Q4: the owner says the previous-journeys screens exist in Claude Design; the published canvas (updated 15 Oct) holds only Nimal-Reports and Nimal-RejectedDetail, so those two are built exactly; previous-journeys screens are built from existing components until the boards are shared.
-- Scope: part 1 (My reports, no backend) first, then a checkpoint before part 2 (Previous journeys). Branch `claude/feature/operator-reports-history` starts from `claude/feature/catering-integration`; its pull request merges after specs 10 and 11.
-
-## 14) Part 1 delivery notes (19 Oct 2026)
-- Done (no backend): Reports tab (Journey, Reports, Help), My reports list from the phone queue (live, newest first), report detail for each state, the honest Rejected wording (rule 5), 7-day cleanup of delivered reports at start of the tab, `watchAll` and `deleteDeliveredBefore` on the queue. 145 app tests pass.
-- Deviations: the Rejected chip now reads "Rejected" (as drawn on Nimal-Reports) instead of "Rejected, requires Operations review", for the same reason as rule 5. The conflicting stop time ("Recorded: Departed Veyangoda at 08:28") is not shown yet: the app does not keep it. No segmented control until part 2 exists, so there is no dead-end button.
-- Not yet checked: the offline row update and the restart case (AC-E03-05 6) are covered by the existing queue tests; the emulator run with screenshots is still to do. Part 2 (Previous journeys) is not started.
+- Update (19 Oct): the owner showed the intended design of the tab: reports grouped by journey, each group a collapsible card (route, train, report count, waiting count, date; the newest open). Built that way for the reports on this phone, using a small summary of each journey kept on the phone (train, route, operating day) so older groups keep their heading. Older journeys here show only the reports still on the phone (delivered ones for 7 days); the server-side Previous journeys (part 2) is still not built.

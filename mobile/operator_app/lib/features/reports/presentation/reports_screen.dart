@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
@@ -9,6 +10,7 @@ import '../../../core/theme/tokens.g.dart';
 import '../../../core/time.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../journey/presentation/help_screen.dart';
+import '../../journey/domain/local_cache.dart';
 import '../domain/report.dart';
 import '../domain/report_queue.dart';
 import 'delivery_chip.dart';
@@ -27,7 +29,59 @@ const deliveredRetention = Duration(days: 7);
 Future<int> purgeOldDelivered(ReportQueue queue, DateTime now) =>
     queue.deleteDeliveredBefore(now.toUtc().subtract(deliveredRetention));
 
-/// The Reports tab, "My reports" (`Nimal-Reports`).
+/// The reports of one journey, with its heading (spec 12, `Nimal-Reports`).
+class ReportGroup {
+  ReportGroup(this.journeyId, this.reports, this.summary);
+
+  final String journeyId;
+
+  /// Newest first.
+  final List<QueuedReport> reports;
+  final JourneySummary? summary;
+
+  int get waiting =>
+      reports.where((r) => r.state == ReportState.pending).length;
+
+  DateTime get latest => reports.first.occurredAt;
+}
+
+/// Groups the reports by journey, the journey with the newest report first. The reports of the list come newest first already.
+List<ReportGroup> groupReports(
+  List<QueuedReport> reports,
+  Map<String, JourneySummary> summaries,
+) {
+  final byJourney = <String, List<QueuedReport>>{};
+  for (final report in reports) {
+    byJourney.putIfAbsent(report.journeyId, () => []).add(report);
+  }
+  final groups = [
+    for (final entry in byJourney.entries)
+      ReportGroup(
+        entry.key,
+        entry.value..sort((a, b) => b.occurredAt.compareTo(a.occurredAt)),
+        summaries[entry.key],
+      ),
+  ]..sort((a, b) => b.latest.compareTo(a.latest));
+  return groups;
+}
+
+/// "Oct 19", from the journey's operating day, or from its newest report when the journey is not known.
+String groupDate(ReportGroup group) {
+  final day = group.summary?.operatingDate;
+  final parsed = day == null ? null : DateTime.tryParse(day);
+  final date = parsed ?? inColombo(group.latest);
+  return DateFormat('MMM d').format(date);
+}
+
+final journeySummariesProvider = FutureProvider<Map<String, JourneySummary>>((
+  ref,
+) {
+  // Read again whenever the reports change: a first report on a new journey has just saved its summary.
+  ref.watch(allReportsProvider);
+  return ref.read(localCacheProvider).readJourneySummaries();
+});
+
+/// The Reports tab, "My reports" (`Nimal-Reports`): one collapsible group per journey. The newest journey starts open.
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
 
@@ -36,6 +90,9 @@ class ReportsScreen extends ConsumerStatefulWidget {
 }
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
+  /// Journeys the operator opened or closed by hand; the others follow the default (only the newest is open).
+  final Map<String, bool> _toggled = {};
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +105,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final reports = ref.watch(allReportsProvider).value ?? const [];
+    final summaries = ref.watch(journeySummariesProvider).value ?? const {};
+    final groups = groupReports(reports, summaries);
     final colors = context.colors;
     return ListView(
       padding: const EdgeInsets.all(Space.md),
@@ -57,11 +116,18 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           child: Text(Strings.reportsTitle, style: context.text.headlineMedium),
         ),
         const SizedBox(height: 12),
-        if (reports.isEmpty)
+        if (groups.isEmpty)
           const InfoLine(Strings.noReportsYet)
         else ...[
-          for (final report in reports) ...[
-            ReportRow(report: report),
+          for (var i = 0; i < groups.length; i++) ...[
+            ReportGroupCard(
+              group: groups[i],
+              expanded: _toggled[groups[i].journeyId] ?? i == 0,
+              onToggle: () => setState(
+                () => _toggled[groups[i].journeyId] =
+                    !(_toggled[groups[i].journeyId] ?? i == 0),
+              ),
+            ),
             const SizedBox(height: 10),
           ],
           Row(
@@ -83,11 +149,111 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 }
 
+/// One journey's heading and, when open, its reports.
+class ReportGroupCard extends StatelessWidget {
+  const ReportGroupCard({
+    required this.group,
+    required this.expanded,
+    required this.onToggle,
+    super.key,
+  });
+
+  final ReportGroup group;
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final summary = group.summary;
+    final heading = summary == null
+        ? Strings.journey
+        : '${summary.from} → ${summary.to}';
+    final train = summary == null
+        ? ''
+        : '${Strings.trainNumber(summary.trainNumber)} · ';
+    final subtitle =
+        '$train${Strings.reportCount(group.reports.length)}'
+        '${group.waiting > 0 ? ' · ${Strings.waitingCount(group.waiting)}' : ''}';
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.bgPage,
+        border: Border.all(color: colors.borderDefault),
+        borderRadius: BorderRadius.circular(Radii.lg),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Semantics(
+            button: true,
+            expanded: expanded,
+            label: '$heading, $subtitle, ${groupDate(group)}',
+            excludeSemantics: true,
+            child: InkWell(
+              onTap: onToggle,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                child: Row(
+                  spacing: 10,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: 2,
+                        children: [
+                          Text(
+                            heading,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      groupDate(group),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Icon(
+                      expanded ? Icons.expand_less : Icons.expand_more,
+                      size: 24,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (expanded)
+            for (final report in group.reports)
+              ReportRow(report: report, inGroup: true),
+        ],
+      ),
+    );
+  }
+}
+
 /// One report in the list: what it is, its delivery chip, and when it happened.
 class ReportRow extends StatelessWidget {
-  const ReportRow({required this.report, super.key});
+  const ReportRow({required this.report, this.inGroup = false, super.key});
 
   final QueuedReport report;
+
+  /// Inside a journey group the row is flat, with a line above it, as drawn.
+  final bool inGroup;
 
   @override
   Widget build(BuildContext context) {
@@ -100,15 +266,17 @@ class ReportRow extends StatelessWidget {
           '$label, ${deliveryWords(report.state)}, ${formatTime(report.occurredAt)}',
       excludeSemantics: true,
       child: InkWell(
-        borderRadius: BorderRadius.circular(Radii.lg),
+        borderRadius: inGroup ? null : BorderRadius.circular(Radii.lg),
         onTap: () => context.push('/report/${report.clientEventId}'),
         child: Container(
           constraints: const BoxConstraints(minHeight: 64),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: colors.bgPage,
-            border: Border.all(color: colors.borderDefault),
-            borderRadius: BorderRadius.circular(Radii.lg),
+            color: inGroup ? colors.bgSurface : colors.bgPage,
+            border: inGroup
+                ? Border(top: BorderSide(color: colors.borderDefault))
+                : Border.all(color: colors.borderDefault),
+            borderRadius: inGroup ? null : BorderRadius.circular(Radii.lg),
           ),
           child: Row(
             spacing: 10,

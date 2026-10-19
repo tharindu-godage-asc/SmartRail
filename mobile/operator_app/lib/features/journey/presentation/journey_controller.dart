@@ -111,6 +111,7 @@ class JourneyController extends AsyncNotifier<JourneyViewState> {
       final status = await _loadStatus(api, journey, previous);
       final now = clock.now().toUtc();
       await cache.writeJourney(journey, now);
+      await cache.writeJourneySummary(journey);
       return JourneyViewState(journey: journey, status: status, fetchedAt: now);
     } on NetworkException {
       return _unreachable(previous);

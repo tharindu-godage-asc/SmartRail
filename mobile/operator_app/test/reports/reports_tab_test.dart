@@ -108,7 +108,56 @@ void main() {
 
         await tester.tap(find.widgetWithText(FilledButton, 'Back to reports'));
         await settle(tester);
-        expect(find.text('Tap a report to see details.'), findsOneWidget);
+        expect(
+          find.textContaining('Tap a journey to show or hide'),
+          findsOneWidget,
+        );
+        await app.close(tester);
+      },
+    );
+
+    testWidgets(
+      'reports are grouped by journey: the newest is open, older ones are collapsed and open on a tap',
+      (tester) async {
+        final cache = InMemoryLocalCache();
+        final today = demoJourney();
+        await cache.writeJourneySummary(today);
+        QueuedReport old(String id, DateTime at) => QueuedReport(
+          clientEventId: id,
+          journeyId: 'old-journey',
+          occurredAt: at,
+          serviceStopId: stopId(1),
+          stationName: 'Colombo Fort',
+          state: ReportState.delivered,
+        );
+        final queue = InMemoryReportQueue()
+          ..items.addAll([
+            reportFor(1, state: ReportState.delivered, at: now),
+            reportFor(
+              2,
+              kind: ReportKind.arrived,
+              state: ReportState.pending,
+              at: now.subtract(const Duration(minutes: 5)),
+            ),
+            old('o1', now.subtract(const Duration(days: 1))),
+            old('o2', now.subtract(const Duration(days: 1, minutes: 10))),
+          ]);
+        final app = TestApp(
+          queue: queue,
+          cache: cache,
+          reportApi: OfflineReportApi(),
+        );
+        await openReports(tester, app);
+
+        expect(find.text('Train 8058 · 2 reports · 1 waiting'), findsOneWidget);
+        expect(find.text('Oct 6'), findsOneWidget);
+        // The older journey shows only its heading.
+        expect(find.textContaining('2 reports'), findsNWidgets(2));
+        expect(find.text('Departed Colombo Fort'), findsNothing);
+
+        await tester.tap(find.text('Journey').first);
+        await settle(tester);
+        expect(find.text('Departed Colombo Fort'), findsNWidgets(2));
         await app.close(tester);
       },
     );

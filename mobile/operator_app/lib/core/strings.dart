@@ -147,7 +147,12 @@ abstract final class Strings {
 
   // Reports tab (spec 12)
   static const reportsTitle = 'Reports';
-  static const reportsTapHint = 'Tap a report to see details.';
+  static const reportsTapHint =
+      'Tap a journey to show or hide its reports. Tap a report for details.';
+  static String trainNumber(String number) => 'Train $number';
+  static String reportCount(int count) =>
+      count == 1 ? '1 report' : '$count reports';
+  static String waitingCount(int count) => '$count waiting';
   static const noReportsYet = 'No reports on this phone yet.';
   static const reportDetailsTitle = 'Report details';
   static const backToReports = 'Back to reports';
