@@ -283,6 +283,34 @@ describe('New weekly service (spec 15, W2)', () => {
 })
 
 describe('New extra train (spec 15, W2)', () => {
+  it('adds the date shown in the box when Next is pressed without Add date, so a picked date is not lost', async () => {
+    const user = userEvent.setup()
+    const post = posts(valid, [{ ...created, serviceIds: ['a'] }])
+    renderWithApi(pages('Extra'), fakeApi({}, post), '/timetable/extra/new')
+
+    await user.type(await screen.findByLabelText('Train number'), '8099')
+    fireEvent.change(screen.getByLabelText('Dates'), { target: { value: '2099-10-22' } })
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await fillTimes(user)
+    await user.click(screen.getByRole('button', { name: 'Next: review' }))
+    await user.click(await screen.findByRole('button', { name: 'Schedule service' }))
+
+    await screen.findByText('extra trains page')
+    const send = post.mock.calls.find((c) => c[0] === '/api/v1/timetable/services')!
+    expect(send[1]).toMatchObject({ kind: 'Extra', dates: ['2099-10-22'] })
+  })
+
+  it('still asks for a date when none was picked or added', async () => {
+    const user = userEvent.setup()
+    renderWithApi(pages('Extra'), fakeApi(), '/timetable/extra/new')
+
+    await user.type(await screen.findByLabelText('Train number'), '8099')
+    fireEvent.change(screen.getByLabelText('Dates'), { target: { value: '' } })
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+
+    expect(await screen.findByText(/Choose at least one date/)).toBeInTheDocument()
+  })
+
   it('takes dates instead of days, creates one request with all the dates and lands on the Extra trains tab with a message', async () => {
     const user = userEvent.setup()
     const post = posts(valid, [{ ...created, serviceIds: ['a', 'b'] }])

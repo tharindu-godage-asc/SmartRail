@@ -50,6 +50,8 @@ function Wizard({ kind, options }: { kind: Kind; options: LineOptions }) {
   const [step, setStep] = useState(0)
   const [problems, setProblems] = useState<string[]>([])
   const [confirmed, setConfirmed] = useState(false)
+  // The date in the date box of an extra train that was picked but not yet added with "Add date".
+  const [pendingDate, setPendingDate] = useState('')
   // What the server said when Schedule itself was refused: it replaces the check of the Review step until the next check.
   const [refused, setRefused] = useState<ValidationResult | undefined>(undefined)
   const [scheduleError, setScheduleError] = useState<string | null>(null)
@@ -86,9 +88,19 @@ function Wizard({ kind, options }: { kind: Kind; options: LineOptions }) {
   }, [step, result])
 
   const goNext = () => {
-    const found = step === 0 ? detailsProblems(draft) : stopsProblems(draft)
+    // A date picked in the box but not added yet is added by Next, so choosing a date is never lost (an extra train, step 1).
+    const withPending = step === 0 && draft.kind === 'Extra' && pendingDate !== '' && pendingDate >= todayInColombo()
+    const current = withPending ? reduce(draft, { type: 'addDate', date: pendingDate }) : draft
+    const found = step === 0 ? detailsProblems(current) : stopsProblems(current)
     setProblems(found)
-    if (found.length === 0) setStep(step + 1)
+    if (found.length === 0) {
+      if (withPending) {
+        dispatch({ type: 'addDate', date: pendingDate })
+        setPendingDate('')
+      }
+
+      setStep(step + 1)
+    }
   }
 
   const onSchedule = () => {
@@ -137,7 +149,7 @@ function Wizard({ kind, options }: { kind: Kind; options: LineOptions }) {
           {w.steps[step]}
         </h2>
 
-        {step === 0 ? <DetailsStep draft={draft} dispatch={dispatch} issues={[]} /> : null}
+        {step === 0 ? <DetailsStep draft={draft} dispatch={dispatch} issues={[]} pending={pendingDate} onPending={setPendingDate} /> : null}
         {step === 1 ? <StopsStep draft={draft} options={options} dispatch={dispatch} issues={result?.errors ?? []} /> : null}
         {step === 2 ? (
           <ReviewStep

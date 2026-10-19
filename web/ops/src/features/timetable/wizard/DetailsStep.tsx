@@ -1,4 +1,4 @@
-import { useState, type Dispatch } from 'react'
+import type { Dispatch } from 'react'
 import type { ValidationIssue } from '../../../core/api/types'
 import { t } from '../../../core/strings'
 import { nextDay, todayInColombo } from '../../../core/time'
@@ -10,9 +10,21 @@ import { Field } from './parts'
 import { inputClass } from './styles'
 
 /** Step 1: train number, category, type, direction, and the days (weekly) or the dates (extra train). */
-export function DetailsStep({ draft, dispatch, issues }: { draft: Draft; dispatch: Dispatch<Action>; issues: ValidationIssue[] }) {
+export function DetailsStep({
+  draft,
+  dispatch,
+  issues,
+  pending,
+  onPending,
+}: {
+  draft: Draft
+  dispatch: Dispatch<Action>
+  issues: ValidationIssue[]
+  /** The date shown in the date box of an extra train that has not been added to the list yet (Next adds it). */
+  pending: string
+  onPending: (date: string) => void
+}) {
   const w = t.timetable.wizard
-  const [pending, setPending] = useState('')
   const today = todayInColombo()
   const at = (field: Parameters<typeof issuesForDetails>[2]) => issuesForDetails(issues, draft, field)
 
@@ -103,19 +115,20 @@ export function DetailsStep({ draft, dispatch, issues }: { draft: Draft; dispatc
                 className={inputClass}
                 value={pending}
                 min={today}
-                onChange={(e) => setPending(e.target.value)}
+                onChange={(e) => onPending(e.target.value)}
               />
             </Field>
             <Button
               onClick={() => {
                 dispatch({ type: 'addDate', date: pending })
-                setPending(nextDay(pending || today))
+                onPending(nextDay(pending || today))
               }}
               disabled={pending === ''}
             >
               {w.addDate}
             </Button>
           </div>
+          <p className="m-0 text-caption text-muted">{w.datesHint}</p>
           {draft.dates.length === 0 ? (
             <p className="m-0 text-label text-muted">{w.noDates}</p>
           ) : (

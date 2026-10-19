@@ -216,6 +216,7 @@ export const t = {
       addDate: 'Add date',
       removeDate: (date: string) => `Remove ${date}`,
       noDates: 'No date chosen yet.',
+      datesHint: 'Pick a date and press Add date. To add several dates, repeat. Next adds the date shown in the box if you have not.',
       days: { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday' } as Record<string, string>,
       everyStop: 'Every stop',
       everyStopHint: 'The train stops at every station on the line, in line order.',
