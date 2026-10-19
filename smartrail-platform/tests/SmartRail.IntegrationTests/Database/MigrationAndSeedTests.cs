@@ -30,7 +30,7 @@ public sealed class MigrationAndSeedTests(PostgresFixture postgres) : IAsyncLife
         [
             "__EFMigrationsHistory", "language", "line", "line_translation", "station", "station_translation", "platform",
             "line_station", "train_service", "service_stop", "journey", "operator_assignment", "journey_stop_state", "train_event",
-            "journey_exception",
+            "journey_exception", "service_change_log",
         ];
         Assert.Equal(expected.Order(StringComparer.Ordinal), tables.Order(StringComparer.Ordinal));
         Assert.DoesNotContain("controller_assignment", tables);

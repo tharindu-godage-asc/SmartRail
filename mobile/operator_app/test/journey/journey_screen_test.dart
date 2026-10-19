@@ -148,10 +148,7 @@ void main() {
         );
         await settle(tester);
 
-        expect(
-          find.text('Rejected, requires Operations review'),
-          findsOneWidget,
-        );
+        expect(find.text('Rejected'), findsOneWidget);
         expect(
           find.text('Phone the desk so a controller can enter this report.'),
           findsOneWidget,

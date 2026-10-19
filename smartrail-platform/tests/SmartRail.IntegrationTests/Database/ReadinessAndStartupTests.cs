@@ -101,11 +101,11 @@ public sealed class ReadinessAndStartupTests(PostgresFixture postgres)
         Assert.Equal(HttpStatusCode.OK, await Get(api, "/health/ready"));
 
         await using var admin = database.AdminContext();
-        // Today's 8058 with its five stop states and the operator's assignment, plus the demo trains of spec 10 (how many of them exist
-        // depends on the time of day, so only "at least" is checked).
-        Assert.True(await admin.Journeys.CountAsync() >= 1);
-        Assert.True(await admin.JourneyStopStates.CountAsync() >= 5);
-        Assert.True(await admin.OperatorAssignments.CountAsync() >= 1);
+        // Today's 8058 with its five stop states and the operator's assignment, yesterday's finished 8058 (spec 12), and the demo trains of
+        // spec 10 (how many depends on the time of day, so only "at least" is checked).
+        Assert.True(await admin.Journeys.CountAsync() >= 2);
+        Assert.True(await admin.JourneyStopStates.CountAsync() >= 10);
+        Assert.True(await admin.OperatorAssignments.CountAsync() >= 2);
     }
 
     [Fact]

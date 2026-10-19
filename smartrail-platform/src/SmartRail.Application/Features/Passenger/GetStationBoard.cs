@@ -150,7 +150,7 @@ public sealed class GetStationBoardHandler(
 
             // A service with no journey row for today is answered from the timetable, while its time at this station is not in the past.
             var hasRowToday = existing.Any(j => j.ServiceId == service.ServiceId && j.OperatingDate == today);
-            if (!hasRowToday && ServiceCalendar.Runs(service.RunsOn, today) == true)
+            if (!hasRowToday && service.RunsOnDate(today) == true)
             {
                 var timetable = TimetableCall(service, today, stopAt, destination);
                 if (CallTime(timetable) is { } at && at >= now)
@@ -267,7 +267,7 @@ public sealed class GetStationBoardHandler(
                     continue;
                 }
 
-                if (ServiceCalendar.Runs(service.RunsOn, date) != true)
+                if (service.RunsOnDate(date) != true)
                 {
                     continue;
                 }

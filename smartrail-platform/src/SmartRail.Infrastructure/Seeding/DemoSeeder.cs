@@ -241,4 +241,59 @@ public sealed class DemoSeeder(SmartrailDbContext db, TimeProvider clock)
 
         await db.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Spec 12 Q7: yesterday's 8058, finished (6 minutes late at Colombo Fort), with three reports by the demo operator, so the operator app's
+    /// "Previous journeys" is not empty in a demo. Idempotent: it exists once, whatever the number of API starts.
+    /// </summary>
+    public async Task SeedPreviousJourneyAsync(string? operatorSubject, CancellationToken cancellationToken = default)
+    {
+        var day = OperatingTime.Today(clock).AddDays(-1);
+        var subject = string.IsNullOrWhiteSpace(operatorSubject) ? DemoIds.Nimal.ToString() : operatorSubject;
+        var journeyId = DemoGuid(7, 8058, 0);
+        // A journey for 8058 on that day may exist already (an earlier day's demo journey): then leave it, one per service and day.
+        if (await db.Journeys.AnyAsync(j => j.Id == journeyId || (j.ServiceId == ReferenceData.Service8058 && j.OperatingDate == day), cancellationToken))
+        {
+            return;
+        }
+
+        var stops = await db.ServiceStops.Where(x => x.ServiceId == ReferenceData.Service8058).OrderBy(x => x.Sequence).ToListAsync(cancellationToken);
+        var schedule = ScheduleInstants.For(day, stops.Select(x => new StopTimes(x.Id, x.Sequence, x.ScheduledArrival, x.ScheduledDeparture)))
+            .ToDictionary(x => x.ServiceStopId);
+        const int late = 6;
+        var received = schedule[stops[^1].Id].Arrival!.Value.AddMinutes(late);
+
+        db.Journeys.Add(new Journey
+        {
+            Id = journeyId, ServiceId = ReferenceData.Service8058, OperatingDate = day, Status = JourneyStatus.Completed, Version = 3, CurrentDelayMinutes = late,
+        });
+        foreach (var stop in stops)
+        {
+            var times = schedule[stop.Id];
+            db.JourneyStopStates.Add(new JourneyStopState
+            {
+                JourneyId = journeyId, ServiceStopId = stop.Id,
+                EstimatedArrival = times.Arrival?.AddMinutes(late), EstimatedDeparture = times.Departure?.AddMinutes(late),
+                ActualArrival = times.Arrival?.AddMinutes(late), ActualDeparture = times.Departure?.AddMinutes(late),
+                Confirmation = StopConfirmation.Reported,
+            });
+        }
+
+        db.OperatorAssignments.Add(new OperatorAssignment
+        {
+            Id = DemoGuid(7, 8058, 1), JourneyId = journeyId, OperatorUserId = subject,
+            ValidFrom = OperatingTime.StartOfDay(day), ValidTo = OperatingTime.StartOfNextDay(day), AssignedBy = DemoIds.AssignedBy,
+        });
+
+        TrainEvent Event(int n, EventType type, Guid? stopId, DateTimeOffset at, string? payload) => new()
+        {
+            Id = DemoGuid(7, 8058, 10 + n), JourneyId = journeyId, ClientEventId = DemoGuid(7, 8058, 20 + n), EventType = type, ServiceStopId = stopId,
+            OccurredAt = at, ReceivedAt = at, Source = EventSource.Operator, CreatedBy = subject, Payload = payload, JourneyVersionAfter = n,
+        };
+
+        db.TrainEvents.Add(Event(1, EventType.Departed, stops[0].Id, schedule[stops[0].Id].Departure!.Value.AddMinutes(late), null));
+        db.TrainEvents.Add(Event(2, EventType.DelayReported, null, schedule[stops[1].Id].Arrival!.Value.AddMinutes(-5), "{\"reason\":\"SignalIssue\",\"totalDelayMinutes\":6}"));
+        db.TrainEvents.Add(Event(3, EventType.Arrived, stops[^1].Id, received, null));
+        await db.SaveChangesAsync(cancellationToken);
+    }
 }

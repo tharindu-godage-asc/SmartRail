@@ -21,6 +21,13 @@ abstract interface class ReportQueue {
   Stream<List<QueuedReport>> watch(String journeyId);
 
   Future<int> pendingCount();
+
+  /// Every report on this phone, newest occurrence first, whatever its journey or state (the Reports tab).
+  Stream<List<QueuedReport>> watchAll();
+
+  /// Removes delivered reports that happened before [cutoff] and returns how many. Waiting and rejected reports are never
+  /// removed (FR-31).
+  Future<int> deleteDeliveredBefore(DateTime cutoff);
 }
 
 /// Sends one report. Implementations never throw for network or server trouble: they answer with a [SendResult].

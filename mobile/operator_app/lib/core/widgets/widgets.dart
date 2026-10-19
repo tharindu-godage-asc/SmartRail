@@ -337,10 +337,16 @@ class AppBottomBar extends StatelessWidget {
               onTap: () => onSelected(0),
             ),
             _Tab(
-              label: Strings.tabHelp,
-              icon: Icons.help,
+              label: Strings.tabReports,
+              icon: Icons.list,
               selected: index == 1,
               onTap: () => onSelected(1),
+            ),
+            _Tab(
+              label: Strings.tabHelp,
+              icon: Icons.help,
+              selected: index == 2,
+              onTap: () => onSelected(2),
             ),
           ],
         ),

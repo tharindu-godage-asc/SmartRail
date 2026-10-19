@@ -125,6 +125,8 @@ internal sealed class TrainServiceConfiguration : IEntityTypeConfiguration<Train
             t.HasCheckConstraint("ck_train_service_category", EnumSql.InList<ServiceCategory>("service_category"));
             t.HasCheckConstraint("ck_train_service_direction", EnumSql.InList<ServiceDirection>("direction"));
             t.HasCheckConstraint("ck_train_service_unreserved", "unreserved_capacity >= 0");
+            t.HasCheckConstraint("ck_train_service_kind", EnumSql.InList<Domain.Scheduling.ServiceKind>("kind"));
+            t.HasCheckConstraint("ck_train_service_version", "version >= 1");
         });
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
@@ -134,7 +136,14 @@ internal sealed class TrainServiceConfiguration : IEntityTypeConfiguration<Train
         b.Property(x => x.Direction).HasConversion<string>().HasMaxLength(10);
         b.Property(x => x.RunsOn).HasMaxLength(50);
         b.Property(x => x.UnreservedCapacity).HasDefaultValue(0);
-        b.HasIndex(x => x.TrainNumber).IsUnique();
+        b.Property(x => x.Kind).HasConversion<string>().HasMaxLength(10).HasDefaultValue(Domain.Scheduling.ServiceKind.Weekly);
+        b.Property(x => x.Version).HasDefaultValue(1);
+        b.Property(x => x.EffectiveFrom).HasDefaultValue(new DateOnly(2000, 1, 1));
+        // A train number has several rows now: versions of a weekly service and one row per date of an extra train (spec 13). Whether two
+        // active services of one number overlap in time is checked by the application, inside the create transaction.
+        b.HasIndex(x => new { x.TrainNumber, x.Version, x.EffectiveFrom }).IsUnique();
+        b.HasIndex(x => new { x.LineId, x.Kind, x.EffectiveFrom });
+        b.HasOne<TrainService>().WithMany().HasForeignKey(x => x.SupersededServiceId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Line>().WithMany().HasForeignKey(x => x.LineId).OnDelete(DeleteBehavior.NoAction);
         b.HasData(ReferenceData.TrainServices);
     }

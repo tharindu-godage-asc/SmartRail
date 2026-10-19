@@ -54,6 +54,9 @@ public sealed class DatabaseStartupService(
 
             // Spec 10: eight more demo journeys, both directions, some delayed, for the passenger app.
             await new DemoSeeder(db, clock).SeedDemoTrainsAsync(seeding.Value.DemoOperatorSubject, cancellationToken);
+
+            // Spec 12: yesterday's finished journey for the operator's Previous journeys.
+            await new DemoSeeder(db, clock).SeedPreviousJourneyAsync(seeding.Value.DemoOperatorSubject, cancellationToken);
         }
     }
 

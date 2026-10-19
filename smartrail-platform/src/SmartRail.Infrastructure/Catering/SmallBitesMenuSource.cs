@@ -12,7 +12,11 @@ namespace SmartRail.Infrastructure.Catering;
 /// not answer, the last good menu is returned and keeps ageing, so the read marks it stale after the freshness limit. SmartRail never
 /// waits on the caterer for anything else (rule 11).
 /// </summary>
-public sealed class SmallBitesMenuSource(HttpClient http, CateringSettings settings, TimeProvider clock, ILogger<SmallBitesMenuSource> logger) : IMenuSource
+public sealed class SmallBitesMenuSource(
+    HttpClient http, 
+    CateringSettings settings, 
+    TimeProvider clock, 
+    ILogger<SmallBitesMenuSource> logger) : IMenuSource
 {
     private sealed record Entry(MenuSnapshot? Snapshot, DateTimeOffset CheckedAt);
 
