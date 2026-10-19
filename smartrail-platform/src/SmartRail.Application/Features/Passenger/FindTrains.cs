@@ -154,7 +154,7 @@ public sealed class FindTrainsHandler(IPassengerQueries queries, TimeProvider cl
                 continue;
             }
 
-            switch (ServiceCalendar.Runs(service.RunsOn, date))
+            switch (service.RunsOnDate(date))
             {
                 case null:
                     unsupported.Add(service.TrainNumber); // R6

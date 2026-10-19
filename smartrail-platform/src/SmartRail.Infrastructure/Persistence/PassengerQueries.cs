@@ -137,7 +137,8 @@ public sealed class PassengerQueries(SmartrailDbContext db) : IPassengerQueries
                 .Select(p => new ServiceStopRecord(
                     p.Id, p.Sequence, stationCodes[p.StationId], p.ScheduledArrival, p.ScheduledDeparture,
                     p.PlannedPlatformId is { } platformId && platformCodes.TryGetValue(platformId, out var code) ? code : null))
-                .ToList()))
+                .ToList(),
+            s.EffectiveFrom, s.EffectiveTo))
             .ToList();
     }
 }

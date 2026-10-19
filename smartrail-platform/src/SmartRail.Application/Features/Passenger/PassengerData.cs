@@ -33,7 +33,14 @@ public sealed record ServiceRecord(
     string LineCode,
     string ServiceType,
     string RunsOn,
-    IReadOnlyList<ServiceStopRecord> Stops);
+    IReadOnlyList<ServiceStopRecord> Stops,
+    DateOnly EffectiveFrom = default,
+    DateOnly? EffectiveTo = null)
+{
+    /// <summary>Whether the service runs on the date: inside its effective range and on one of its days (spec 13). Null for a calendar that is not understood.</summary>
+    public bool? RunsOnDate(DateOnly date) =>
+        Domain.Scheduling.ServiceRuns.On(RunsOn, EffectiveFrom == default ? new DateOnly(2000, 1, 1) : EffectiveFrom, EffectiveTo, date);
+}
 
 /// <summary>A journey with its stored stop states and the time its latest report was received (null when none).</summary>
 public sealed record JourneyRecord(

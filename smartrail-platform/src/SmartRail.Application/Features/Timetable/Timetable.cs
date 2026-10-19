@@ -1,0 +1,263 @@
+using System.Diagnostics.Metrics;
+using SmartRail.Domain;
+using SmartRail.Domain.Scheduling;
+
+namespace SmartRail.Application.Features.Timetable;
+
+/// <summary>Scheduling:* settings (spec 13). The generator is off unless asked for, so the cluster and the tests keep the data they have.</summary>
+public sealed class SchedulingSettings
+{
+    public const string Section = "Scheduling";
+
+    /// <summary>Whether the hosted generator runs (at start-up and then every <see cref="GenerateEveryMinutes"/>). A create always generates its own journeys.</summary>
+    public bool GenerateJourneys { get; set; }
+
+    public int HorizonDays { get; set; } = 7;
+    public int GenerateEveryMinutes { get; set; } = 60;
+    public int PlatformWarningMinutes { get; set; } = 10;
+}
+
+public sealed record OptionsStation(string Code, int Sequence, IReadOnlyDictionary<string, string> Names, IReadOnlyList<string> Platforms);
+
+public sealed record LineOptions(string LineCode, IReadOnlyList<OptionsStation> Stations);
+
+public sealed record ServiceRow(
+    Guid ServiceId,
+    string TrainNumber,
+    string Category,
+    string ServiceType,
+    string FromName,
+    string ToName,
+    IReadOnlyList<string>? RunsOn,
+    DateOnly? Date,
+    string FirstDeparture,
+    int StopCount,
+    string StopsLabel,
+    int Version,
+    bool Amended,
+    DateOnly EffectiveFrom);
+
+public sealed record ServiceStopView(
+    int Sequence, string StationCode, IReadOnlyDictionary<string, string> Names, string? Arrival, string? Departure, string? Platform, bool IsFirst, bool IsLast);
+
+public sealed record ServiceVersionView(int Version, Guid ServiceId, DateOnly EffectiveFrom, DateOnly? EffectiveTo, DateTimeOffset? CreatedAt, string? CreatedBy);
+
+public sealed record ServiceDetail(
+    Guid ServiceId,
+    string TrainNumber,
+    string Kind,
+    string Category,
+    string ServiceType,
+    string Direction,
+    IReadOnlyList<string>? RunsOn,
+    DateOnly EffectiveFrom,
+    DateOnly? EffectiveTo,
+    int Version,
+    IReadOnlyList<ServiceStopView> Stops,
+    IReadOnlyList<ServiceVersionView> Versions);
+
+/// <summary>One service to insert: a weekly service, or one date of an extra train.</summary>
+public sealed record NewService(
+    Guid Id,
+    string TrainNumber,
+    string LineCode,
+    string Category,
+    string ServiceType,
+    string Direction,
+    ServiceKind Kind,
+    string RunsOn,
+    DateOnly EffectiveFrom,
+    DateOnly? EffectiveTo,
+    IReadOnlyList<StopDraft> Stops);
+
+public sealed record CreateOutcome(bool Created, string? ClashTrainNumber, Guid? ClashServiceId);
+
+public interface ITimetableRepository
+{
+    /// <summary>The stations of a line in line order with their names and platforms; null for an unknown line.</summary>
+    Task<LineOptions?> GetLineAsync(string lineCode, CancellationToken cancellationToken);
+
+    /// <summary>Every service of the line with its days, dates and stops, for the overlap check and the platform advice.</summary>
+    Task<IReadOnlyList<ExistingService>> GetServicesAsync(string lineCode, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Inserts the services, their stops and the audit entries in one transaction, after taking an advisory lock on the train number and
+    /// checking that no other service of that number overlaps in time. Clash means nothing was written.
+    /// </summary>
+    Task<CreateOutcome> CreateAsync(IReadOnlyList<NewService> services, string actor, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Creates the journeys that are missing for the dates, for the given services or for all of them: status Unassigned, one Pending stop
+    /// state per stop. Idempotent and safe to run twice at once. Returns how many journeys it created.
+    /// </summary>
+    Task<int> GenerateJourneysAsync(DateOnly from, DateOnly to, IReadOnlyCollection<Guid>? serviceIds, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ServiceRow>> ListAsync(string lineCode, string tab, DateOnly today, CancellationToken cancellationToken);
+
+    Task<ServiceDetail?> GetAsync(Guid serviceId, CancellationToken cancellationToken);
+}
+
+public static class TimetableMetrics
+{
+    public static readonly Meter Meter = new("SmartRail.Timetable");
+    public static readonly Counter<long> Changes = Meter.CreateCounter<long>("smartrail.timetable.changes", description: "Timetable changes by action and result");
+    public static readonly Counter<long> Generated = Meter.CreateCounter<long>("smartrail.journeys.generated", description: "Journeys created by the generator");
+
+    public static void Change(string action, string result) =>
+        Changes.Add(1, new KeyValuePair<string, object?>("action", action), new KeyValuePair<string, object?>("result", result));
+}
+
+public sealed class GetOptionsHandler(ITimetableRepository repository)
+{
+    public Task<LineOptions?> HandleAsync(string lineCode, CancellationToken cancellationToken) =>
+        repository.GetLineAsync(string.IsNullOrWhiteSpace(lineCode) ? "MAIN" : lineCode, cancellationToken);
+}
+
+public enum ListError { None, LineNotFound, InvalidTab }
+
+public sealed record ListResult(ListError Error, IReadOnlyList<ServiceRow> Rows);
+
+public sealed class ListServicesHandler(ITimetableRepository repository, TimeProvider clock)
+{
+    public static readonly string[] Tabs = ["weekly", "extra", "cancelled"];
+
+    public async Task<ListResult> HandleAsync(string? lineCode, string? tab, CancellationToken cancellationToken)
+    {
+        var line = string.IsNullOrWhiteSpace(lineCode) ? "MAIN" : lineCode.Trim().ToUpperInvariant();
+        var which = (tab ?? "weekly").Trim().ToLowerInvariant();
+        if (!Tabs.Contains(which))
+        {
+            return new ListResult(ListError.InvalidTab, []);
+        }
+
+        if (await repository.GetLineAsync(line, cancellationToken) is null)
+        {
+            return new ListResult(ListError.LineNotFound, []);
+        }
+
+        var today = OperatingTime.Today(clock);
+        // Cancelling arrives with S3, so no service is cancelled yet and that tab is empty.
+        return new ListResult(ListError.None, which == "cancelled" ? [] : await repository.ListAsync(line, which, today, cancellationToken));
+    }
+}
+
+public sealed class GetServiceHandler(ITimetableRepository repository)
+{
+    public Task<ServiceDetail?> HandleAsync(Guid serviceId, CancellationToken cancellationToken) => repository.GetAsync(serviceId, cancellationToken);
+}
+
+public sealed class ValidateServiceHandler(ITimetableRepository repository, TimeProvider clock, SchedulingSettings settings)
+{
+    /// <summary>Null when the line is unknown.</summary>
+    public async Task<ValidationResult?> HandleAsync(ServiceDraft draft, CancellationToken cancellationToken)
+    {
+        var line = await repository.GetLineAsync(draft.LineCode ?? "MAIN", cancellationToken);
+        if (line is null)
+        {
+            return null;
+        }
+
+        var others = await repository.GetServicesAsync(line.LineCode, cancellationToken);
+        var now = TimeZoneInfo.ConvertTime(clock.GetUtcNow(), OperatingTime.Zone);
+        return ServiceValidator.Validate(
+            draft,
+            line.Stations.Select(s => new LineStationInfo(s.Code, s.Names.GetValueOrDefault("en", s.Code), s.Sequence, s.Platforms)).ToList(),
+            others,
+            DateOnly.FromDateTime(now.DateTime),
+            TimeOnly.FromDateTime(now.DateTime),
+            settings.PlatformWarningMinutes);
+    }
+}
+
+public enum CreateError { None, LineNotFound, Invalid, WarningsNotAcknowledged, TrainNumberInUse }
+
+public sealed record CreateResult(
+    CreateError Error,
+    ValidationResult? Validation,
+    IReadOnlyList<Guid> ServiceIds,
+    string TrainNumber,
+    int JourneysGenerated,
+    string? ClashTrainNumber = null);
+
+public sealed class CreateServiceHandler(
+    ITimetableRepository repository, ValidateServiceHandler validator, TimeProvider clock, SchedulingSettings settings)
+{
+    public async Task<CreateResult> HandleAsync(ServiceDraft draft, bool acknowledgeWarnings, string actor, CancellationToken cancellationToken)
+    {
+        var validation = await validator.HandleAsync(draft, cancellationToken);
+        if (validation is null)
+        {
+            TimetableMetrics.Change("created", "rejected");
+            return new CreateResult(CreateError.LineNotFound, null, [], draft.TrainNumber, 0);
+        }
+
+        if (!validation.Valid)
+        {
+            TimetableMetrics.Change("created", "rejected");
+            return new CreateResult(CreateError.Invalid, validation, [], draft.TrainNumber, 0);
+        }
+
+        // Warnings are advice and never block (FR-57): the controller confirms them.
+        if (validation.Warnings.Count > 0 && !acknowledgeWarnings)
+        {
+            TimetableMetrics.Change("created", "rejected");
+            return new CreateResult(CreateError.WarningsNotAcknowledged, validation, [], draft.TrainNumber, 0);
+        }
+
+        var line = (await repository.GetLineAsync(draft.LineCode, cancellationToken))!;
+        var first = line.Stations.First(s => s.Code.Equals(draft.Stops[0].StationCode, StringComparison.OrdinalIgnoreCase));
+        var last = line.Stations.First(s => s.Code.Equals(draft.Stops[^1].StationCode, StringComparison.OrdinalIgnoreCase));
+        // Toward the first station of the line (sequence falling) is Inbound (FR-10); the controller never types it.
+        var direction = first.Sequence > last.Sequence ? "Inbound" : "Outbound";
+        var category = Enum.Parse<Domain.Reference.ServiceCategory>(draft.Category, true).ToString();
+        var type = Enum.Parse<Domain.Reference.ServiceType>(draft.ServiceType, true).ToString();
+        var number = draft.TrainNumber.ToUpperInvariant();
+        var stops = draft.Stops.Select(s => s with { StationCode = s.StationCode.ToUpperInvariant() }).ToList();
+
+        var services = draft.Kind == ServiceKind.Weekly
+            ?
+            [
+                new NewService(
+                    Guid.CreateVersion7(clock.GetUtcNow()), number, line.LineCode, category, type, direction, ServiceKind.Weekly,
+                    RunDays.Normalise(draft.Days)!, draft.EffectiveFrom!.Value, null, stops),
+            ]
+            : draft.Dates.Distinct().Order().Select(date => new NewService(
+                Guid.CreateVersion7(clock.GetUtcNow()), number, line.LineCode, category, type, direction, ServiceKind.Extra, "Daily", date, date, stops)).ToList();
+
+        var outcome = await repository.CreateAsync(services, actor, clock.GetUtcNow(), cancellationToken);
+        if (!outcome.Created)
+        {
+            TimetableMetrics.Change("created", "conflict");
+            return new CreateResult(CreateError.TrainNumberInUse, validation, [], number, 0, outcome.ClashTrainNumber);
+        }
+
+        // The journeys of the new services exist at once (FR-11): from the first date, within the horizon.
+        var today = OperatingTime.Today(clock);
+        var horizonEnd = today.AddDays(settings.HorizonDays);
+        var generated = 0;
+        foreach (var service in services)
+        {
+            var from = service.EffectiveFrom > today ? service.EffectiveFrom : today;
+            if (from <= horizonEnd)
+            {
+                generated += await repository.GenerateJourneysAsync(from, horizonEnd, [service.Id], cancellationToken);
+            }
+        }
+
+        TimetableMetrics.Change("created", "ok");
+        TimetableMetrics.Generated.Add(generated);
+        return new CreateResult(CreateError.None, validation, services.Select(s => s.Id).ToList(), number, generated);
+    }
+}
+
+/// <summary>The generator's core (FR-11, spec 13 rule 9): the journeys of today and the next days that are missing. Used by the hosted service.</summary>
+public sealed class JourneyGenerationHandler(ITimetableRepository repository, TimeProvider clock, SchedulingSettings settings)
+{
+    public async Task<int> RunAsync(CancellationToken cancellationToken)
+    {
+        var today = OperatingTime.Today(clock);
+        var created = await repository.GenerateJourneysAsync(today, today.AddDays(settings.HorizonDays), null, cancellationToken);
+        TimetableMetrics.Generated.Add(created);
+        return created;
+    }
+}

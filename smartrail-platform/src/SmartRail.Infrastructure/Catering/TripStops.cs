@@ -9,7 +9,7 @@ public sealed class TripStops(SmartrailDbContext db) : ITripStops
 {
     public async Task<IReadOnlyList<MenuStopRecord>?> GetStopsAsync(string trainNumber, CancellationToken cancellationToken)
     {
-        var service = await db.TrainServices.AsNoTracking().FirstOrDefaultAsync(s => s.TrainNumber == trainNumber, cancellationToken);
+        var service = await db.TrainServices.AsNoTracking().Where(s => s.TrainNumber == trainNumber).OrderByDescending(s => s.EffectiveFrom).FirstOrDefaultAsync(cancellationToken);
         if (service is null)
         {
             return null;

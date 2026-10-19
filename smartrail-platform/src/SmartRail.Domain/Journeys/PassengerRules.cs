@@ -8,15 +8,10 @@ public static class ServiceCalendar
 {
     /// <summary>
     /// True or false for Daily, Weekdays and Weekends (case-insensitive, trimmed), using the weekday of the operating date.
-    /// Null when the text is anything else: an unsupported calendar is never guessed (R6). Holidays are not modelled (D1).
+    /// A list of days such as Mon,Wed,Fri is read too (spec 13). Null when the text is anything else: an unsupported calendar is never guessed (R6). Holidays are not modelled (D1).
     /// </summary>
-    public static bool? Runs(string? runsOn, DateOnly date) => runsOn?.Trim().ToLowerInvariant() switch
-    {
-        "daily" => true,
-        "weekdays" => date.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday),
-        "weekends" => date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday,
-        _ => null,
-    };
+    public static bool? Runs(string? runsOn, DateOnly date) =>
+        Scheduling.RunDays.Parse(runsOn) is { } days ? days.Contains(date.DayOfWeek) : null;
 }
 
 /// <summary>
