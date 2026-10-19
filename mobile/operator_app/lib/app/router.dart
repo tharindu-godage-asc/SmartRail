@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../core/widgets/widgets.dart';
 import '../features/auth/presentation/auth_controller.dart';
 import '../features/auth/presentation/sign_in_screen.dart';
+import '../features/history/presentation/history_screens.dart';
 import '../features/journey/presentation/delay_screens.dart';
 import '../features/journey/presentation/help_screen.dart';
 import '../features/journey/presentation/journey_screen.dart';
+import '../features/reports/presentation/reports_screen.dart';
 
 /// Tells the router to look again when the sign-in state changes.
 class _AuthRefresh extends ChangeNotifier {
@@ -42,6 +44,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SignInScreen(),
       ),
       GoRoute(path: '/', builder: (context, state) => const _Shell()),
+      GoRoute(
+        path: '/history/:id',
+        builder: (context, state) =>
+            JourneyRecordScreen(journeyId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/report/:id',
+        builder: (context, state) =>
+            ReportDetailScreen(clientEventId: state.pathParameters['id']!),
+      ),
       GoRoute(
         path: '/delay/reason',
         builder: (context, state) => const DelayReasonScreen(),
@@ -82,7 +94,11 @@ class _ShellState extends ConsumerState<_Shell> {
             Expanded(
               child: IndexedStack(
                 index: _tab,
-                children: const [JourneyScreen(), HelpScreen()],
+                children: const [
+                  JourneyScreen(),
+                  ReportsScreen(),
+                  HelpScreen(),
+                ],
               ),
             ),
           ],

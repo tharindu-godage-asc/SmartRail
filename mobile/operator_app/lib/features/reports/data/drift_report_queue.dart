@@ -62,6 +62,22 @@ class DriftReportQueue implements ReportQueue {
   }
 
   @override
+  Stream<List<QueuedReport>> watchAll() {
+    final query = _db.select(_db.reports)
+      ..orderBy([(r) => OrderingTerm.desc(r.occurredAt)]);
+    return query.watch().map((rows) => rows.map(_toReport).toList());
+  }
+
+  @override
+  Future<int> deleteDeliveredBefore(DateTime cutoff) =>
+      (_db.delete(_db.reports)..where(
+            (r) =>
+                r.state.equals(ReportState.delivered.index) &
+                r.occurredAt.isSmallerThanValue(cutoff),
+          ))
+          .go();
+
+  @override
   Future<int> pendingCount() async {
     final count = _db.reports.clientEventId.count();
     final query = _db.selectOnly(_db.reports)

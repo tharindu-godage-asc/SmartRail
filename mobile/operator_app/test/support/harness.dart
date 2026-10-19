@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:operator_app/app/app.dart';
 import 'package:operator_app/app/providers.dart';
 import 'package:operator_app/features/auth/domain/auth.dart';
+import 'package:operator_app/features/history/domain/history.dart';
 import 'package:operator_app/features/auth/domain/auth_repository.dart';
 import 'package:operator_app/features/journey/domain/journey_api.dart';
 import 'package:operator_app/features/journey/domain/local_cache.dart';
@@ -29,18 +30,21 @@ class TestApp {
     ReportQueue? queue,
     ReportApi? reportApi,
     LocalCache? cache,
+    HistoryApi? history,
     FakeTokenStore? store,
     this.online = true,
   }) : api = api ?? FakeJourneyApi(journey: demoJourney()),
        queue = queue ?? InMemoryReportQueue(),
        reportApi = reportApi ?? ScriptedReportApi([]),
        cache = cache ?? InMemoryLocalCache(),
+       history = history ?? FakeHistoryApi(pages: [historyPage([])]),
        store = store ?? signedInStore();
 
   final JourneyApi api;
   final ReportQueue queue;
   final ReportApi reportApi;
   final LocalCache cache;
+  final HistoryApi history;
   final FakeTokenStore store;
   bool online;
 
@@ -66,10 +70,15 @@ class TestApp {
             AuthRepository(gateway: FakeAuthGateway(), store: store),
           ),
           journeyApiProvider.overrideWithValue(api),
+          historyApiProvider.overrideWithValue(history),
           reportApiProvider.overrideWithValue(reportApi),
           reportQueueProvider.overrideWithValue(queue),
           localCacheProvider.overrideWithValue(cache),
           isOnlineProvider.overrideWith((ref) => Stream.value(online)),
+          // The fixtures are dated 6 Oct 2026; the cleanup of delivered reports older than 7 days must not remove them.
+          phoneNowProvider.overrideWithValue(
+            () => DateTime.utc(2026, 10, 6, 4),
+          ),
         ],
         child: const OperatorApp(),
       ),
