@@ -217,3 +217,72 @@ export interface AmendResult {
   journeysGenerated: number
   warnings: ValidationIssue[]
 }
+
+// ---- Operator assignments (spec 17). Instants are ISO strings with an offset. ----
+
+export interface CurrentOperator {
+  userId: string
+  name: string
+  validFrom: string
+  validTo: string | null
+}
+
+export interface AssignmentJourney {
+  journeyId: string
+  trainNumber: string
+  from: string
+  to: string
+  operatingDate: string
+  firstDeparture: string
+  lastArrival: string
+  status: string
+  /** `Weekly` or `Extra`. */
+  source: string
+  operator: CurrentOperator | null
+}
+
+export interface BusyOn {
+  journeyId: string
+  trainNumber: string
+  until: string | null
+}
+
+export interface OperatorChoice {
+  userId: string
+  name: string
+  enabled: boolean
+  available: boolean
+  busyOn: BusyOn | null
+}
+
+export interface AssignmentView {
+  assignmentId: string
+  operatorUserId: string
+  operatorName: string
+  validFrom: string
+  validTo: string | null
+  assignedBy: string
+  endedBy: string | null
+  /** `LostDevice`, `CrewChange` or `Other`. */
+  endReason: string | null
+  endNote: string | null
+}
+
+export interface AssignResult {
+  assignmentId: string
+  operatorUserId: string
+  name: string
+  validFrom: string
+  validTo: string | null
+  journeyStatus: string
+  ended: AssignmentView | null
+}
+
+export interface AssignRequest {
+  operatorUserId: string
+  validFrom?: string
+  validTo?: string
+  acknowledgeOverlap?: boolean
+}
+
+export type EndReason = 'LostDevice' | 'CrewChange' | 'Other'

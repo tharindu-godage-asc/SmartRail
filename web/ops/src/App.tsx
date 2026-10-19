@@ -4,6 +4,9 @@ import { ClosedExceptionsTab } from './features/exceptions/ClosedExceptionsTab'
 import { ExceptionsPage } from './features/exceptions/ExceptionsPage'
 import { OpenExceptionsTab } from './features/exceptions/OpenExceptionsTab'
 import { OverviewPage } from './features/overview/OverviewPage'
+import { AssignPage } from './features/assignments/AssignPage'
+import { JourneyCrewPage } from './features/assignments/JourneyCrewPage'
+import { JourneysPage } from './features/assignments/JourneysPage'
 import { CancelledTab } from './features/timetable/CancelledTab'
 import { ExtraTab } from './features/timetable/ExtraTab'
 import { ServiceDetailPage } from './features/timetable/ServiceDetailPage'
@@ -38,6 +41,10 @@ function OpsRoutes() {
             <Route index element={<OpenExceptionsTab />} />
             <Route path="closed" element={<ClosedExceptionsTab />} />
           </Route>
+          <Route path="journeys" element={<JourneysPage />} />
+          <Route path="journeys/all" element={<JourneysPage all />} />
+          <Route path="journeys/:journeyId" element={<JourneyCrewPage />} />
+          <Route path="journeys/:journeyId/assign" element={<AssignPage />} />
           <Route path="timetable" element={<TimetablePage />}>
             <Route index element={<WeeklyTab />} />
             <Route path="extra" element={<ExtraTab />} />
