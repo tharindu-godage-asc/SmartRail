@@ -39,7 +39,7 @@ export const t = {
     button: 'Sign in again',
   },
 
-  nav: { label: 'Main', line: 'Line', mainLine: 'Main Line', overview: 'Overview', exceptions: 'Exceptions', timetable: 'Timetable' },
+  nav: { label: 'Main', line: 'Line', mainLine: 'Main Line', overview: 'Overview', exceptions: 'Exceptions', timetable: 'Timetable', journeys: 'Journeys' },
   header: { connected: 'Connected', notUpToDate: 'Not up to date', signOut: 'Sign out', controller: 'Controller' },
 
   freshness: {
@@ -341,6 +341,85 @@ export const t = {
       platform_close: 'Another train uses this platform close to this time.',
     } as Record<string, string>,
   },
+
+  assignments: {
+    title: 'Journeys',
+    tabs: { label: 'Journeys', unassigned: 'Unassigned', all: 'All journeys' },
+    date: 'Date',
+    cols: { train: 'Train', route: 'Route', departs: 'Departs', source: 'From', operator: 'Operator', action: 'Action' },
+    sources: { Weekly: 'Weekly schedule', Extra: 'Extra train' } as Record<string, string>,
+    noOperator: 'No operator assigned',
+    assign: 'Assign operator',
+    crew: 'Crew and control',
+    empty: { unassigned: 'Every journey of this day has an operator.', all: 'There are no journeys on this day.' },
+    loadFailed: 'Could not load the journeys. Try again.',
+    retry: 'Try again',
+    loading: 'Loading…',
+    back: 'Back to journeys',
+    assigned: (train: string, name: string) => `Train ${train} is assigned to ${name}.`,
+    page: {
+      title: (train: string) => `Assign an operator to ${train}`,
+      operator: 'Operator',
+      available: 'Available',
+      busy: (train: string, until: string) => `On train ${train} until ${until}`,
+      disabled: 'Account disabled',
+      directoryFailed: 'Operators could not be loaded. Try again.',
+      noOperators: 'There are no operators in the directory.',
+      from: 'From',
+      fromDefault: (lead: number) => `${lead} minutes before departure (or now, if that has passed)`,
+      fromTime: 'From a time',
+      to: 'To',
+      toEnd: 'Until the journey ends',
+      toTime: 'Until a time',
+      time: 'Time (HH:mm)',
+      crewNote: 'If another operator is assigned at that time, that assignment ends there. Nobody is ever assigned twice at once.',
+      submit: 'Assign operator',
+      submitting: 'Assigning…',
+      cancel: 'Cancel',
+      needOperator: 'Choose an operator.',
+      needTime: 'Enter the time as HH:mm.',
+      adviceTitle: 'Advice',
+      advice: (name: string, train: string, until: string) => `${name} is on train ${train} until ${until}.`,
+      adviceConfirm: 'I know, and want to assign them anyway',
+    },
+    crewPage: {
+      title: (train: string) => `Crew and control · ${train}`,
+      history: 'Assignments',
+      none: 'Nobody has been assigned to this journey.',
+      cols: { operator: 'Operator', from: 'From', to: 'To', assignedBy: 'Assigned by', ended: 'Ended' },
+      active: 'Now',
+      untilEnd: 'Until the journey ends',
+      endedBy: (by: string, reason: string) => `${reason} · by ${by}`,
+      end: 'End assignment',
+      endTitle: (name: string) => `End the assignment of ${name}?`,
+      reasonLabel: 'Reason',
+      reasons: { LostDevice: 'Lost or stolen device', CrewChange: 'Crew change', Other: 'Other' } as Record<string, string>,
+      note: 'Note (optional)',
+      noteCounter: (n: number) => `${n} / 500`,
+      lostHelp: 'From now, reports from this operator for this journey are refused, including reports that claim an earlier time. Reports already made stay in the record.',
+      otherHelp: 'From now the operator cannot report. A report made earlier during the assignment and synced later is still accepted. Reports already made stay in the record.',
+      afterwards: 'Nobody can report on this journey until you assign another operator.',
+      confirm: 'End assignment',
+      ending: 'Ending…',
+      keep: 'Keep the assignment',
+      ended: 'Assignment ended.',
+      failed: 'Could not end the assignment. Nothing was changed. Try again.',
+      alreadyEnded: 'This assignment has already ended.',
+      notStarted: 'This assignment has not started yet, so it cannot be ended.',
+      notFound: 'This journey was not found.',
+    },
+    reasons: {
+      operator_not_found: 'This operator was not found.',
+      not_an_operator: 'This account does not have the operator role.',
+      operator_disabled: 'This operator account is disabled.',
+      valid_to_not_after_from: 'The end must be after the start.',
+      valid_from_in_past_beyond_clock: 'The start is too far in the past.',
+      journey_not_assignable: 'This journey is cancelled or completed.',
+      overlaps_later_assignment: 'Another assignment starts at or after this start. Choose a later start, or end that one first.',
+      operator_directory_unavailable: 'The operator directory is not available. Try again.',
+      journey_not_found: 'This journey was not found.',
+    } as Record<string, string>,
+  },
 }
 
 const typeLabels: Record<string, string> = {
@@ -375,3 +454,6 @@ export function journeyStatusLabel(journey: Pick<OverviewJourney, 'statusKey' | 
 
 /** The sentence for a reason code of the timetable API, or undefined for a code this screen does not know. */
 export const timetableReason = (reason: string | null): string | undefined => (t.timetable.reasons as Record<string, string>)[reason ?? '']
+
+/** The sentence for a reason code of the assignment API, or undefined for a code this screen does not know. */
+export const assignmentReason = (reason: string | null): string | undefined => (t.assignments.reasons as Record<string, string>)[reason ?? '']

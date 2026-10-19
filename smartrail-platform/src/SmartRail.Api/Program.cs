@@ -10,6 +10,7 @@ using SmartRail.Api.Features.Exceptions;
 using SmartRail.Api.Features.Journeys;
 using SmartRail.Api.Features.Catering;
 using SmartRail.Api.Features.OperatorHistory;
+using SmartRail.Api.Features.Assignments;
 using SmartRail.Api.Features.Timetable;
 using SmartRail.Api.Features.Passenger;
 using SmartRail.Application.Features.Passenger;
@@ -34,6 +35,7 @@ if (databaseConfigured)
     builder.Services.AddCateringFeatures(builder.Configuration);
     builder.Services.AddOperatorHistoryFeatures();
     builder.Services.AddTimetableFeatures(builder.Configuration);
+    builder.Services.AddAssignmentFeatures(builder.Configuration);
     builder.Services.AddExceptionFeatures();
 }
 
@@ -66,6 +68,7 @@ if (databaseConfigured)
     app.MapCateringFeatures();
     app.MapOperatorHistoryFeatures();
     app.MapTimetableFeatures();
+    app.MapAssignmentFeatures();
     app.MapExceptionFeatures();
 }
 

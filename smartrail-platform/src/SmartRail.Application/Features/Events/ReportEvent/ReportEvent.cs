@@ -27,6 +27,7 @@ public enum RejectReason
     InvalidRequest,
     JourneyNotFound,
     NotAssigned,
+    AssignmentEnded,
     TimeOutOfRange,
     StopNotInService,
     FinalStop,
@@ -77,6 +78,15 @@ public static class EventRules
     public static readonly IReadOnlyList<string> DelayReasons = ["SignalIssue", "TechnicalFault", "Obstruction", "Weather", "Unknown"];
 
     public const int MaxTotalDelayMinutes = 240;
+
+    /// <summary>
+    /// Spec 17 rule 9: the assignment that covered the report was ended for a lost device and the report is RECEIVED at or after the end, so
+    /// a stolen phone cannot send reports dated earlier than the end (FR-56). Any other end still accepts a report made during the assignment.
+    /// </summary>
+    public static bool IsBlockedByLostDevice(IEnumerable<AssignmentInfo> assignments, string operatorUserId, DateTimeOffset occurredAt, DateTimeOffset receivedAt) =>
+        assignments.Any(a => a.OperatorUserId == operatorUserId
+            && AssignmentRules.Covers(a.ValidFrom, a.ValidTo, occurredAt)
+            && AssignmentRules.BlocksLateReport(a.EndReason, a.ValidTo, receivedAt));
 
     /// <summary>R1: valid_from &lt;= at &lt; valid_to, or valid_to null.</summary>
     public static bool IsAssignedAt(IEnumerable<AssignmentInfo> assignments, string operatorUserId, DateTimeOffset at) =>
@@ -210,6 +220,11 @@ public sealed class ReportEventHandler(IJourneyRepository repository, TimeProvid
             if (!EventRules.IsAssignedAt(data.Assignments, subject, occurredAt))
             {
                 return ReportEventResult.Reject(RejectReason.NotAssigned);
+            }
+
+            if (EventRules.IsBlockedByLostDevice(data.Assignments, subject, occurredAt, clock.GetUtcNow()))
+            {
+                return ReportEventResult.Reject(RejectReason.AssignmentEnded);
             }
 
             // R2: an exact repeat, or a different ID for the same type, stop, time and content, is answered with the original.

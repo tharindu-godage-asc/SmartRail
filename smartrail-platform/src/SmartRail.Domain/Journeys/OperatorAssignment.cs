@@ -12,4 +12,10 @@ public sealed class OperatorAssignment
     public DateTimeOffset ValidFrom { get; set; }
     public DateTimeOffset? ValidTo { get; set; }
     public required string AssignedBy { get; set; }
+
+    /// <summary>The controller who ended it early or replaced the operator; null when it ran out by itself (spec 17).</summary>
+    public string? EndedBy { get; set; }
+
+    public AssignmentEndReason? EndReason { get; set; }
+    public string? EndNote { get; set; }
 }

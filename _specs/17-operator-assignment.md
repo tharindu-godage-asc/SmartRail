@@ -4,7 +4,7 @@ branch: claude/feature/operator-assignment
 spec: _specs/17-operator-assignment.md
 owner: tharindu
 date: 2026-10-19
-status: draft
+status: approved 2026-10-19 (owner: scope A1 then A2, A3 not built; Q2 to Q11 as recommended; branch from timetable-web)
 
 ---
 
@@ -130,14 +130,14 @@ Example: `POST /api/v1/journeys/{id}/assignments` `{ "operatorUserId": "d0d0d0d0
 | Assign for a journey that has already departed with no operator (events entered by the controller) | Allowed; `validFrom` is at most 5 minutes in the past, so the operator can report from now; earlier reports stay the controller's |
 
 ## 9) Acceptance Criteria
-- [ ] A controller can assign an enabled operator to an Unassigned journey; the journey becomes Scheduled and the operator can report on it (AC-E02-01 5, FR-12).
-- [ ] A journey with no assignment shows "No operator assigned" (FR-12); an operator cannot report on an Unassigned journey (EC-15).
-- [ ] A crew change is one call; the previous assignment ends at the changeover and there is never more than one operator at an instant (FR-13, EC-20, AC-E05-07 3).
-- [ ] Ending an assignment stops reports from that moment; for LostDevice, also reports claiming an earlier time but received later (FR-56, AC-E05-07 1, EC-23).
-- [ ] Reports made before the end are kept (AC-E05-07 2, D-36).
-- [ ] An operator or passenger token cannot call any route (403); anonymous gets 401 (NFR-10).
-- [ ] Every assignment records who assigned it; every early end records who, why and when (NFR-17).
-- [ ] Assigning a non-operator, disabled or unknown account is refused with a reason code and changes nothing.
+- [x] A controller can assign an enabled operator to an Unassigned journey; the journey becomes Scheduled and the operator can report on it (AC-E02-01 5, FR-12).
+- [x] A journey with no assignment shows "No operator assigned" (FR-12); an operator cannot report on an Unassigned journey (EC-15).
+- [x] A crew change is one call; the previous assignment ends at the changeover and there is never more than one operator at an instant (FR-13, EC-20, AC-E05-07 3).
+- [x] Ending an assignment stops reports from that moment; for LostDevice, also reports claiming an earlier time but received later (FR-56, AC-E05-07 1, EC-23).
+- [x] Reports made before the end are kept (AC-E05-07 2, D-36).
+- [x] An operator or passenger token cannot call any route (403); anonymous gets 401 (NFR-10).
+- [x] Every assignment records who assigned it; every early end records who, why and when (NFR-17).
+- [x] Assigning a non-operator, disabled or unknown account is refused with a reason code and changes nothing.
 - [ ] The web Unassigned tab, Assign page and End dialog work by keyboard, targets 44 px, status not by colour alone (NFR-30, NFR-33). *(Not yet checked by hand.)*
 - [ ] The operator app shows the new journey, or "No longer assigned", on its next poll.
 
@@ -167,3 +167,18 @@ Assign flow from the Unassigned tab, the overlap confirm, the end dialog, empty 
 - **Q9. Ending an assignment that has not started.** The `valid_to > valid_from` constraint forbids it. A wrong future assignment then cannot be undone here. Recommend accepting the limit for now and saying so in the report; fix later with a `withdrawn_at` column. Alternative: add that column now (small, but one more state to explain on screen).
 - **Q10. Overlap enforced in code, not in the database.** Recommend the transaction with a journey row lock (rule 3). Alternative: a Postgres exclusion constraint on `(journey_id, tstzrange(valid_from, valid_to))`, which is the stronger guarantee but needs `btree_gist` and a role that may create extensions.
 - **Q11. Wording elsewhere.** Specs 15 and 16 say assignment is "seed data only" until this spec exists. Recommend leaving them as written (they were true on the day) and updating the report and the "not built" list when this lands.
+
+## 13) Owner decisions of 19 Oct 2026
+- Scope: **A1** (API, rules, migration, tests, config-based operator list) then **A2** (web: Unassigned tab, Assign page, End dialog). **A3** (Keycloak admin directory) is reported as designed, not built.
+- Q2 to Q11 as recommended. Branch `claude/feature/operator-assignment` starts from `claude/feature/timetable-web` (which has the web menu), so its pull request merges after spec 15.
+
+## 14) Delivery notes for A1 (19 Oct 2026)
+- **Built (backend):** `GET /api/v1/assignments/journeys`, `GET /assignments/operators`, `GET /journeys/{id}/assignments`, `POST /journeys/{id}/assignments`, `POST /journeys/{id}/assignments/{assignmentId}/end`; migration `AddAssignmentEnd` (`ended_by`, `end_reason`, `end_note` with their checks); `AssignmentRules` (pure); the crew change that ends the covering assignment at the new start; the advice for an operator on another journey (`acknowledgeOverlap`); the lost-device rule in `ReportEvent` (new reason `assignment_ended`, 403); an operator list from configuration (`Operators:Directory`, the two demo operators) behind the `IOperatorDirectory` port; counters `smartrail.assignments.assigned` and `.ended`. 14 new unit tests and 21 new integration tests pass; the whole suite passes.
+- **Deviation from section 5 (stated, not hidden):** ending the only assignment of a Scheduled journey does **not** set the stored status back to Unassigned. A reverted status would make the server refuse a report the operator made during the assignment and syncs later (EC-21, AC-E01-03 4), because an Unassigned journey takes no reports (spec 03). "No operator assigned" and the Unassigned list are derived from the assignments, which is what the controller sees. Assigning still moves Unassigned to Scheduled.
+- **Other small decisions:** ending an assignment in the very instant it started ends it one microsecond later (the window check needs `valid_to > valid_from`); a Running journey keeps Running.
+- **Not built:** A3 (the Keycloak admin-API directory: names come from configuration), ending a not-started assignment (Q9), a roster.
+
+## 15) Delivery notes for A2 (19 Oct 2026)
+- **Built (web):** the **Journeys** menu item; the Journeys page with the Unassigned and All journeys tabs and a date box (`/journeys`, `/journeys/all`); the Assign page (`/journeys/:id/assign?date=`: operators with Available or the train they are on and until when, a disabled account that cannot be chosen, From (default or a time) and To (until the journey ends or a time) as Sri Lanka time, the advice for an operator on another train with a confirm box and then `acknowledgeOverlap`, plain words for each refusal); Crew and control (`/journeys/:id`: every assignment with who, from, to, who assigned and how it ended, the one running now marked in words, Assign operator for a crew change); the End assignment dialog (reason, note with a counter, the lost-device and other-reason explanations, one request on a double click, plain words for `already_ended` and `not_started`). 19 new web tests; 213 in all pass; lint, typecheck and build are clean.
+- **Not ticked:** the web keyboard and 44 px criterion (labels and focus are tested, not tried by hand), the operator app criterion (it already shows "No journey assigned"/"No longer assigned" on its poll; not re-checked on the emulator), the Playwright flow. **Not built:** A3 (Keycloak directory), a screen to withdraw an assignment that has not started (Q9).
+- **Board differences (Q7), not applied to the Design canvas:** no "Signed in on 1 device" line, the sample operators are the two demo operators, and the End dialog says "Nobody can report on this journey until you assign another operator."
