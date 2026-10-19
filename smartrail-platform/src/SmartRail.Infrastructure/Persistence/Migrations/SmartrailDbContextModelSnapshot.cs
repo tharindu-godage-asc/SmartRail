@@ -236,6 +236,21 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("assigned_by");
 
+                    b.Property<string>("EndNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("end_note");
+
+                    b.Property<string>("EndReason")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("end_reason");
+
+                    b.Property<string>("EndedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("ended_by");
+
                     b.Property<Guid>("JourneyId")
                         .HasColumnType("uuid")
                         .HasColumnName("journey_id");
@@ -265,6 +280,10 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
 
                     b.ToTable("operator_assignment", null, t =>
                         {
+                            t.HasCheckConstraint("ck_operator_assignment_end_reason", "end_reason IN ('LostDevice', 'CrewChange', 'Other')");
+
+                            t.HasCheckConstraint("ck_operator_assignment_ended_by", "end_reason IS NULL OR ended_by IS NOT NULL");
+
                             t.HasCheckConstraint("ck_operator_assignment_window", "valid_to IS NULL OR valid_to > valid_from");
                         });
                 });

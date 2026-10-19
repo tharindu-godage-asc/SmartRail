@@ -218,7 +218,7 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
         {
             assignments = await db.OperatorAssignments.AsNoTracking()
                 .Where(a => a.JourneyId == header.Id)
-                .Select(a => new AssignmentInfo(a.OperatorUserId, a.ValidFrom, a.ValidTo))
+                .Select(a => new AssignmentInfo(a.OperatorUserId, a.ValidFrom, a.ValidTo, a.EndReason))
                 .ToListAsync(cancellationToken);
         }
 

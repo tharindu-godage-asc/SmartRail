@@ -45,7 +45,7 @@ public sealed record RecordedEvent(
     DelayPayload? Delay = null,
     DateTimeOffset? ReceivedAt = null);
 
-public sealed record AssignmentInfo(string OperatorUserId, DateTimeOffset ValidFrom, DateTimeOffset? ValidTo);
+public sealed record AssignmentInfo(string OperatorUserId, DateTimeOffset ValidFrom, DateTimeOffset? ValidTo, AssignmentEndReason? EndReason = null);
 
 /// <summary>Everything the slice-1 handlers need to know about one journey.</summary>
 public sealed record JourneyData(
