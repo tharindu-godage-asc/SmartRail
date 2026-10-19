@@ -238,6 +238,24 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     ],
                   ),
                 ],
+                if (!data.completed &&
+                    data.reasonCode == null &&
+                    (data.delayMinutes > 0 || !data.delayKnown)) ...[
+                  const SizedBox(height: Space.sm),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.hourglass_empty, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          s[K.reasonPending],
+                          style: context.text.bodyMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: Space.md),
                 if (!data.completed)
                   PrimaryButton(
