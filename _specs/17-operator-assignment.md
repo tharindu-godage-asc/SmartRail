@@ -4,7 +4,7 @@ branch: claude/feature/operator-assignment
 spec: _specs/17-operator-assignment.md
 owner: tharindu
 date: 2026-10-19
-status: draft
+status: approved 2026-10-19 (owner: scope A1 then A2, A3 not built; Q2 to Q11 as recommended; branch from timetable-web)
 
 ---
 
@@ -167,3 +167,7 @@ Assign flow from the Unassigned tab, the overlap confirm, the end dialog, empty 
 - **Q9. Ending an assignment that has not started.** The `valid_to > valid_from` constraint forbids it. A wrong future assignment then cannot be undone here. Recommend accepting the limit for now and saying so in the report; fix later with a `withdrawn_at` column. Alternative: add that column now (small, but one more state to explain on screen).
 - **Q10. Overlap enforced in code, not in the database.** Recommend the transaction with a journey row lock (rule 3). Alternative: a Postgres exclusion constraint on `(journey_id, tstzrange(valid_from, valid_to))`, which is the stronger guarantee but needs `btree_gist` and a role that may create extensions.
 - **Q11. Wording elsewhere.** Specs 15 and 16 say assignment is "seed data only" until this spec exists. Recommend leaving them as written (they were true on the day) and updating the report and the "not built" list when this lands.
+
+## 13) Owner decisions of 19 Oct 2026
+- Scope: **A1** (API, rules, migration, tests, config-based operator list) then **A2** (web: Unassigned tab, Assign page, End dialog). **A3** (Keycloak admin directory) is reported as designed, not built.
+- Q2 to Q11 as recommended. Branch `claude/feature/operator-assignment` starts from `claude/feature/timetable-web` (which has the web menu), so its pull request merges after spec 15.
