@@ -1,0 +1,18 @@
+name: smallbites
+# SmallBites, the stand-in caterer (its own system, spec 11 section 14): build and test whenever it changes.
+on:
+  push:
+    branches: [main, develop, dev]
+    paths: ["smallbites/**", ".github/workflows/smallbites.yml"]
+  pull_request:
+    paths: ["smallbites/**", ".github/workflows/smallbites.yml"]
+permissions:
+  contents: read
+jobs:
+  smallbites:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: 10.0.x }
+      - run: dotnet test smallbites/tests/SmallBites.Tests.csproj

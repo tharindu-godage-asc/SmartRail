@@ -1,0 +1,9 @@
+{
+  "CF": [
+    { "id": "egg-sandwich", "names": { "en": "Egg sandwich", "si": "බිත්තර සැන්ඩ්විච්", "ta": "முட்டை சாண்ட்விச்" }, "priceLkr": 250.00, "available": true },
+    { "id": "fruit-cup", "names": { "en": "Fruit cup", "si": "පළතුරු කෝප්පය", "ta": "பழக் கோப்பை" }, "priceLkr": 180.00, "available": true },
+    { "id": "vegetable-roti", "names": { "en": "Vegetable roti", "si": "එළවළු රොටි", "ta": "காய்கறி ரொட்டி" }, "priceLkr": 120.00, "available": true },
+    { "id": "fish-bun", "names": { "en": "Fish bun", "si": "මාළු පාන්", "ta": "மீன் பன்" }, "priceLkr": 90.00, "available": true },
+    { "id": "milk-tea", "names": { "en": "Milk tea", "si": "කිරි තේ", "ta": "பால் தேநீர்" }, "priceLkr": 80.00, "available": true }
+  ]
+}

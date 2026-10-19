@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'package:clock/clock.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/config.dart';
 import '../core/l10n/strings.dart';
 import '../core/time.dart';
+import '../data/menu.dart';
 import '../data/models.dart';
 import '../data/passenger_api.dart';
 import '../data/preferences.dart';
@@ -218,6 +220,59 @@ final trainStatusProvider = NotifierProvider.autoDispose
     .family<TrainStatusPoller, Polled<TrainStatus?>, String>(
       TrainStatusPoller.new,
     );
+
+// ---- the food menu of a trip (every 60 s while open, last answer kept offline) ----
+
+typedef MenuKey = (String number, String? from, String? to);
+
+class MenuPoller extends PollingNotifier<TrainMenu?> {
+  MenuPoller(this.key);
+
+  final MenuKey key;
+
+  @override
+  Duration get interval => AppConfig.menuInterval;
+
+  @override
+  DateTime? serverTimeOf(TrainMenu? value) => value?.serverTime;
+
+  @override
+  Polled<TrainMenu?> initial() {
+    final raw = ref.read(preferencesProvider).menuSnapshot(key.$1);
+    if (raw == null) return Polled<TrainMenu?>();
+    try {
+      return Polled<TrainMenu?>(
+        data: TrainMenu.fromJson(
+          (jsonDecode(raw) as Map).cast<String, dynamic>(),
+        ),
+      );
+    } catch (_) {
+      return Polled<TrainMenu?>();
+    }
+  }
+
+  @override
+  Future<TrainMenu?> fetch() =>
+      ref.read(apiProvider).menu(key.$1, from: key.$2, to: key.$3);
+
+  @override
+  void onSuccess(TrainMenu? value) {
+    if (value != null) {
+      ref
+          .read(preferencesProvider)
+          .setMenuSnapshot(key.$1, jsonEncode(value.raw));
+    }
+  }
+}
+
+final menuProvider = NotifierProvider.autoDispose
+    .family<MenuPoller, Polled<TrainMenu?>, MenuKey>(MenuPoller.new);
+
+/// Opens an address in the phone browser. A provider so tests can watch it (spec 11: offline, nothing opens).
+final urlOpenerProvider = Provider<Future<bool> Function(Uri)>(
+  (ref) =>
+      (uri) => launchUrl(uri, mode: LaunchMode.externalApplication),
+);
 
 // ---- the line banner on Home ----
 

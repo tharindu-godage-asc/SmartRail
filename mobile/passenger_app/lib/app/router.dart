@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/l10n/strings.dart';
 import '../features/home/home_screens.dart';
+import '../features/food/food_menu_screen.dart';
 import '../features/live/live_screen.dart';
 import '../features/onboarding/onboarding_screens.dart';
 import '../features/search/search_screens.dart';
@@ -91,6 +92,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             StationPicker(which: state.pathParameters['which']!),
       ),
       GoRoute(path: '/results', builder: (_, _) => const ResultsScreen()),
+      GoRoute(
+        path: '/menu/:number',
+        builder: (_, state) => FoodMenuScreen(
+          number: state.pathParameters['number']!,
+          from: _nonEmpty(state.uri.queryParameters['from']),
+          to: _nonEmpty(state.uri.queryParameters['to']),
+        ),
+      ),
       GoRoute(
         path: '/train/:number',
         builder: (_, state) => LiveScreen(

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../core/config.dart';
+import 'menu.dart';
 import 'models.dart';
 
 /// The stations answer: the list and the version (also the ETag).
@@ -26,6 +27,9 @@ abstract interface class PassengerApi {
   Future<TrainStatus?> trainStatus(String trainNumber);
 
   Future<LineStatus> lineStatus();
+
+  /// The food menu of a trip (spec 11). null when the train is unknown (404).
+  Future<TrainMenu?> menu(String trainNumber, {String? from, String? to});
 }
 
 class DioPassengerApi implements PassengerApi {
@@ -89,5 +93,19 @@ class DioPassengerApi implements PassengerApi {
   Future<LineStatus> lineStatus() async {
     final r = await _dio.get<Map<String, dynamic>>('/api/v1/lines/MAIN/status');
     return LineStatus.fromJson(r.data!);
+  }
+
+  @override
+  Future<TrainMenu?> menu(
+    String trainNumber, {
+    String? from,
+    String? to,
+  }) async {
+    final r = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/trains/${Uri.encodeComponent(trainNumber)}/menu',
+      queryParameters: {'from': ?from, 'to': ?to},
+      options: Options(validateStatus: (s) => s == 200 || s == 404),
+    );
+    return r.statusCode == 404 ? null : TrainMenu.fromJson(r.data!);
   }
 }

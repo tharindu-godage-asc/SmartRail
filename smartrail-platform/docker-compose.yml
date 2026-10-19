@@ -13,6 +13,9 @@ services:
       # Only this stack applies migrations and loads the demo journey on startup; the cluster and prod never set these.
       Database__ApplyMigrationsOnStartup: "true"
       Seeding__DemoData: "true"
+      # Spec 11: SmartRail reads the menu from SmallBites (its own system). The website address is opened by the phone, through adb reverse.
+      Catering__SmallBitesUrl: http://smallbites:8090
+      Catering__WebsiteUrl: http://localhost:8090/
       # Token validation. Tokens say http://localhost:8180 (the issuer); the API fetches the keys from inside the Compose network.
       Authentication__Authority: http://localhost:8180/realms/smartrail
       Authentication__MetadataAddress: http://keycloak:8080/realms/smartrail/.well-known/openid-configuration
@@ -34,6 +37,11 @@ services:
       keycloak: { condition: service_started }
   # The station displays as their own service (spec 09 section 15): the display-only build of web/ops, served by nginx. It needs only
   # the API (in the browser, not at start-up), so it keeps running when the controller dashboard is down. http://localhost:5174/display/platform/GPH/1
+  # SmallBites, the caterer: its own system, API and website (spec 11 section 14). http://localhost:8090/admin to sell an item out.
+  smallbites:
+    build: { context: ../smallbites, dockerfile: Dockerfile }
+    ports: ["8090:8090"]
+    restart: unless-stopped
   display:
     build: { context: ../web/ops, dockerfile: Dockerfile.display, args: { VITE_API_BASE_URL: "http://localhost:8080" } }
     ports: ["5174:80"]
