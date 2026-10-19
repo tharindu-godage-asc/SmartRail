@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:drift_flutter/drift_flutter.dart';
@@ -16,6 +17,9 @@ import '../features/reports/data/drift_report_queue.dart';
 import '../features/reports/domain/report_queue.dart';
 
 /// The wiring of the app. Every outside thing (network, storage, sign-in library) is a provider that tests override.
+
+/// The phone clock, as a provider so a test can fix the time the report cleanup uses.
+final phoneNowProvider = Provider<DateTime Function()>((ref) => clock.now);
 
 final appConfigProvider = Provider<AppConfig>((ref) => const AppConfig());
 

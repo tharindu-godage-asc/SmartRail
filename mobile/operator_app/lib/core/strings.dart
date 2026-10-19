@@ -76,7 +76,7 @@ abstract final class Strings {
   static const delivered = 'Delivered';
   static const notSentYet = 'Not sent yet';
   static const notSentDetail = 'Not sent yet. We’ll keep trying.';
-  static const rejected = 'Rejected, requires Operations review';
+  static const rejected = 'Rejected';
   static const rejectedPhoneHelp =
       'Phone the desk so a controller can enter this report.';
   static const checkPhoneClock = 'Check your phone’s date and time.';
@@ -143,4 +143,23 @@ abstract final class Strings {
   // Navigation
   static const tabJourney = 'Journey';
   static const tabHelp = 'Help';
+  static const tabReports = 'Reports';
+
+  // Reports tab (spec 12)
+  static const reportsTitle = 'Reports';
+  static const reportsTapHint = 'Tap a report to see details.';
+  static const noReportsYet = 'No reports on this phone yet.';
+  static const reportDetailsTitle = 'Report details';
+  static const backToReports = 'Back to reports';
+  static const notAccepted = 'Not accepted';
+  static const notAcceptedTitle = 'Not accepted';
+  static const rejectedDetailBody =
+      'The server did not accept this report because it conflicts with what is already recorded.';
+  static const rejectedDetailAdvice =
+      'You do not need to send it again. Operations is not told about it automatically: phone the Main Line desk if the train’s status is wrong.';
+  static const deliveredTitle = 'Delivered';
+  static const deliveredDetail = 'The server has this report.';
+  static const reportMissingTitle = 'Report not found';
+  static const reportMissingBody =
+      'This report is no longer on this phone. Delivered reports are removed after 7 days.';
 }

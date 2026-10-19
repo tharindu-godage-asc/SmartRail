@@ -416,10 +416,7 @@ void main() {
         await settle(tester);
 
         expect(find.text('Delay not accepted'), findsOneWidget);
-        expect(
-          find.text('Rejected, requires Operations review'),
-          findsOneWidget,
-        );
+        expect(find.text('Rejected'), findsOneWidget);
         expect(find.text('Delay reported'), findsNothing);
         await app.close(tester);
       },

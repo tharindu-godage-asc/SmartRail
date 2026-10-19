@@ -70,6 +70,10 @@ class TestApp {
           reportQueueProvider.overrideWithValue(queue),
           localCacheProvider.overrideWithValue(cache),
           isOnlineProvider.overrideWith((ref) => Stream.value(online)),
+          // The fixtures are dated 6 Oct 2026; the cleanup of delivered reports older than 7 days must not remove them.
+          phoneNowProvider.overrideWithValue(
+            () => DateTime.utc(2026, 10, 6, 4),
+          ),
         ],
         child: const OperatorApp(),
       ),

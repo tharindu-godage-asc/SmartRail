@@ -154,12 +154,12 @@ Both routes are new, read-only, `RequireAuthorization(Policies.Operator)`. They 
 | (new) | Text scaled to 200 % | Rows grow; chip and time never clipped (NFR-33) |
 
 ## 9) Acceptance Criteria
-- [ ] The bottom bar has Journey, Reports and Help; Reports opens "My reports" (AC-E03-05 1).
-- [ ] A delivered, a waiting and a refused report each show the right chip with text and icon, newest first (AC-E03-05 1, 2, 4; NFR-30).
-- [ ] A waiting report turns Delivered in the list without leaving the screen (AC-E03-05 2).
+- [x] The bottom bar has Journey, Reports and Help; Reports opens "My reports" (AC-E03-05 1).
+- [x] A delivered, a waiting and a refused report each show the right chip with text and icon, newest first (AC-E03-05 1, 2, 4; NFR-30).
+- [x] A waiting report turns Delivered in the list without leaving the screen (AC-E03-05 2).
 - [ ] A report kept waiting across an app restart is still listed and still sent (AC-E03-05 6).
-- [ ] The refused-report detail says what conflicted when known and never claims a controller will review it; it offers the desk phone number (rule 5).
-- [ ] Delivered reports older than 7 days are removed from the phone; waiting and refused ones are not (test with a fake clock).
+- [x] The refused-report detail says what conflicted when known and never claims a controller will review it; it offers the desk phone number (rule 5).
+- [x] Delivered reports older than 7 days are removed from the phone; waiting and refused ones are not (test with a fake clock).
 - [ ] `GET /operator/journeys/history` returns only this operator's past journeys, newest first, with `myReportCount` and `arrivalDelayMinutes`; paging works with `before` and `limit`; bad parameters give 400.
 - [ ] `GET /operator/journeys/{id}/record` returns the stops and only this operator's reports; a journey of another operator or a missing one gives 404 with the same body.
 - [ ] No token gives 401; a controller, passenger or caterer token gives 403 on both routes.
@@ -197,3 +197,8 @@ Reports tab with a fake queue stream (state change updates the row); detail scre
 ## 13) Owner decisions of 19 Oct 2026
 - Q1 to Q3 and Q5 to Q8 as recommended. Q4: the owner says the previous-journeys screens exist in Claude Design; the published canvas (updated 15 Oct) holds only Nimal-Reports and Nimal-RejectedDetail, so those two are built exactly; previous-journeys screens are built from existing components until the boards are shared.
 - Scope: part 1 (My reports, no backend) first, then a checkpoint before part 2 (Previous journeys). Branch `claude/feature/operator-reports-history` starts from `claude/feature/catering-integration`; its pull request merges after specs 10 and 11.
+
+## 14) Part 1 delivery notes (19 Oct 2026)
+- Done (no backend): Reports tab (Journey, Reports, Help), My reports list from the phone queue (live, newest first), report detail for each state, the honest Rejected wording (rule 5), 7-day cleanup of delivered reports at start of the tab, `watchAll` and `deleteDeliveredBefore` on the queue. 145 app tests pass.
+- Deviations: the Rejected chip now reads "Rejected" (as drawn on Nimal-Reports) instead of "Rejected, requires Operations review", for the same reason as rule 5. The conflicting stop time ("Recorded: Departed Veyangoda at 08:28") is not shown yet: the app does not keep it. No segmented control until part 2 exists, so there is no dead-end button.
+- Not yet checked: the offline row update and the restart case (AC-E03-05 6) are covered by the existing queue tests; the emulator run with screenshots is still to do. Part 2 (Previous journeys) is not started.

@@ -171,6 +171,26 @@ class InMemoryReportQueue implements ReportQueue {
   }
 
   @override
+  Stream<List<QueuedReport>> watchAll() async* {
+    List<QueuedReport> snapshot() =>
+        (List.of(items)..sort((a, b) => b.occurredAt.compareTo(a.occurredAt)));
+    yield snapshot();
+    await for (final _ in _changes.stream) {
+      yield snapshot();
+    }
+  }
+
+  @override
+  Future<int> deleteDeliveredBefore(DateTime cutoff) async {
+    final before = items.length;
+    items.removeWhere(
+      (r) => r.state == ReportState.delivered && r.occurredAt.isBefore(cutoff),
+    );
+    _changes.add(null);
+    return before - items.length;
+  }
+
+  @override
   Future<int> pendingCount() async =>
       items.where((r) => r.state == ReportState.pending).length;
 }
