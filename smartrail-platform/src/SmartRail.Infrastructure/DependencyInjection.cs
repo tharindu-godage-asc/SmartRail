@@ -4,6 +4,7 @@ using SmartRail.Application.Features.Exceptions;
 using SmartRail.Application.Features.Journeys;
 using SmartRail.Application.Features.OperatorHistory;
 using SmartRail.Application.Features.Passenger;
+using SmartRail.Application.Features.Timetable;
 using SmartRail.Infrastructure.Persistence;
 
 namespace SmartRail.Infrastructure;
@@ -28,6 +29,7 @@ public static class DependencyInjection
             services.AddScoped<IPassengerQueries, PassengerQueries>();
             services.AddScoped<IExceptionRepository, ExceptionRepository>();
             services.AddScoped<IOperatorHistoryQueries, OperatorHistoryQueries>();
+            services.AddScoped<ITimetableRepository, TimetableRepository>();
             services.AddHealthChecks().AddCheck<DatabaseReadinessCheck>("database", tags: ["ready"]);
             services.AddHostedService<DatabaseStartupService>();
         }

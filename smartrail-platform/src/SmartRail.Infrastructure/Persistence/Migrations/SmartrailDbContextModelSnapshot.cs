@@ -1046,6 +1046,24 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(10)")
                         .HasColumnName("direction");
 
+                    b.Property<DateOnly>("EffectiveFrom")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("date")
+                        .HasDefaultValue(new DateOnly(2000, 1, 1))
+                        .HasColumnName("effective_from");
+
+                    b.Property<DateOnly?>("EffectiveTo")
+                        .HasColumnType("date")
+                        .HasColumnName("effective_to");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("Weekly")
+                        .HasColumnName("kind");
+
                     b.Property<Guid>("LineId")
                         .HasColumnType("uuid")
                         .HasColumnName("line_id");
@@ -1070,6 +1088,10 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("service_type");
 
+                    b.Property<Guid?>("SupersededServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("superseded_service_id");
+
                     b.Property<string>("TrainNumber")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -1082,15 +1104,24 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("unreserved_capacity");
 
+                    b.Property<int>("Version")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("version");
+
                     b.HasKey("Id")
                         .HasName("pk_train_service");
 
-                    b.HasIndex("LineId")
-                        .HasDatabaseName("ix_train_service_line_id");
+                    b.HasIndex("SupersededServiceId")
+                        .HasDatabaseName("ix_train_service_superseded_service_id");
 
-                    b.HasIndex("TrainNumber")
+                    b.HasIndex("LineId", "Kind", "EffectiveFrom")
+                        .HasDatabaseName("ix_train_service_line_id_kind_effective_from");
+
+                    b.HasIndex("TrainNumber", "Version", "EffectiveFrom")
                         .IsUnique()
-                        .HasDatabaseName("ix_train_service_train_number");
+                        .HasDatabaseName("ix_train_service_train_number_version_effective_from");
 
                     b.ToTable("train_service", null, t =>
                         {
@@ -1098,9 +1129,13 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_train_service_direction", "direction IN ('Outbound', 'Inbound')");
 
+                            t.HasCheckConstraint("ck_train_service_kind", "kind IN ('Weekly', 'Extra')");
+
                             t.HasCheckConstraint("ck_train_service_type", "service_type IN ('Slow', 'Express')");
 
                             t.HasCheckConstraint("ck_train_service_unreserved", "unreserved_capacity >= 0");
+
+                            t.HasCheckConstraint("ck_train_service_version", "version >= 1");
                         });
 
                     b.HasData(
@@ -1108,34 +1143,87 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                         {
                             Id = new Guid("00000004-0000-4000-8000-000000000001"),
                             Direction = "Inbound",
+                            EffectiveFrom = new DateOnly(2000, 1, 1),
+                            Kind = "Weekly",
                             LineId = new Guid("00000001-0000-4000-8000-000000000001"),
                             RunsOn = "Weekdays",
                             ServiceCategory = "Regional",
                             ServiceType = "Slow",
                             TrainNumber = "8058",
-                            UnreservedCapacity = 0
+                            UnreservedCapacity = 0,
+                            Version = 1
                         },
                         new
                         {
                             Id = new Guid("00000004-0000-4000-8000-000000000002"),
                             Direction = "Inbound",
+                            EffectiveFrom = new DateOnly(2000, 1, 1),
+                            Kind = "Weekly",
                             LineId = new Guid("00000001-0000-4000-8000-000000000001"),
                             RunsOn = "Weekdays",
                             ServiceCategory = "Regional",
                             ServiceType = "Express",
                             TrainNumber = "8061",
-                            UnreservedCapacity = 0
+                            UnreservedCapacity = 0,
+                            Version = 1
                         },
                         new
                         {
                             Id = new Guid("00000004-0000-4000-8000-000000000003"),
                             Direction = "Inbound",
+                            EffectiveFrom = new DateOnly(2000, 1, 1),
+                            Kind = "Weekly",
                             LineId = new Guid("00000001-0000-4000-8000-000000000001"),
                             RunsOn = "Daily",
                             ServiceCategory = "Regional",
                             ServiceType = "Slow",
                             TrainNumber = "8075",
-                            UnreservedCapacity = 0
+                            UnreservedCapacity = 0,
+                            Version = 1
+                        });
+                });
+
+            modelBuilder.Entity("SmartRail.Domain.Scheduling.ServiceChangeLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("action");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("actor");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("details");
+
+                    b.Property<Guid>("ServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_service_change_log");
+
+                    b.HasIndex("ServiceId")
+                        .HasDatabaseName("ix_service_change_log_service_id");
+
+                    b.ToTable("service_change_log", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_service_change_log_action", "action in ('Created', 'Amended', 'Cancelled')");
                         });
                 });
 
@@ -1313,6 +1401,22 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("fk_train_service_line_line_id");
+
+                    b.HasOne("SmartRail.Domain.Reference.TrainService", null)
+                        .WithMany()
+                        .HasForeignKey("SupersededServiceId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_train_service_train_service_superseded_service_id");
+                });
+
+            modelBuilder.Entity("SmartRail.Domain.Scheduling.ServiceChangeLog", b =>
+                {
+                    b.HasOne("SmartRail.Domain.Reference.TrainService", null)
+                        .WithMany()
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_service_change_log_train_services_service_id");
                 });
 #pragma warning restore 612, 618
         }

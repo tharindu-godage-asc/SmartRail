@@ -17,4 +17,18 @@ public sealed class TrainService
     public ServiceDirection Direction { get; set; }
     public required string RunsOn { get; set; }
     public int UnreservedCapacity { get; set; }
+
+    /// <summary>Weekly services run on their days from <see cref="EffectiveFrom"/>; an extra train runs on one date (spec 13).</summary>
+    public Scheduling.ServiceKind Kind { get; set; } = Scheduling.ServiceKind.Weekly;
+
+    /// <summary>Version of the service: an amendment is a new row with the next number (S4); every service so far is version 1.</summary>
+    public int Version { get; set; } = 1;
+
+    /// <summary>The first date the service runs. The seeded services have run since 2000-01-01.</summary>
+    public DateOnly EffectiveFrom { get; set; } = new(2000, 1, 1);
+
+    /// <summary>The last date it runs; null means it has no end.</summary>
+    public DateOnly? EffectiveTo { get; set; }
+
+    public Guid? SupersededServiceId { get; set; }
 }
