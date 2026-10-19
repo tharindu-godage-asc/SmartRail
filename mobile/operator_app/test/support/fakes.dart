@@ -1,3 +1,5 @@
+import 'package:operator_app/features/history/domain/history.dart';
+
 import 'dart:async';
 
 import 'package:operator_app/features/auth/domain/auth.dart';
@@ -271,6 +273,14 @@ class InMemoryLocalCache implements LocalCache {
   @override
   Future<void> clearJourney() async => journey = null;
 
+  String? history;
+
+  @override
+  Future<String?> readHistoryJson() async => history;
+
+  @override
+  Future<void> writeHistoryJson(String json) async => history = json;
+
   final summaries = <String, JourneySummary>{};
 
   @override
@@ -324,3 +334,72 @@ class OfflineReportApi implements ReportApi {
   Future<SendResult> send(QueuedReport report) async =>
       const RetryLater('network');
 }
+
+/// Answers the history reads from what a test sets. Set [offline] to make both fail like a dead network.
+class FakeHistoryApi implements HistoryApi {
+  FakeHistoryApi({this.pages = const []});
+
+  /// Pages in the order the app asks: the first page, then each "Show earlier".
+  List<HistoryPage> pages;
+  Map<String, JourneyRecord?> records = {};
+  bool offline = false;
+  int calls = 0;
+
+  @override
+  Future<HistoryPage> fetchHistory({DateTime? before}) async {
+    calls++;
+    if (offline) {
+      throw const NetworkException();
+    }
+    final index = before == null ? 0 : 1;
+    return pages[index.clamp(0, pages.length - 1)];
+  }
+
+  @override
+  Future<JourneyRecord?> fetchRecord(String journeyId) async {
+    if (offline) {
+      throw const NetworkException();
+    }
+    return records[journeyId];
+  }
+}
+
+HistoryPage historyPage(
+  List<PastJourney> journeys, {
+  DateTime? next,
+}) => HistoryPage.fromJson({
+  'serverTime': '2026-10-19T03:12:00Z',
+  'next': next?.toIso8601String(),
+  'journeys': [
+    for (final j in journeys)
+      {
+        'journeyId': j.journeyId,
+        'trainNumber': j.trainNumber,
+        'fromName': j.fromName,
+        'toName': j.toName,
+        'operatingDate':
+            '${j.operatingDate.year}-${j.operatingDate.month.toString().padLeft(2, '0')}-${j.operatingDate.day.toString().padLeft(2, '0')}',
+        'status': j.status,
+        'myReportCount': j.myReportCount,
+        'arrivalDelayMinutes': j.arrivalDelayMinutes,
+      },
+  ],
+});
+
+PastJourney pastJourney(
+  String id, {
+  String train = '8058',
+  int reports = 7,
+  int? late = 10,
+  DateTime? day,
+  String status = 'Completed',
+}) => PastJourney(
+  journeyId: id,
+  trainNumber: train,
+  fromName: 'Veyangoda',
+  toName: 'Colombo Fort',
+  operatingDate: day ?? DateTime(2026, 10, 15),
+  status: status,
+  myReportCount: reports,
+  arrivalDelayMinutes: late,
+);

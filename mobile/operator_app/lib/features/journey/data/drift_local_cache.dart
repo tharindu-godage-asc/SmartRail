@@ -13,6 +13,7 @@ class DriftLocalCache implements LocalCache {
   static const _fetchedKey = 'journey_fetched_at';
   static const _offsetKey = 'clock_offset_ms';
   static const _summariesKey = 'journey_summaries';
+  static const _historyKey = 'history_first_page';
   static const _summariesKept = 30;
 
   @override
@@ -79,6 +80,12 @@ class DriftLocalCache implements LocalCache {
       jsonEncode([for (final s in latest) s.toJson()]),
     );
   }
+
+  @override
+  Future<String?> readHistoryJson() => _read(_historyKey);
+
+  @override
+  Future<void> writeHistoryJson(String json) => _write(_historyKey, json);
 
   @override
   Future<Duration?> readClockOffset() async {

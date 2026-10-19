@@ -1,3 +1,5 @@
+import '../features/history/domain/history.dart';
+
 import 'package:clock/clock.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
@@ -62,6 +64,10 @@ final smartRailApiProvider = Provider<SmartRailApi>(
 );
 
 final journeyApiProvider = Provider<JourneyApi>(
+  (ref) => ref.watch(smartRailApiProvider),
+);
+
+final historyApiProvider = Provider<HistoryApi>(
   (ref) => ref.watch(smartRailApiProvider),
 );
 

@@ -147,6 +147,32 @@ abstract final class Strings {
 
   // Reports tab (spec 12)
   static const reportsTitle = 'Reports';
+  static const segmentMyReports = 'My reports';
+  static const segmentPrevious = 'Previous journeys';
+  static const noPreviousJourneys = 'No previous journeys yet.';
+  static const previousNeedsConnection =
+      'Connect to see your previous journeys.';
+  static const previousLoadFailed =
+      'Could not refresh. Pull down or try again.';
+  static const showEarlier = 'Show earlier';
+  static const tryAgain = 'Try again';
+  static const statusCompleted = 'Completed';
+  static const statusNotFinished = 'Not finished';
+  static String arrivedLate(int minutes) => 'arrived +$minutes min late';
+  static const journeyRecordTitle = 'Journey record';
+  static const recordNeedsConnection =
+      'Connect to open this journey. It is not kept on this phone.';
+  static const recordNotFound = 'This journey was not found.';
+  static const recordReadOnly =
+      'This record cannot be changed. It shows what the server recorded.';
+  static const stopsTitle = 'Stops';
+  static const stopReported = 'Reported';
+  static const stopPassedInferred = 'Passed (not reported)';
+  static const stopNotReached = 'Not reached';
+  static const timeArrival = 'Arr';
+  static const timeDeparture = 'Dep';
+  static const timesLegend = 'Actual time, then the timetable in brackets.';
+  static const noReportsInRecord = 'You made no reports on this journey.';
   static const reportsTapHint =
       'Tap a journey to show or hide its reports. Tap a report for details.';
   static String trainNumber(String number) => 'Train $number';

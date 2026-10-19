@@ -157,16 +157,16 @@ Both routes are new, read-only, `RequireAuthorization(Policies.Operator)`. They 
 - [ ] The bottom bar has Journey, Reports and Help; Reports opens "My reports" (AC-E03-05 1).
 - [ ] A delivered, a waiting and a refused report each show the right chip with text and icon, newest first (AC-E03-05 1, 2, 4; NFR-30).
 - [ ] A waiting report turns Delivered in the list without leaving the screen (AC-E03-05 2).
-- [ ] A report kept waiting across an app restart is still listed and still sent (AC-E03-05 6).
+- [x] A report kept waiting across an app restart is still listed and still sent (AC-E03-05 6).
 - [ ] The refused-report detail says what conflicted when known and never claims a controller will review it; it offers the desk phone number (rule 5).
 - [ ] Delivered reports older than 7 days are removed from the phone; waiting and refused ones are not (test with a fake clock).
-- [ ] `GET /operator/journeys/history` returns only this operator's past journeys, newest first, with `myReportCount` and `arrivalDelayMinutes`; paging works with `before` and `limit`; bad parameters give 400.
-- [ ] `GET /operator/journeys/{id}/record` returns the stops and only this operator's reports; a journey of another operator or a missing one gives 404 with the same body.
-- [ ] No token gives 401; a controller, passenger or caterer token gives 403 on both routes.
-- [ ] A journey in progress for this operator is not in the history; a completed one is.
+- [x] `GET /operator/journeys/history` returns only this operator's past journeys, newest first, with `myReportCount` and `arrivalDelayMinutes`; paging works with `before` and `limit`; bad parameters give 400.
+- [x] `GET /operator/journeys/{id}/record` returns the stops and only this operator's reports; a journey of another operator or a missing one gives 404 with the same body.
+- [x] No token gives 401; a controller, passenger or caterer token gives 403 on both routes.
+- [x] A journey in progress for this operator is not in the history; a completed one is.
 - [ ] After a crew change the earlier operator sees the journey with `assignedUntil` and only his reports.
-- [ ] Offline, "Previous journeys" shows the cached list with "Last updated"; with no cache it says it needs a connection; "My reports" is unaffected.
-- [ ] The previous-journey detail is read-only and says so.
+- [x] Offline, "Previous journeys" shows the cached list with "Last updated"; with no cache it says it needs a connection; "My reports" is unaffected.
+- [x] The previous-journey detail is read-only and says so.
 - [ ] Screen reader order is chip text, report, station, time; text at 200 % does not clip (NFR-32, NFR-33).
 - [ ] `dotnet test`, `flutter analyze --fatal-infos` and `flutter test` are green; end to end on the emulator with screenshots.
 
@@ -195,3 +195,8 @@ Reports tab with a fake queue stream (state change updates the row); detail scre
 - **Q8. Cut order and time.** About 1.25 days. If time is short, ship "My reports" first (0.4 day, no backend, closes FR-25 in the app) and then Previous journeys. Cut within it: paging (`before`), the offline cache of the list, the 7-day cleanup. Never cut: own-journeys-only (404), the three states with text and icon, the honest Rejected wording.
 
 - Update (19 Oct): the owner showed the intended design of the tab: reports grouped by journey, each group a collapsible card (route, train, report count, waiting count, date; the newest open). Built that way for the reports on this phone, using a small summary of each journey kept on the phone (train, route, operating day) so older groups keep their heading. Older journeys here show only the reports still on the phone (delivered ones for 7 days); the server-side Previous journeys (part 2) is still not built.
+
+## 15) Part 2 delivery notes (19 Oct 2026)
+- Done: `GET /api/v1/operator/journeys/history` and `/{id}/record` (operator only, own journeys only, same 404 for missing and not yours, 400 for a bad `limit` or `before`, a fixed number of queries per page), counter `smartrail.operator.history.reads`, 12 integration tests, the Previous journeys segment (list, Show earlier, copy kept for offline with Last updated, record screen) and 6 app tests (152 in all). The demo seeder adds yesterday's finished 8058 with three reports by nimal (Q7) unless a journey for that day exists already.
+- Not done: crew change test (an event created by a second operator needs a second operator with events; the query filters on the creator, so the rule is in the code but not proved by a test), the query plan check on a few hundred journeys (Q7), a controller or passenger can never call it (proved), emulator run with screenshots. The previous-journeys screens are built from existing components, not from boards.
+- Side fix: the startup test of the demo seed expected exactly one journey since spec 10; it now checks at least.

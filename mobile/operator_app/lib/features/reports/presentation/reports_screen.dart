@@ -10,6 +10,7 @@ import '../../../core/theme/tokens.g.dart';
 import '../../../core/time.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../journey/presentation/help_screen.dart';
+import '../../history/presentation/history_screens.dart';
 import '../../journey/domain/local_cache.dart';
 import '../domain/report.dart';
 import '../domain/report_queue.dart';
@@ -93,6 +94,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   /// Journeys the operator opened or closed by hand; the others follow the default (only the newest is open).
   final Map<String, bool> _toggled = {};
 
+  /// The segment: My reports (from the phone) or Previous journeys (from the server).
+  bool _previous = false;
+
   @override
   void initState() {
     super.initState();
@@ -116,7 +120,26 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           child: Text(Strings.reportsTitle, style: context.text.headlineMedium),
         ),
         const SizedBox(height: 12),
-        if (groups.isEmpty)
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<bool>(
+            showSelectedIcon: true,
+            segments: const [
+              ButtonSegment(
+                value: false,
+                label: Text(Strings.segmentMyReports),
+              ),
+              ButtonSegment(value: true, label: Text(Strings.segmentPrevious)),
+            ],
+            selected: {_previous},
+            onSelectionChanged: (value) =>
+                setState(() => _previous = value.first),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (_previous)
+          const PreviousJourneysList()
+        else if (groups.isEmpty)
           const InfoLine(Strings.noReportsYet)
         else ...[
           for (var i = 0; i < groups.length; i++) ...[

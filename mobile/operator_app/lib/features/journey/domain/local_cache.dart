@@ -63,6 +63,10 @@ abstract interface class LocalCache {
   Future<Map<String, JourneySummary>> readJourneySummaries();
   Future<void> writeJourneySummary(OperatorJourney journey);
 
+  /// The first page of the previous journeys as the server sent it (JSON), kept for offline use.
+  Future<String?> readHistoryJson();
+  Future<void> writeHistoryJson(String json);
+
   Future<Duration?> readClockOffset();
   Future<void> writeClockOffset(Duration offset);
 }
