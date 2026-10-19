@@ -154,12 +154,12 @@ Both routes are new, read-only, `RequireAuthorization(Policies.Operator)`. They 
 | (new) | Text scaled to 200 % | Rows grow; chip and time never clipped (NFR-33) |
 
 ## 9) Acceptance Criteria
-- [ ] The bottom bar has Journey, Reports and Help; Reports opens "My reports" (AC-E03-05 1).
-- [ ] A delivered, a waiting and a refused report each show the right chip with text and icon, newest first (AC-E03-05 1, 2, 4; NFR-30).
-- [ ] A waiting report turns Delivered in the list without leaving the screen (AC-E03-05 2).
+- [x] The bottom bar has Journey, Reports and Help; Reports opens "My reports" (AC-E03-05 1).
+- [x] A delivered, a waiting and a refused report each show the right chip with text and icon, newest first (AC-E03-05 1, 2, 4; NFR-30).
+- [x] A waiting report turns Delivered in the list without leaving the screen (AC-E03-05 2).
 - [x] A report kept waiting across an app restart is still listed and still sent (AC-E03-05 6).
 - [ ] The refused-report detail says what conflicted when known and never claims a controller will review it; it offers the desk phone number (rule 5).
-- [ ] Delivered reports older than 7 days are removed from the phone; waiting and refused ones are not (test with a fake clock).
+- [x] Delivered reports older than 7 days are removed from the phone; waiting and refused ones are not (test with a fake clock).
 - [x] `GET /operator/journeys/history` returns only this operator's past journeys, newest first, with `myReportCount` and `arrivalDelayMinutes`; paging works with `before` and `limit`; bad parameters give 400.
 - [x] `GET /operator/journeys/{id}/record` returns the stops and only this operator's reports; a journey of another operator or a missing one gives 404 with the same body.
 - [x] No token gives 401; a controller, passenger or caterer token gives 403 on both routes.
