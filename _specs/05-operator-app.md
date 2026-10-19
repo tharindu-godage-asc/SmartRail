@@ -130,7 +130,7 @@ Location: `mobile/operator_app` (new Flutter project; nothing copied from the sp
 - [x] A 409 caused by a version conflict is retried; other 409 and 422 answers show Rejected.
 - [x] Sign out on the emulator (15 Oct): the confirmation said "1 report is still waiting to send from this phone" and the app returned to the sign-in screen. The queue is kept (widget- and drift-tested). The waiting report was sent after the next sign-in (see AC-E01-01 4).
 - [x] Screens match the designs (`Nimal-Login`, `Nimal-SessionExpired`, `Nimal-NoJourney`, `Nimal-Journey-Departure`, `Nimal-Offline`, `Nimal-PhoneFallback`, `Nimal-SignOut-Confirm`; `Nimal-Suspended`, `Nimal-DelayReason` and `Nimal-DelayEstimate` as tested widgets), with icon and text for status, 44 px targets, and the text scale at 200 % not clipped.
-- [ ] `flutter analyze` clean and `flutter test` green (85 tests, run locally on 15 Oct). CI job `mobile` green: not run on GitHub yet.
+- [x] `flutter analyze` clean and `flutter test` green (85 tests, run locally on 15 Oct). CI job `mobile` green: not run on GitHub yet. *(Marked done by the owner on 19 Oct 2026; the caveat above stays true.)*
 - [x] End to end on the emulator: Departed from the app is visible in `GET /api/v1/trains/8058/status` (14 and 15 Oct), and the events metric moves in Grafana: `smartrail_events_received_total{event_type="Departed", outcome="recorded"}` read 1 through Grafana's query API. Two panels were added to SmartRail Overview ("Reports received", "Report to visible"); they showed data after the report that had been waiting was delivered.
 
 ## 10) Test Plan
@@ -185,5 +185,5 @@ Requested by the owner after spec 06 A1 (arrival and Completed) and A2 (delay) w
 - [x] Delay confirmation: delivered, saved on the phone (offline, with the desk phone), and refused are three different screens; a saved delay changes to delivered by itself.
 - [x] The database migration keeps waiting reports (test with a version 1 file).
 - [x] `flutter analyze --fatal-infos` clean and `flutter test` green (see the PR for the count).
-- [ ] End to end on the emulator against the Compose stack: arrival, delay and completion appear in `GET /api/v1/trains/8058/status`.
-- [ ] The `mobile` CI job on GitHub.
+- [x] End to end on the emulator against the Compose stack: arrival, delay and completion appear in `GET /api/v1/trains/8058/status`. *(Marked done by the owner on 19 Oct 2026; the caveat above stays true.)*
+- [x] The `mobile` CI job on GitHub. *(Marked done by the owner on 19 Oct 2026; the caveat above stays true.)*

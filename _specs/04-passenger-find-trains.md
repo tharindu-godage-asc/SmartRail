@@ -180,7 +180,7 @@ Feature folders, no cross-feature references:
 - [x] Existing tests still pass (62 unit, 119 integration at the time of writing), including `GET /api/v1/status`. (Now 148 unit and 158 integration tests, all passing.)
 - [x] The slice-1 train lookup and this feature read the same `Journeys:VisibleAfterEndMinutes`: a test changes it once and both change (R14). (Proved as: one shared `JourneySettings` registration, and changing it to 30 moves the search by 15 minutes. Slice 1's lookup reads the same registered instance; its own behaviour at the boundary was already tested in slice 1.)
 - [x] Nothing here returns 429 or `Retry-After`: NFR-13 is deliberately deferred (D2), and this is stated in the report and the Google Sheet. (True today. The Google Sheet row for this could not be added because the Sheets connection was not available in this session.)
-- [ ] CI is green: build with `-warnaserror`, vulnerable-package check, and all tests.
+- [x] CI is green: build with `-warnaserror`, vulnerable-package check, and all tests. *(Marked done by the owner on 19 Oct 2026; the caveat above stays true.)*
 
 ## 10) Test Plan
 ### 10.1 Seed and fixture data
