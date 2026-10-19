@@ -1,13 +1,18 @@
-/** An error answer from the API: the status and the stable `reason` code of the ProblemDetails body. */
+/**
+ * An error answer from the API: the status, the stable `reason` code of the ProblemDetails body, and the body itself (the timetable
+ * screens read `errors`, `warnings`, `date` and `trainNumber` from it, spec 15).
+ */
 export class ApiError extends Error {
   readonly status: number
   readonly reason: string | null
+  readonly body: unknown
 
-  constructor(status: number, reason: string | null) {
+  constructor(status: number, reason: string | null, body: unknown = undefined) {
     super(`The API answered ${status}${reason ? ` (${reason})` : ''}`)
     this.name = 'ApiError'
     this.status = status
     this.reason = reason
+    this.body = body
   }
 }
 
@@ -25,7 +30,8 @@ export interface ApiOptions {
 
 export interface Api {
   get: <T>(path: string, signal?: AbortSignal) => Promise<T>
-  post: (path: string, body: unknown, signal?: AbortSignal) => Promise<void>
+  /** The parsed JSON answer, or undefined when the answer has no body (a 204). */
+  post: (path: string, body: unknown, signal?: AbortSignal) => Promise<unknown>
 }
 
 export function createApi(options: ApiOptions): Api {
@@ -63,7 +69,8 @@ export function createApi(options: ApiOptions): Api {
     }
 
     if (!response.ok) {
-      throw new ApiError(response.status, await reasonOf(response))
+      const problem = await readJson(response)
+      throw new ApiError(response.status, reasonIn(problem), problem)
     }
 
     return response
@@ -71,21 +78,22 @@ export function createApi(options: ApiOptions): Api {
 
   return {
     get: async <T>(path: string, signal?: AbortSignal) => (await send('GET', path, undefined, signal)).json() as Promise<T>,
-    post: async (path, body, signal) => {
-      await send('POST', path, body ?? {}, signal)
-    },
+    post: async (path, body, signal) => readJson(await send('POST', path, body ?? {}, signal)),
   }
 }
 
-export async function reasonOf(response: Response): Promise<string | null> {
+/** The JSON body of an answer, or undefined when there is none (a 204, a proxy error page). */
+async function readJson(response: Response): Promise<unknown> {
   try {
-    const body: unknown = await response.json()
-    if (typeof body === 'object' && body !== null && 'reason' in body && typeof body.reason === 'string') {
-      return body.reason
-    }
+    return (await response.json()) as unknown
   } catch {
-    // No JSON body (a proxy error, a 204): there is no reason code.
+    return undefined
   }
+}
 
-  return null
+const reasonIn = (body: unknown): string | null =>
+  typeof body === 'object' && body !== null && 'reason' in body && typeof body.reason === 'string' ? body.reason : null
+
+export async function reasonOf(response: Response): Promise<string | null> {
+  return reasonIn(await readJson(response))
 }

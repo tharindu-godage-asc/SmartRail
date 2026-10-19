@@ -129,20 +129,20 @@ Request bodies are those of spec 13 section 4.5 and spec 14 section 4: `kind`, `
 | Reason with markup (`<b>x</b>`) | Shown as plain text in the Cancelled tab and detail |
 
 ## 9) Acceptance Criteria
-- [ ] **Timetable** appears in the side menu for a controller and opens the Weekly tab; the tabs show their counts and the Extra and Cancelled tabs list their rows (FR-11A, FR-11C).
-- [ ] The weekly list shows train, category, route, runs-on chips, first departure, stops label, version and an "Amended" chip for version 2 or later; the Cancelled tab shows train, route, date range, reason, who and when.
-- [ ] Empty states are shown for an empty Extra trains and an empty Cancelled tab, with the Add extra train action on the first.
-- [ ] A controller can create a weekly service through the three steps; "Every stop" and "Choose stops" both work; first and last stop cannot be unticked; after Schedule the detail opens with the stops and version 1 (FR-11A).
-- [ ] Errors from the server are shown beside the stop and field they belong to and in the Review summary; Schedule is off while there are errors (FR-11D).
-- [ ] Advice about a platform near another train is shown, needs the checkbox, never blocks (FR-11D, FR-57).
-- [ ] A controller can add an extra train for one or more future dates and lands on the Extra trains tab with a message.
+- [x] **Timetable** appears in the side menu for a controller and opens the Weekly tab; the tabs show their counts and the Extra and Cancelled tabs list their rows (FR-11A, FR-11C).
+- [x] The weekly list shows train, category, route, runs-on chips, first departure, stops label, version and an "Amended" chip for version 2 or later; the Cancelled tab shows train, route, date range, reason, who and when.
+- [x] Empty states are shown for an empty Extra trains and an empty Cancelled tab, with the Add extra train action on the first.
+- [x] A controller can create a weekly service through the three steps; "Every stop" and "Choose stops" both work; first and last stop cannot be unticked; after Schedule the detail opens with the stops and version 1 (FR-11A).
+- [x] Errors from the server are shown beside the stop and field they belong to and in the Review summary; Schedule is off while there are errors (FR-11D).
+- [x] Advice about a platform near another train is shown, needs the checkbox, never blocks (FR-11D, FR-57).
+- [x] A controller can add an extra train for one or more future dates and lands on the Extra trains tab with a message.
 - [ ] The cancel dialog sends this-date and from-date-onward correctly, needs a reason of 1 to 200 characters, and shows the refused state naming the date when the API answers `journey_has_events`; nothing changes in that case (FR-11C).
 - [ ] After a cancel the service shows its cancellation on the detail and in the Cancelled tab.
 - [ ] A controller can amend a weekly service from tomorrow or later; the detail then shows the next version, the old one stays in Versions, with the summary text from the API (FR-11B, D-70).
-- [ ] No screen offers a delete, none says passengers are notified, and the "not sent yet" notice is shown on cancel and amend.
+- [x] No screen offers a delete, none says passengers are notified, and the "not sent yet" notice is shown on cancel and amend.
 - [ ] The whole flow works with the keyboard only; focus moves sensibly on step change, dialog open and close; every field has a visible label; error and advice never rely on colour alone; targets are 44 px.
-- [ ] An operator token on the web app still sees "No dashboard access" (spec 08); the Timetable routes are not reachable without the controller role.
-- [ ] `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` pass; the existing 30-plus web tests still pass.
+- [x] An operator token on the web app still sees "No dashboard access" (spec 08); the Timetable routes are not reachable without the controller role.
+- [x] `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` pass; the existing 30-plus web tests still pass.
 - [ ] A Playwright test against Compose creates a unique service as `jayasinghe`, finds it in the list, cancels one date and finds it under Cancelled. Screenshots of the list, Review with errors and the cancel dialog are recorded.
 - [ ] The report states plainly which of W0 to W4 were built, that passengers are not notified, that operator assignment of generated journeys is not part of this, and that sample data in the designs was invented.
 
@@ -174,3 +174,10 @@ One test: sign in as `jayasinghe`, New weekly service with a unique number, Sche
 ## 13) Owner decisions of 19 Oct 2026
 - Scope: **W0 (client, types, routes, menu), W1 (list tabs, detail) and W2 (new weekly service and extra train wizard)**; W3 (cancel dialog) only if time allows; W4 (amend) not built unless time remains, and then stated as not built. Q2 to Q10 as recommended.
 - Branch `claude/feature/timetable-web` starts from `dev`, which already holds specs 10 to 14.
+
+## 14) Delivery notes for W0 to W2 (19 Oct 2026)
+- **Built:** W0 (client returns the body and `ApiError.body`, timetable types, strings, menu item, routes), W1 (Weekly, Extra and Cancelled tabs with counts, empty and failed states, service detail with stops, versions, summaries and cancellations, read only) and W2 (the three-step wizard for a weekly service and an extra train: Every stop and Choose stops with locked first and last, platform lists, Review asks `POST /validate`, errors beside the stop and in a summary with focus, advice with a confirm box, 409 and 422 handling, a message and the detail or the Extra tab after Schedule). 177 web tests pass (22 new for the timetable, 3 new for the client, lint, typecheck and build clean).
+- **Not built:** W3 (cancel dialog) and W4 (amend); the detail therefore shows no Cancel or Amend button (no button that goes nowhere); the Playwright test and screenshots; passenger notification, refunds, caterer messages, operator assignment (generated journeys are Unassigned and the detail says so).
+- **Decisions while building:** the wizard has a Direction choice (toward or away from Colombo Fort) because the API derives the direction from the first and last stop and the boards did not show how a controller picks it; the middle-stop departure is sent as the arrival plus 1 minute (Q2); the weekly list shows the newest version of each train number. The server's own message is shown for each error; the screen words only the codes it can not explain.
+- **Local note:** `scripts/tokens-generator.test.mjs` fails in a Windows checkout where `tokens.css` has CRLF line endings; running `npm run tokens` fixes the working copy and changes nothing in git. CI (Linux) is not affected.
+- **Not ticked:** the keyboard-only, focus and 44 px criterion (focus moves and every field is labelled in tests, but it was not tried by hand), the Playwright criterion and the report criterion.

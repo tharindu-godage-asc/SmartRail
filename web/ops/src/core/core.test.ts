@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError, createApi } from './api/client'
 import { freshnessOf } from './freshness'
-import { exceptionTypeLabel, journeyStatusLabel, severityLabel, sourceLabel } from './strings'
+import { exceptionTypeLabel, journeyStatusLabel, severityLabel, sourceLabel, t } from './strings'
 import { formatAge, formatClock, formatClockShort, formatMinutes } from './time'
 import { rolesOf, isController } from '../features/auth/roles'
 import { announcementFor } from '../features/exceptions/announcements'
@@ -40,6 +40,29 @@ describe('formatMinutes (delays in hours and minutes, never 240 min)', () => {
     [-3, '0 min'],
   ])('formats %s minutes as %s', (minutes, text) => {
     expect(formatMinutes(minutes)).toBe(text)
+  })
+})
+
+describe('timetable wording (spec 15)', () => {
+  it('has a sentence for every reason the timetable API answers and for every validation code', () => {
+    for (const reason of ['train_number_in_use', 'warnings_not_acknowledged', 'invalid_service', 'line_not_found', 'service_not_found']) {
+      expect((t.timetable.reasons as Record<string, string>)[reason], reason).toBeTruthy()
+    }
+
+    for (const code of [
+      'train_number_invalid', 'category_invalid', 'service_type_invalid', 'days_required', 'effective_from_required', 'dates_required', 'date_in_past',
+      'stops_too_few', 'station_not_on_line', 'station_repeated', 'stops_not_in_line_order', 'first_stop_departure_only', 'last_stop_arrival_only',
+      'stop_time_required', 'time_invalid', 'times_not_increasing', 'platform_not_at_station', 'starts_in_past', 'platform_close',
+    ]) {
+      expect(t.timetable.issues[code], code).toBeTruthy()
+    }
+  })
+
+  it('writes counts and messages in plain words', () => {
+    expect(t.timetable.wizard.errorsCount(1)).toBe('1 error. Fix it to schedule.')
+    expect(t.timetable.wizard.errorsCount(2)).toBe('2 errors. Fix them to schedule.')
+    expect(t.timetable.wizard.scheduled('8072', 5)).toBe('Service 8072 scheduled. 5 journeys created.')
+    expect(t.timetable.wizard.scheduled('8072', 1)).toBe('Service 8072 scheduled. 1 journey created.')
   })
 })
 
@@ -179,6 +202,30 @@ describe('API client', () => {
     expect(error).toBeInstanceOf(ApiError)
     expect(error).toMatchObject({ status: 409, reason: 'already_resolved' })
     expect(onBlocked).not.toHaveBeenCalled()
+  })
+
+  it('returns the body of a successful post, and nothing for an answer without a body (spec 15 Q10)', async () => {
+    const { api } = setup([answer(201, { serviceIds: ['a'], journeysGenerated: 5 }), answer(204)])
+
+    await expect(api.post('/x', { a: 1 })).resolves.toEqual({ serviceIds: ['a'], journeysGenerated: 5 })
+    await expect(api.post('/x', { a: 1 })).resolves.toBeUndefined()
+  })
+
+  it('keeps the whole problem body in the error, so a screen can read errors, warnings, a date or a train number', async () => {
+    const problem = { reason: 'invalid_service', errors: [{ code: 'times_not_increasing', field: 'stops[2].arrival', message: 'm' }], warnings: [] }
+    const { api } = setup([answer(422, problem), answer(409, { reason: 'journey_has_events', date: '2026-10-23' })])
+
+    const invalid = await api.post('/x', {}).catch((e: unknown) => e)
+    const blocked = await api.post('/x', {}).catch((e: unknown) => e)
+
+    expect(invalid).toMatchObject({ status: 422, reason: 'invalid_service', body: problem })
+    expect(blocked).toMatchObject({ status: 409, reason: 'journey_has_events', body: { date: '2026-10-23' } })
+  })
+
+  it('keeps an error without a JSON body as an error without a reason', async () => {
+    const { api } = setup([new Response('<html>bad gateway</html>', { status: 502 })])
+
+    await expect(api.post('/x', {})).rejects.toMatchObject({ status: 502, reason: null, body: undefined })
   })
 
   it('sends nothing when there is no token', async () => {

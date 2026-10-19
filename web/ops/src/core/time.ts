@@ -55,3 +55,14 @@ const dayKey = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric
 
 /** The Sri Lanka calendar day of an instant, as 2026-10-16. */
 export const colomboDate = (at: Date | string | number): string => dayKey.format(new Date(at))
+
+const colomboDay = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' })
+
+/** Today's calendar date in Sri Lanka as YYYY-MM-DD (the railway's day, whatever the laptop's zone). */
+export const todayInColombo = (at: Date | number = Date.now()): string => colomboDay.format(at)
+
+/** The date after a YYYY-MM-DD date, as YYYY-MM-DD. */
+export function nextDay(date: string): string {
+  const [y, m, d] = date.split('-').map(Number)
+  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + 1)).toISOString().slice(0, 10)
+}
