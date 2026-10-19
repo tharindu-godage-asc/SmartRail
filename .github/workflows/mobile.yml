@@ -1,12 +1,12 @@
 name: mobile
-# Operator app (Flutter): analyze and test whenever it changes. Separate from ci.yml so a .NET change does not wait for Flutter
+# Operator and passenger apps (Flutter): analyze and test whenever one changes. Separate from ci.yml so a .NET change does not wait for Flutter
 # and the other way round. Spec: _specs/05-operator-app.md.
 on:
   push:
     branches: [main, develop, dev]
-    paths: ["mobile/operator_app/**", ".github/workflows/mobile.yml"]
+    paths: ["mobile/operator_app/**", "mobile/passenger_app/**", ".github/workflows/mobile.yml"]
   pull_request:
-    paths: ["mobile/operator_app/**", ".github/workflows/mobile.yml"]
+    paths: ["mobile/operator_app/**", "mobile/passenger_app/**", ".github/workflows/mobile.yml"]
 permissions:
   contents: read
 jobs:
@@ -24,6 +24,21 @@ jobs:
       - run: dart run tool/generate_tokens.dart
       - run: dart format lib
       - run: git diff --exit-code -- lib/core/theme/tokens.g.dart lib/features/reports/data/app_database.g.dart
+      - run: dart format --output=none --set-exit-if-changed lib test tool
+      - run: flutter analyze --fatal-infos
+      - run: flutter test
+  passenger-app:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: mobile/passenger_app } }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: 3.47.2, channel: stable, cache: true }
+      - run: flutter pub get
+      # The tokens are generated from the one token file in the operator app's folder (ADR-16).
+      - run: dart run tool/generate_tokens.dart
+      - run: dart format lib
+      - run: git diff --exit-code -- lib/core/theme/tokens.g.dart
       - run: dart format --output=none --set-exit-if-changed lib test tool
       - run: flutter analyze --fatal-infos
       - run: flutter test

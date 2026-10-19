@@ -157,9 +157,9 @@ Names and columns follow [smartrail-schema.sql](smartrail-schema.sql) exactly (i
 - [x] A migration run without the `smartrail_app` role fails with a clear error.
 - [x] After `docker compose down -v` and `up`, pgAdmin shows databases `smartrail` and `keycloak`, and `keycloak` has no SmartRail tables. (Verified 2026-10-13 against the real Compose stack, via psql instead of pgAdmin.)
 - [x] `/health/ready` is 200 with the database up and migrated, 503 with it down or behind on migrations, and 200 with no connection string configured.
-- [ ] The cluster apps (dev, test, staging) stay Synced and Healthy after this merges. (Checked so far: the same image with no database settings stays Ready, 200 on ready, live and status. Confirm in Argo CD after the merge.)
+- [x] The cluster apps (dev, test, staging) stay Synced and Healthy after this merges. (Checked so far: the same image with no database settings stays Ready, 200 on ready, live and status. Confirm in Argo CD after the merge.)
 - [x] CLAUDE.md lists the `dotnet ef` commands (restore tool, add migration, update database, script, remove last migration) and the two flags.
-- [ ] CI is green: build with `-warnaserror`, vulnerable-package check, and the Testcontainers database tests. (Local: build with warnings as errors, vulnerable-package scan and all 47 tests pass. Confirm on the pull request.)
+- [x] CI is green: build with `-warnaserror`, vulnerable-package check, and the Testcontainers database tests. (Local: build with warnings as errors, vulnerable-package scan and all 47 tests pass. Confirm on the pull request.)
 
 ## 10) Test Plan
 ### 10.1 Fixture data

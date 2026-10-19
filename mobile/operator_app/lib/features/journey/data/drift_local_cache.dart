@@ -12,6 +12,9 @@ class DriftLocalCache implements LocalCache {
   static const _journeyKey = 'journey';
   static const _fetchedKey = 'journey_fetched_at';
   static const _offsetKey = 'clock_offset_ms';
+  static const _summariesKey = 'journey_summaries';
+  static const _historyKey = 'history_first_page';
+  static const _summariesKept = 30;
 
   @override
   Future<CachedJourney?> readJourney() async {
@@ -44,6 +47,45 @@ class DriftLocalCache implements LocalCache {
       _db.keyValues,
     )..where((r) => r.key.isIn([_journeyKey, _fetchedKey]))).go();
   }
+
+  @override
+  Future<Map<String, JourneySummary>> readJourneySummaries() async {
+    final json = await _read(_summariesKey);
+    if (json == null) {
+      return {};
+    }
+    try {
+      return {
+        for (final item in jsonDecode(json) as List<dynamic>)
+          (item['journeyId'] as String): JourneySummary.fromJson(
+            item as Map<String, dynamic>,
+          ),
+      };
+    } on Object {
+      return {};
+    }
+  }
+
+  @override
+  Future<void> writeJourneySummary(OperatorJourney journey) async {
+    final all = await readJourneySummaries();
+    all.remove(journey.journeyId);
+    all[journey.journeyId] = JourneySummary.of(journey);
+    final kept = all.values.toList();
+    final latest = kept.length > _summariesKept
+        ? kept.sublist(kept.length - _summariesKept)
+        : kept;
+    await _write(
+      _summariesKey,
+      jsonEncode([for (final s in latest) s.toJson()]),
+    );
+  }
+
+  @override
+  Future<String?> readHistoryJson() => _read(_historyKey);
+
+  @override
+  Future<void> writeHistoryJson(String json) => _write(_historyKey, json);
 
   @override
   Future<Duration?> readClockOffset() async {

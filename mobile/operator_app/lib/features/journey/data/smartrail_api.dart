@@ -5,12 +5,13 @@ import '../../auth/domain/auth_repository.dart';
 import '../../reports/domain/report.dart';
 import '../../reports/domain/report_queue.dart';
 import '../../reports/domain/send_result.dart';
+import '../../history/domain/history.dart';
 import '../domain/journey_api.dart';
 import '../domain/models.dart';
 
 /// The only place that talks to the SmartRail API. Adds the access token, refreshes once on a 401 and then gives up
 /// with [SessionExpiredException] (AC-E01-01 3, AC-E01-03 1).
-class SmartRailApi implements JourneyApi, ReportApi {
+class SmartRailApi implements JourneyApi, ReportApi, HistoryApi {
   SmartRailApi(this._dio, this._auth);
 
   final Dio _dio;
@@ -26,6 +27,30 @@ class SmartRailApi implements JourneyApi, ReportApi {
     }
     _ensureOk(response);
     return OperatorJourney.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<HistoryPage> fetchHistory({DateTime? before}) async {
+    final query = before == null
+        ? ''
+        : '?before=${Uri.encodeQueryComponent(before.toUtc().toIso8601String())}';
+    final response = await _call(
+      (token) => _get('/api/v1/operator/journeys/history$query', token),
+    );
+    _ensureOk(response);
+    return HistoryPage.fromJson(response.data! as Map<String, dynamic>);
+  }
+
+  @override
+  Future<JourneyRecord?> fetchRecord(String journeyId) async {
+    final response = await _call(
+      (token) => _get('/api/v1/operator/journeys/$journeyId/record', token),
+    );
+    if (response.statusCode == 404) {
+      return null;
+    }
+    _ensureOk(response);
+    return JourneyRecord.fromJson(response.data! as Map<String, dynamic>);
   }
 
   @override

@@ -46,7 +46,7 @@ public static class ReferenceData
 
     public static IReadOnlyList<Station> Stations { get; } =
     [
-        new() { Id = StationColomboFort, Code = "CF", Name = "Colombo Fort" },
+        new() { Id = StationColomboFort, Code = "CF", Name = "Colombo Fort", HasCateringFacility = true },
         new() { Id = StationMaradana, Code = "MDA", Name = "Maradana" },
         new() { Id = StationRagama, Code = "RGM", Name = "Ragama" },
         new() { Id = StationGampaha, Code = "GPH", Name = "Gampaha" },

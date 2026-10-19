@@ -36,6 +36,7 @@ public sealed class AuthConfigurationTests(PostgresFixture postgres) : IDisposab
         "/api/v1/trains",
         "/api/v1/lines/{code}/status",
         "/api/v1/stations/{code}/board",
+        "/api/v1/trains/{trainNumber}/menu",
     ];
 
     [Fact]
@@ -75,7 +76,7 @@ public sealed class AuthConfigurationTests(PostgresFixture postgres) : IDisposab
         Assert.Equal(PublicEndpointsWithDatabase.Order().ToArray(), anonymous);
 
         // The two staff routes are present and demand a policy, not just a signed-in user.
-        foreach (var route in new[] { "/api/v1/operator/journey", "/api/v1/journeys/{journeyId:guid}/events" })
+        foreach (var route in new[] { "/api/v1/operator/journey", "/api/v1/journeys/{journeyId:guid}/events", "/api/v1/operator/journeys/history", "/api/v1/operator/journeys/{journeyId:guid}/record" })
         {
             var endpoint = endpoints.Single(e => "/" + e.RoutePattern.RawText!.TrimStart('/') == route);
             Assert.Contains(endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>(), data => data.Policy == "Operator");

@@ -1,0 +1,47 @@
+name: passenger_app
+description: "SmartRail passenger app (Kasuni): live train times, no account."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^3.4.3
+  dio: ^5.11.1
+  go_router: ^18.0.2
+  connectivity_plus: ^7.3.2
+  shared_preferences: ^2.5.3
+  intl: ^0.20.3
+  clock: ^1.1.3
+  url_launcher: ^6.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  mocktail: ^1.0.5
+
+flutter:
+  uses-material-design: true
+  # Noto Sans, Noto Sans Sinhala and Noto Sans Tamil are bundled so every script renders with no network (spec 10 Q9).
+  fonts:
+    - family: NotoSans
+      fonts:
+        - asset: assets/fonts/NotoSans-Regular.ttf
+        - asset: assets/fonts/NotoSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSans-Bold.ttf
+          weight: 700
+    - family: NotoSansSinhala
+      fonts:
+        - asset: assets/fonts/NotoSansSinhala-Regular.ttf
+        - asset: assets/fonts/NotoSansSinhala-Bold.ttf
+          weight: 700
+    - family: NotoSansTamil
+      fonts:
+        - asset: assets/fonts/NotoSansTamil-Regular.ttf
+        - asset: assets/fonts/NotoSansTamil-Bold.ttf
+          weight: 700

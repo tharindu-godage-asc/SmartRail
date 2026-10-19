@@ -27,7 +27,8 @@ public sealed record TrainResult(
     string StatusGroup,
     string StatusKey,
     int? Version,
-    DateTimeOffset? LastEventAt);
+    DateTimeOffset? LastEventAt,
+    string? Platform = null);
 
 public sealed record TrainsResponse(StationRef From, StationRef To, DateOnly Date, DateTimeOffset ServerTime, IReadOnlyList<TrainResult> Trains);
 
@@ -153,7 +154,7 @@ public sealed class FindTrainsHandler(IPassengerQueries queries, TimeProvider cl
                 continue;
             }
 
-            switch (ServiceCalendar.Runs(service.RunsOn, date))
+            switch (service.RunsOnDate(date))
             {
                 case null:
                     unsupported.Add(service.TrainNumber); // R6
@@ -242,7 +243,8 @@ public sealed class FindTrainsHandler(IPassengerQueries queries, TimeProvider cl
             service.TrainNumber, service.ServiceType, journey.OperatingDate, destination, true, journey.JourneyId,
             new AtFrom(Pair(fromTimes.Arrival, fromState?.EstimatedArrival), departure),
             new AtTo(Pair(toTimes.Arrival, toState?.EstimatedArrival)),
-            journey.DelayMinutes, group.ToString(), key.ToString(), journey.Version, journey.LastEventAt);
+            journey.DelayMinutes, group.ToString(), key.ToString(), journey.Version, journey.LastEventAt,
+            fromState?.PlatformCode ?? fromStop.PlannedPlatform);
 
         return (train, departure?.Estimated ?? departure?.Scheduled ?? DateTimeOffset.MaxValue);
     }
@@ -259,7 +261,7 @@ public sealed class FindTrainsHandler(IPassengerQueries queries, TimeProvider cl
             service.TrainNumber, service.ServiceType, date, destination, false, null,
             new AtFrom(Scheduled(fromTimes.Arrival), Scheduled(fromTimes.Departure)),
             new AtTo(Scheduled(toTimes.Arrival)),
-            null, nameof(StatusGroup.Normal), nameof(JourneyStatusKey.Scheduled), null, null);
+            null, nameof(StatusGroup.Normal), nameof(JourneyStatusKey.Scheduled), null, null, fromStop.PlannedPlatform);
 
         return (train, fromTimes.Departure ?? DateTimeOffset.MaxValue);
     }

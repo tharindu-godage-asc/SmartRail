@@ -76,7 +76,7 @@ abstract final class Strings {
   static const delivered = 'Delivered';
   static const notSentYet = 'Not sent yet';
   static const notSentDetail = 'Not sent yet. We’ll keep trying.';
-  static const rejected = 'Rejected, requires Operations review';
+  static const rejected = 'Rejected';
   static const rejectedPhoneHelp =
       'Phone the desk so a controller can enter this report.';
   static const checkPhoneClock = 'Check your phone’s date and time.';
@@ -143,4 +143,54 @@ abstract final class Strings {
   // Navigation
   static const tabJourney = 'Journey';
   static const tabHelp = 'Help';
+  static const tabReports = 'Reports';
+
+  // Reports tab (spec 12)
+  static const reportsTitle = 'Reports';
+  static const segmentMyReports = 'My reports';
+  static const segmentPrevious = 'Previous journeys';
+  static const noPreviousJourneys = 'No previous journeys yet.';
+  static const previousNeedsConnection =
+      'Connect to see your previous journeys.';
+  static const previousLoadFailed =
+      'Could not refresh. Pull down or try again.';
+  static const showEarlier = 'Show earlier';
+  static const tryAgain = 'Try again';
+  static const statusCompleted = 'Completed';
+  static const statusNotFinished = 'Not finished';
+  static String arrivedLate(int minutes) => 'arrived +$minutes min late';
+  static const journeyRecordTitle = 'Journey record';
+  static const recordNeedsConnection =
+      'Connect to open this journey. It is not kept on this phone.';
+  static const recordNotFound = 'This journey was not found.';
+  static const recordReadOnly =
+      'This record cannot be changed. It shows what the server recorded.';
+  static const stopsTitle = 'Stops';
+  static const stopReported = 'Reported';
+  static const stopPassedInferred = 'Passed (not reported)';
+  static const stopNotReached = 'Not reached';
+  static const timeArrival = 'Arr';
+  static const timeDeparture = 'Dep';
+  static const timesLegend = 'Actual time, then the timetable in brackets.';
+  static const noReportsInRecord = 'You made no reports on this journey.';
+  static const reportsTapHint =
+      'Tap a journey to show or hide its reports. Tap a report for details.';
+  static String trainNumber(String number) => 'Train $number';
+  static String reportCount(int count) =>
+      count == 1 ? '1 report' : '$count reports';
+  static String waitingCount(int count) => '$count waiting';
+  static const noReportsYet = 'No reports on this phone yet.';
+  static const reportDetailsTitle = 'Report details';
+  static const backToReports = 'Back to reports';
+  static const notAccepted = 'Not accepted';
+  static const notAcceptedTitle = 'Not accepted';
+  static const rejectedDetailBody =
+      'The server did not accept this report because it conflicts with what is already recorded.';
+  static const rejectedDetailAdvice =
+      'You do not need to send it again. Operations is not told about it automatically: phone the Main Line desk if the train’s status is wrong.';
+  static const deliveredTitle = 'Delivered';
+  static const deliveredDetail = 'The server has this report.';
+  static const reportMissingTitle = 'Report not found';
+  static const reportMissingBody =
+      'This report is no longer on this phone. Delivered reports are removed after 7 days.';
 }
