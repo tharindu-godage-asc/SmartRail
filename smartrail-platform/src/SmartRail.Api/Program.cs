@@ -8,6 +8,7 @@ using SmartRail.Api.Authentication;
 using SmartRail.Api.Features.Diagnostics;
 using SmartRail.Api.Features.Exceptions;
 using SmartRail.Api.Features.Journeys;
+using SmartRail.Api.Features.Catering;
 using SmartRail.Api.Features.Passenger;
 using SmartRail.Application.Features.Passenger;
 using SmartRail.Application.Features.Events.ReportEvent;
@@ -28,6 +29,7 @@ if (databaseConfigured)
 {
     builder.Services.AddJourneyFeatures(builder.Configuration);
     builder.Services.AddPassengerFeatures(builder.Configuration);
+    builder.Services.AddCateringFeatures(builder.Configuration);
     builder.Services.AddExceptionFeatures();
 }
 
@@ -57,6 +59,7 @@ if (databaseConfigured)
 {
     app.MapJourneyFeatures();
     app.MapPassengerFeatures();
+    app.MapCateringFeatures();
     app.MapExceptionFeatures();
 }
 

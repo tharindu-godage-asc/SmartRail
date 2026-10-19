@@ -13,6 +13,9 @@ class AppConfig {
   static const liveInterval = Duration(seconds: 10);
   static const listInterval = Duration(seconds: 30);
 
+  /// The food menu refreshes this often while its screen is open (spec 11: a sold-out item shows within 60 s).
+  static const menuInterval = Duration(seconds: 60);
+
   /// After this long of failed polls the app says it is offline (NFR-03).
   static const staleAfter = Duration(seconds: 30);
 

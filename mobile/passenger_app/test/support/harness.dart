@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:passenger_app/app/app.dart';
 import 'package:passenger_app/app/providers.dart';
+import 'package:passenger_app/data/menu.dart';
 import 'package:passenger_app/data/models.dart';
 import 'package:passenger_app/data/passenger_api.dart';
 import 'package:passenger_app/data/preferences.dart';
@@ -22,6 +24,8 @@ class FakeApi implements PassengerApi {
     'journeysInProgress': 1,
     'serverTime': '2026-10-16T03:12:00Z',
   };
+  Map<String, dynamic>?
+  menuAnswer; // null: no food on this trip (an empty list)
   bool failing = false;
   int stationCalls = 0;
   int statusCalls = 0;
@@ -65,6 +69,16 @@ class FakeApi implements PassengerApi {
   }
 
   @override
+  Future<TrainMenu?> menu(
+    String trainNumber, {
+    String? from,
+    String? to,
+  }) async {
+    _check();
+    return TrainMenu.fromJson(menuAnswer ?? menuJson(empty: true));
+  }
+
+  @override
   Future<LineStatus> lineStatus() async {
     _check();
     return LineStatus.fromJson(line);
@@ -99,13 +113,18 @@ class Harness {
   void goOffline() => network.add(false);
   void goOnline() => network.add(true);
 
-  Future<void> pump(WidgetTester tester, {double textScale = 1.0}) async {
+  Future<void> pump(
+    WidgetTester tester, {
+    double textScale = 1.0,
+    List<Override> overrides = const [],
+  }) async {
     tester.view.physicalSize = const Size(390 * 2, 844 * 2);
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...overrides,
           preferencesProvider.overrideWithValue(prefs),
           apiProvider.overrideWithValue(api),
           hasNetworkProvider.overrideWith((ref) async* {

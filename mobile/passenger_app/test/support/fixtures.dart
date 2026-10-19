@@ -151,3 +151,50 @@ final stationsBody = {
     stationJson('VYG', 'Veyangoda', 'වේයන්ගොඩ', 'வேயங்கொடை'),
   ],
 };
+
+/// `GET /api/v1/trains/8058/menu`: Colombo Fort as the destination with SmallBites items (Fruit cup sold out when [fruitSold]).
+Map<String, dynamic> menuJson({
+  bool fruitSold = false,
+  bool stale = false,
+  bool empty = false,
+  String? orderUrl = 'http://localhost:8090/?station=CF&train=8058',
+}) => {
+  'serverTime': '2026-10-16T03:12:00Z',
+  'trainNumber': '8058',
+  'orderUrl': empty ? null : orderUrl,
+  'staleAfterMinutes': 60,
+  'stations': empty
+      ? []
+      : [
+          {
+            'code': 'CF',
+            'names': {
+              'en': 'Colombo Fort',
+              'si': 'කොළඹ කොටුව',
+              'ta': 'கொழும்பு கோட்டை',
+            },
+            'reason': 'Destination',
+            'menuUpdatedAt': '2026-10-16T03:00:00Z',
+            'fetchedAt': '2026-10-16T03:11:00Z',
+            'stale': stale,
+            'items': [
+              {
+                'itemId': 'egg-sandwich',
+                'names': {
+                  'en': 'Egg sandwich',
+                  'si': 'බිත්තර සැන්ඩ්විච්',
+                  'ta': 'முட்டை சாண்ட்விச்',
+                },
+                'priceLkr': 250.0,
+                'available': true,
+              },
+              {
+                'itemId': 'fruit-cup',
+                'names': {'en': 'Fruit cup'},
+                'priceLkr': 180.0,
+                'available': !fruitSold,
+              },
+            ],
+          },
+        ],
+};

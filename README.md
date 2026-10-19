@@ -7,6 +7,7 @@ A public railway passenger and operations platform (individual assessment projec
 | Platform API | `smartrail-platform/` | .NET 10 modular monolith, Postgres, Keycloak, observability (Compose) |
 | Controller web app and station displays | `web/ops/` | React 19 + TypeScript + Tailwind |
 | Passenger app | `mobile/passenger_app/` | Flutter (Android emulator) |
+| SmallBites (caterer, its own system) | `smallbites/` | .NET stand-in caterer: menu API, website, admin page (port 8090) |
 | Operator app | `mobile/operator_app/` | Flutter (Android emulator) |
 | Specs, requirements | `_specs/`, `docs/` | One spec per feature slice |
 
@@ -28,6 +29,7 @@ The first run builds the images and takes a few minutes. The demo data (a journe
 | API | http://localhost:8080 | public reads need none |
 | Controller web app | http://localhost:5173 | `jayasinghe` / `jayasinghe-dev-only` |
 | Station displays | http://localhost:5174/display/board/VYG and `/display/platform/VYG/1` | none |
+| SmallBites admin (sell an item out) | http://localhost:8090/admin | none |
 | Keycloak | http://localhost:8180 | `admin` / `admin-dev-only` |
 | Grafana (SmartRail Overview) | http://localhost:3000 | none (anonymous) |
 
@@ -37,7 +39,7 @@ Other demo users: `nimal` (operator, assigned to 8058), `operator2` (operator, n
 
 1. **Stack:** `cd smartrail-platform && docker compose up --build`.
 2. **Web:** `cd web/ops && npm install && npm run dev`.
-3. **Emulator:** start `Pixel_6`, then `adb reverse tcp:8080 tcp:8080` and `adb reverse tcp:8180 tcp:8180` (the `localhost` forwarding keeps the Keycloak issuer the API accepts).
+3. **Emulator:** start `Pixel_6`, then `adb reverse tcp:8080 tcp:8080` and `adb reverse tcp:8180 tcp:8180` and `adb reverse tcp:8090 tcp:8090` (the `localhost` forwarding keeps the Keycloak issuer the API accepts).
 4. **Passenger app:** `cd mobile/passenger_app && flutter pub get && flutter run`. No sign-in. Try Veyangoda → Colombo Fort, open a train, tap Follow.
 5. **Operator app:** `cd mobile/operator_app && flutter run`, sign in as `nimal`, report a delay on 8058, and watch it appear in the passenger app and the dashboard within about 30 seconds.
 

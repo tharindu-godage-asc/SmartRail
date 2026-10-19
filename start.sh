@@ -43,6 +43,7 @@ if [[ "${1:-}" == "--emulator" || "${1:-}" == "--operator" ]]; then
   fi
   adb reverse tcp:8080 tcp:8080
   adb reverse tcp:8180 tcp:8180
+  adb reverse tcp:8090 tcp:8090
   app=passenger_app; [[ "$1" == "--operator" ]] && app=operator_app
   echo "==> Running $app on the emulator"
   (cd "mobile/$app" && flutter pub get >/dev/null && flutter run -d emulator-5554 --no-resident)
@@ -54,6 +55,7 @@ Ready.
   API                  http://localhost:8080  (e.g. /api/v1/trains?from=VYG&to=CF)
   Controller web app   http://localhost:5173  (jayasinghe / jayasinghe-dev-only)
   Station displays     http://localhost:5174/display/board/VYG
+  SmallBites (caterer) http://localhost:8090/admin
   Keycloak             http://localhost:8180  (admin / admin-dev-only)
   Grafana              http://localhost:3000
 Mobile: ./start.sh --emulator   Stop: ./start.sh --stop
