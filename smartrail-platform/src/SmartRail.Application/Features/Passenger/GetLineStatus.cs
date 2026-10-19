@@ -45,7 +45,7 @@ public sealed class GetLineStatusHandler(IPassengerQueries queries, TimeProvider
         foreach (var journey in rows)
         {
             var service = services.Single(s => s.ServiceId == journey.ServiceId);
-            if (journey.Status == JourneyStatus.Completed || service.Stops.Count == 0)
+            if (journey.Status is JourneyStatus.Completed or JourneyStatus.Cancelled || service.Stops.Count == 0)
             {
                 continue;
             }

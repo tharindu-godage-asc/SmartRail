@@ -183,7 +183,7 @@ public sealed class GetStationBoardHandler(
     /// <summary>Not Completed, not over (expected end plus the grace period), and the train has not left this stop (same rule as the search, R4.1).</summary>
     private static bool IsOnBoard(JourneyData data, ServiceStopRecord stopAt, DateTimeOffset now, TimeSpan grace)
     {
-        if (data.Status == JourneyStatus.Completed || data.Stops.Count == 0)
+        if (data.Status is JourneyStatus.Completed or JourneyStatus.Cancelled || data.Stops.Count == 0)
         {
             return false;
         }

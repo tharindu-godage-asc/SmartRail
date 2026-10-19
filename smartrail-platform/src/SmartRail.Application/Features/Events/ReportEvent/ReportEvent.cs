@@ -255,7 +255,7 @@ public sealed class ReportEventHandler(IJourneyRepository repository, TimeProvid
                 }
             }
 
-            if (data.Status is JourneyStatus.Unassigned or JourneyStatus.Completed)
+            if (data.Status is JourneyStatus.Unassigned or JourneyStatus.Completed or JourneyStatus.Cancelled)
             {
                 return ReportEventResult.Reject(RejectReason.JourneyNotReportable);
             }

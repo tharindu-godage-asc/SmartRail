@@ -35,7 +35,7 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
     public async Task<IReadOnlyList<JourneyData>> GetUnfinishedAsync(DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken)
     {
         var headers = await Header()
-            .Where(h => h.OperatingDate >= fromDate && h.OperatingDate <= toDate && h.Status != JourneyStatus.Completed)
+            .Where(h => h.OperatingDate >= fromDate && h.OperatingDate <= toDate && h.Status != JourneyStatus.Completed && h.Status != JourneyStatus.Cancelled)
             .OrderBy(h => h.TrainNumber)
             .ToListAsync(cancellationToken);
 
@@ -52,7 +52,8 @@ public sealed class JourneyRepository(SmartrailDbContext db) : IJourneyRepositor
     public async Task<JourneyData?> GetAssignedAsync(string operatorUserId, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var assignedJourney = await db.OperatorAssignments.AsNoTracking()
-            .Where(a => a.OperatorUserId == operatorUserId && a.ValidFrom <= now && (a.ValidTo == null || now < a.ValidTo))
+            .Where(a => a.OperatorUserId == operatorUserId && a.ValidFrom <= now && (a.ValidTo == null || now < a.ValidTo)
+                && db.Journeys.Any(j => j.Id == a.JourneyId && j.Status != JourneyStatus.Cancelled)) // a cancelled journey is not his active one
             .OrderByDescending(a => a.ValidFrom) // deferred decision D1: with overlapping assignments the latest one wins
             .Select(a => (Guid?)a.JourneyId)
             .FirstOrDefaultAsync(cancellationToken);

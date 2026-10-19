@@ -134,6 +134,11 @@ public sealed class FindTrainsHandler(IPassengerQueries queries, TimeProvider cl
 
             foreach (var journey in serviceJourneys)
             {
+                if (journey.Status == JourneyStatus.Cancelled)
+                {
+                    continue; // a cancelled train is absent (spec 14 Q4); its row still stops the timetable from offering it
+                }
+
                 var schedule = Schedule(service, journey.OperatingDate);
                 if (date == today && !IsCandidateToday(journey, service, schedule, fromStop, now, grace))
                 {

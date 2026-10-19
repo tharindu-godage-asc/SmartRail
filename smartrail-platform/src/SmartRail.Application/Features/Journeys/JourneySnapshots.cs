@@ -112,7 +112,8 @@ public sealed class GetJourneyStatusHandler(IJourneyRepository repository, TimeP
     public async Task<JourneyStatusSnapshot?> HandleAsync(Guid journeyId, CancellationToken cancellationToken)
     {
         var data = await repository.GetAsync(journeyId, cancellationToken);
-        return data is null ? null : SnapshotBuilder.Build(data, clock.GetUtcNow(), settings.OnTimeToleranceMinutes);
+        // A cancelled journey is not shown to passengers (spec 14 rule 8): the same answer as for a journey that does not exist.
+        return data is null || data.Status == JourneyStatus.Cancelled ? null : SnapshotBuilder.Build(data, clock.GetUtcNow(), settings.OnTimeToleranceMinutes);
     }
 }
 
@@ -127,7 +128,7 @@ public sealed class GetTrainStatusHandler(IJourneyRepository repository, TimePro
         // A journey takes at most 24 hours, so one that is still in progress started no earlier than two operating dates ago.
         var candidates = await repository.GetForTrainAsync(trainNumber, today.AddDays(-2), today, cancellationToken);
         var windows = candidates
-            .Where(c => c.Stops.Count > 0)
+            .Where(c => c.Stops.Count > 0 && c.Status != JourneyStatus.Cancelled)
             .Select(c =>
             {
                 var schedule = c.Schedule();
