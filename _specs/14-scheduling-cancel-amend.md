@@ -145,7 +145,7 @@ Body as create (spec 13 section 4.5) for a **weekly** service, with `effectiveFr
 - [x] Operator, passenger and caterer tokens get 403, no token 401, on both routes.
 - [x] Every cancel and amend has one audit row with the actor; a failed call has none.
 - [x] The existing suites (261 unit, 305 integration at the end of spec 13) still pass, plus the new tests.
-- [ ] The report states plainly that passenger notification, refunds, caterer messages, the controller screens, amending extra trains and showing "Cancelled" to passengers are not built.
+- [x] The report states plainly that passenger notification, refunds, caterer messages, the controller screens, amending extra trains and showing "Cancelled" to passengers are not built.
 
 ## 10) Test Plan
 ### 10.1 Seed and fixture data
@@ -182,3 +182,7 @@ Compose smoke by hand: create 8072, cancel 23 Oct, amend 8058, read the passenge
 - **Not ticked:** the report criterion (this section is its start). Everything else in section 9 has a test.
 - **Not built (as agreed):** controller screens; telling passengers (FR-11B, FR-11C notification), refunds, messages to the caterer; un-cancelling; cancelling a running or finished journey (an override); showing "Cancelled" to passengers (a cancelled train is simply absent); amending an extra train; services that pass midnight; operator assignment.
 - **Decisions made while building:** a journey that is Running or Completed also blocks cancel and amend, even without a report row. The amendment date must be after the start of the latest version and tomorrow or later (`date_in_past`, `effective_date_not_after_current`). Two amendments at once: the second one builds on the first, or is refused with `effective_date_not_after_current` when its date is not after the first one's start. A cancellation covers every version and every extra date of the train number on that line.
+
+## 15) Closing report (19 Oct 2026)
+- **Built:** cancel (one date or from a date onward, with a reason; all or none; 409 `journey_has_events`) and amend with versions (weekly services), as in the delivery notes above. The screens are spec 15.
+- **Not built:** passenger notification, refunds, caterer messages (D-72), amending extra trains (cancel and add another instead), un-cancelling, and showing "Cancelled" to passengers. A cancelled train is absent from search, board and status. A per-journey "Cancelled" state for passengers belongs to the overrides of spec 16 (F3), which is **not built**.

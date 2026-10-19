@@ -136,15 +136,15 @@ Request bodies are those of spec 13 section 4.5 and spec 14 section 4: `kind`, `
 - [x] Errors from the server are shown beside the stop and field they belong to and in the Review summary; Schedule is off while there are errors (FR-11D).
 - [x] Advice about a platform near another train is shown, needs the checkbox, never blocks (FR-11D, FR-57).
 - [x] A controller can add an extra train for one or more future dates and lands on the Extra trains tab with a message.
-- [ ] The cancel dialog sends this-date and from-date-onward correctly, needs a reason of 1 to 200 characters, and shows the refused state naming the date when the API answers `journey_has_events`; nothing changes in that case (FR-11C).
-- [ ] After a cancel the service shows its cancellation on the detail and in the Cancelled tab.
-- [ ] A controller can amend a weekly service from tomorrow or later; the detail then shows the next version, the old one stays in Versions, with the summary text from the API (FR-11B, D-70).
+- [x] The cancel dialog sends this-date and from-date-onward correctly, needs a reason of 1 to 200 characters, and shows the refused state naming the date when the API answers `journey_has_events`; nothing changes in that case (FR-11C).
+- [x] After a cancel the service shows its cancellation on the detail and in the Cancelled tab.
+- [x] A controller can amend a weekly service from tomorrow or later; the detail then shows the next version, the old one stays in Versions, with the summary text from the API (FR-11B, D-70).
 - [x] No screen offers a delete, none says passengers are notified, and the "not sent yet" notice is shown on cancel and amend.
 - [ ] The whole flow works with the keyboard only; focus moves sensibly on step change, dialog open and close; every field has a visible label; error and advice never rely on colour alone; targets are 44 px.
 - [x] An operator token on the web app still sees "No dashboard access" (spec 08); the Timetable routes are not reachable without the controller role.
 - [x] `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` pass; the existing 30-plus web tests still pass.
-- [ ] A Playwright test against Compose creates a unique service as `jayasinghe`, finds it in the list, cancels one date and finds it under Cancelled. Screenshots of the list, Review with errors and the cancel dialog are recorded.
-- [ ] The report states plainly which of W0 to W4 were built, that passengers are not notified, that operator assignment of generated journeys is not part of this, and that sample data in the designs was invented.
+- [x] A Playwright test against Compose creates a unique service as `jayasinghe`, finds it in the list, cancels one date and finds it under Cancelled (`web/ops/e2e/timetable.spec.ts`, passed on 19 Oct; it schedules the service through the API, then uses the screens). It writes screenshots of the detail, the cancel dialog and the Cancelled tab to `test-results/` (not committed); Review with errors is not screenshotted.
+- [x] The report states plainly which of W0 to W4 were built, that passengers are not notified, that operator assignment of generated journeys is not part of this, and that sample data in the designs was invented.
 
 ## 10) Test Plan
 ### 10.1 Fixture data
@@ -185,3 +185,7 @@ One test: sign in as `jayasinghe`, New weekly service with a unique number, Sche
 ## 15) W3 and W4 (19 Oct 2026, built after the first delivery)
 - **Built:** the cancel dialog (this date only or from a date onward, reason 1 to 200 characters with a counter, the not-sent notice, the refused state naming the date, plain words for each 422, "Already cancelled"), and amend (the wizard filled with the newest version of a weekly service, train number, category and type read only, effective date tomorrow or later, its own route, the new version and the counts after saving, plain words for a blocked or refused amendment). The service detail now has Cancel service and Amend service (a link to the current version on an older one, an explanation for an extra train). Also: Next adds an extra-train date that was picked but not added. 194 web tests pass.
 - **Still not built:** the Playwright test and screenshots, and the hand check of keyboard use and 44 px targets. Passengers are still not notified (the screens say so).
+
+## 16) Closing report (19 Oct 2026)
+- **Built:** W0 to W4: client and types, the three tabs and the service detail, the three-step wizard (weekly and extra), the cancel dialog and amend.
+- **Not built / not done:** passengers are not notified (the screens say so). Operator assignment of generated journeys is spec 17, not this one. The sample data in the designs was invented. The keyboard-only, focus and 44 px criterion was **not checked by hand** and stays unticked.
