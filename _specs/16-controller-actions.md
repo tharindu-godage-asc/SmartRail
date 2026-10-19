@@ -149,8 +149,8 @@ All routes below require the `Controller` policy. 401 without a token, 403 for o
 
 ## 9) Acceptance Criteria (proposed, to be added to the baseline, Q10)
 - [ ] Journey detail shows stops with scheduled and estimated or actual times, state and platform; the event list newest first with source and actor; the current verification and override; the one-track view has a text alternative (FR-62 helped).
-- [ ] A controller can verify, change or reject a delay reason; only approved reasons can be verified; after verification the passenger status shows the reason and "Verified by Operations" with the time, before it, "reason pending" (FR-52, NFR-12).
-- [ ] Bulk verify handles each item independently and reports skipped items with the reason.
+- [x] A controller can verify, change or reject a delay reason; only approved reasons can be verified; after verification the passenger status shows the reason and "Verified by Operations" with the time, before it, "reason pending" (FR-52, NFR-12). *(Built and tested. Before verification the passenger app says the reason is pending; the API sends no reason.)*
+- [x] Bulk verify handles each item independently and reports skipped items with the reason. *(Built and tested.)*
 - [ ] A controller can suspend, cancel or terminate a journey with a reason; at most one active override; clear returns the computed status; both are audited with the actor (FR-54).
 - [ ] The passenger live status, search, board, platform display and operator app show the override state and approved reason, never the note.
 - [ ] Changing a platform accepts only the station's platforms, warns on a same-platform journey within 10 minutes, marks opposite directions as High with the signalling advice, never blocks, and reaches the displays and the app within 30 seconds on the Compose stack (FR-57, NFR-04).
@@ -158,11 +158,11 @@ All routes below require the `Controller` policy. 401 without a token, 403 for o
 - [ ] A controller can publish a disruption message from a template with a preview in three languages and a places list, and withdraw it; it shows on the displays and in the passenger app until withdrawn (FR-55).
 - [ ] A controller can record and reopen a line closure; the affected journeys are listed; a disruption message is created and withdrawn with it; no journey is changed automatically (FR-59).
 - [ ] A controller can enter an event for an operator; it is stored with source Controller and shown as such (FR-53).
-- [ ] No route deletes an override, message, closure or event; every action has an audit row with the actor.
-- [ ] Operator, passenger and caterer tokens get 403, no token 401, on every route; unknown ids 404.
-- [ ] No screen says it stops, controls or protects a train; the safety notice stays visible (FR-63).
-- [ ] Existing unit, integration and web tests of specs 01 to 15 still pass; new tests cover every route and screen built.
-- [ ] The report states plainly which of F1 to F7 were built, that Hand over, By controller, Reassign, operator assignment, correcting a report and push notification are **designed, not built**, and where the evidence is (spec and board).
+- [x] No route deletes an override, message, closure or event; every action has an audit row with the actor. *(F2 routes only: no route deletes anything, and a verify or reject stores who and when on the closed exception, plus the `ReasonVerified` event with the actor. The other routes do not exist.)*
+- [x] Operator, passenger and caterer tokens get 403, no token 401, on every route; unknown ids 404. *(F2 routes only, proved by `VerificationTests`.)*
+- [x] No screen says it stops, controls or protects a train; the safety notice stays visible (FR-63). *(F2 screens only: the Exceptions screen keeps the safety notice and says Reject publishes nothing.)*
+- [x] Existing unit, integration and web tests of specs 01 to 15 still pass; new tests cover every route and screen built. *(Specs 01 to 15 tests passed on 19 Oct; F2 has integration, web and app tests. F1 and F3 to F7 have none because they are not built.)*
+- [x] The report states plainly which of F1 to F7 were built, that Hand over, By controller, Reassign, operator assignment, correcting a report and push notification are **designed, not built**, and where the evidence is (spec and board). *(See section 14.)*
 
 ## 10) Test Plan
 ### 10.1 Fixtures
@@ -206,3 +206,9 @@ Component tests per screen (journey detail with the one-track view and its text 
 - The controller's open queue gains `reportedReason` and `canVerify` per delay item (controller-only).
 - Web: the Exceptions screen shows the reported reason, what passengers will see, **Verify and publish reason**, **Edit reason**, **Reject report**, and **Select several to verify** (a locked row cannot be ticked). Passenger app: the live screen shows "Reason: Weather. Verified by Operations at 08:40."
 - Not built in F2: the separate `/exceptions/:id/verify` page and the two consistency checks drawn on `Dash-Verify` (the queue panel is used instead).
+
+## 14) Closing report (19 Oct 2026)
+- **Built:** F2 Verify only (backend, Exceptions screen, passenger app). Checked by integration tests, web tests, app tests and the Playwright flow `web/ops/e2e/verify.spec.ts` (written; it needs a journey that is not Completed, so it was **not run** against the current database, where today's demo journey is finished).
+- **Not built (designed only, evidence is this spec and the boards):** F1 journey detail and the one-track view, F3 overrides (suspend, cancel, terminate) and their reads, F4 platform change and the platform-conflict exception, F5 disruption messages, F6 line closure, F7 entering an event for an operator.
+- **Also not built:** Hand over, By controller, Reassign (FR-125, FR-126), correcting a report (FR-60) and push notification. Operator assignment is spec 17. The unticked criteria above are the unbuilt features.
+- **Partly different from the design:** `Dash-Verify` is not a separate page: the queue panel does verify, edit and reject, and the two consistency checks drawn there are not built. Sinhala and Tamil text in the app is unverified.
