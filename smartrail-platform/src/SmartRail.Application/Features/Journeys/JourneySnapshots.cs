@@ -28,6 +28,9 @@ public sealed record PositionSnapshot(
     string State = "Departed",
     DateTimeOffset? ArrivedAt = null);
 
+/// <summary>A delay reason that Operations verified: the approved code and when. The client words it and "Verified by Operations" (spec 16 F2, D-10).</summary>
+public sealed record ReasonSnapshot(string Code, DateTimeOffset VerifiedAt);
+
 /// <summary>The public status of one journey (AC-E04-03 5, partly). The version lets clients ignore older snapshots (ADR-09).</summary>
 public sealed record JourneyStatusSnapshot(
     Guid JourneyId,
@@ -42,7 +45,9 @@ public sealed record JourneyStatusSnapshot(
     PositionSnapshot? LastKnownPosition,
     IReadOnlyList<StopSnapshot> Stops,
     bool DelayKnown = true,
-    DateTimeOffset? LastEventAt = null);
+    DateTimeOffset? LastEventAt = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    ReasonSnapshot? Reason = null);
 
 public static class SnapshotBuilder
 {
@@ -103,7 +108,8 @@ public static class SnapshotBuilder
             data.JourneyId, data.TrainNumber, data.OperatingDate, data.Version, now,
             group.ToString(), key.ToString(), data.DelayMinutes, eta, position, stops, data.DelayKnown,
             // The time the server received the latest accepted report (null before the first): "Updated 08:42" on the passenger app (FR-72).
-            data.Events.Max(e => e.ReceivedAt));
+            data.Events.Max(e => e.ReceivedAt),
+            data.VerifiedReason is { } verified ? new ReasonSnapshot(verified.Code, verified.VerifiedAt) : null);
     }
 }
 

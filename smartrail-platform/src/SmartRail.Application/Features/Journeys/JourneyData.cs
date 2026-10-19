@@ -45,6 +45,9 @@ public sealed record RecordedEvent(
     DelayPayload? Delay = null,
     DateTimeOffset? ReceivedAt = null);
 
+/// <summary>The delay reason a controller has verified for the delay now in force (spec 16 F2); public only because it was verified.</summary>
+public sealed record VerifiedReasonInfo(string Code, DateTimeOffset VerifiedAt);
+
 public sealed record AssignmentInfo(string OperatorUserId, DateTimeOffset ValidFrom, DateTimeOffset? ValidTo, AssignmentEndReason? EndReason = null);
 
 /// <summary>Everything the slice-1 handlers need to know about one journey.</summary>
@@ -59,7 +62,8 @@ public sealed record JourneyData(
     IReadOnlyList<StopStateInfo> StopStates,
     IReadOnlyList<RecordedEvent> Events,
     IReadOnlyList<AssignmentInfo> Assignments,
-    bool DelayKnown = true)
+    bool DelayKnown = true,
+    VerifiedReasonInfo? VerifiedReason = null)
 {
     public IReadOnlyList<StopSchedule> Schedule() =>
         ScheduleInstants.For(OperatingDate, Stops.Select(s => new StopTimes(s.ServiceStopId, s.Sequence, s.ScheduledArrival, s.ScheduledDeparture)));
