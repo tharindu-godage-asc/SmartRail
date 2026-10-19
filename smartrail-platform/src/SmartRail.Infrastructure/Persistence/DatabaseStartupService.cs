@@ -51,6 +51,9 @@ public sealed class DatabaseStartupService(
             // Spec 09 section 16: a demo train that leaves a few minutes after every start, so a station display always has one soon.
             var soon = await new DemoSeeder(db, clock).SeedSoonTrainAsync(cancellationToken);
             logger.LogInformation("Demo train 8070 leaves Veyangoda at {Departure}.", soon);
+
+            // Spec 10: eight more demo journeys, both directions, some delayed, for the passenger app.
+            await new DemoSeeder(db, clock).SeedDemoTrainsAsync(seeding.Value.DemoOperatorSubject, cancellationToken);
         }
     }
 

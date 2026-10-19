@@ -407,3 +407,32 @@ public sealed class PassengerEarlyMorningTests(PostgresFixture postgres) : Journ
         Assert.False(string.IsNullOrWhiteSpace(body.GetProperty("lineName").GetProperty("si").GetString()));
     }
 }
+
+/// <summary>Spec 10 section 4: the two additive fields the passenger app needs.</summary>
+public sealed class PassengerAppFieldsTests(PostgresFixture postgres) : JourneyApiTestBase(postgres)
+{
+    [Fact]
+    public async Task Search_results_carry_the_platform_the_timetable_plans()
+    {
+        var body = await ReadAsync(await Get("/api/v1/trains?from=VYG&to=CF"));
+
+        foreach (var train in body.GetProperty("trains").EnumerateArray())
+        {
+            Assert.Equal("1", train.GetProperty("platform").GetString()); // live and timetable-only trains alike
+        }
+    }
+
+    [Fact]
+    public async Task The_status_carries_the_time_the_server_received_the_latest_report_and_null_before_any()
+    {
+        Assert.Equal(JsonValueKind.Null, (await StatusAsync()).GetProperty("lastEventAt").ValueKind);
+        Clock.SetUtcNow(Local(8, 28, 20));
+        await Report(Stops[0], Local(8, 28));
+
+        var status = await StatusAsync();
+        var train = await ReadAsync(await Get("/api/v1/trains/8058/status"));
+
+        Assert.Equal(Local(8, 28, 20), status.GetProperty("lastEventAt").GetDateTimeOffset());
+        Assert.Equal(Local(8, 28, 20), train.GetProperty("lastEventAt").GetDateTimeOffset());
+    }
+}

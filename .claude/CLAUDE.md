@@ -88,6 +88,8 @@ Run from `smartrail-platform/` unless noted.
   - **CORS** (spec 08): off unless `Cors:AllowedOrigins` is set (a list `Cors__AllowedOrigins__0`, or one comma-separated value). Exact origins only (startup fails on `*`, a path or a trailing slash); GET and POST; headers `Authorization` and `Content-Type`; no credentials. Compose sets `http://localhost:5173`; the cluster sets nothing, so nothing changes there. The overview journeys also carry `from` and `to` (first and last station names).
   - Not built: the operator flag (`OperatorCorrectionRequested`), backward and same-station conflicts. Metrics `smartrail.exceptions.raised` and `.resolved` (Grafana panel "Exceptions raised and resolved").
 
+- **Passenger app** (spec `_specs/10-passenger-app.md`, `mobile/passenger_app/`, README inside): Flutter, Riverpod, go_router, dio, shared_preferences; no account, state on the phone only. Run: compose up, `adb reverse tcp:8080 tcp:8080`, `flutter run`. Tokens are generated from the operator app's token file (`dart run tool/generate_tokens.dart`; CI fails if stale). Texts are the `K` table in `lib/core/l10n/strings.dart` (Sinhala and Tamil unverified). Polls every 10 s (train) and 30 s (lists) in the foreground; offline is said at once, "unavailable" after 30 s of server failures. Backend additions: `lastEventAt` on the journey status, `platform` on search results. Push (FR-75/76) is not built. Phase 2 (design gallery) not started.
+
 ## Architecture rules
 - Dependencies point inward: Api and Infrastructure may use Application; Application may use Domain; Domain uses nothing.
 - One folder per feature (for example `Features/Reports/SubmitReport`) containing its endpoint, handler, validator and tests. Features do not reference each other's internals.
