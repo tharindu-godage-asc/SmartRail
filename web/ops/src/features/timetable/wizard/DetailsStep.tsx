@@ -16,6 +16,7 @@ export function DetailsStep({
   issues,
   pending,
   onPending,
+  amending = false,
 }: {
   draft: Draft
   dispatch: Dispatch<Action>
@@ -23,6 +24,8 @@ export function DetailsStep({
   /** The date shown in the date box of an extra train that has not been added to the list yet (Next adds it). */
   pending: string
   onPending: (date: string) => void
+  /** An amendment: the train number, category and type are shown but cannot change (spec 15 Q7). */
+  amending?: boolean
 }) {
   const w = t.timetable.wizard
   const today = todayInColombo()
@@ -36,10 +39,13 @@ export function DetailsStep({
           className={`${inputClass} max-w-[220px]`}
           value={draft.trainNumber}
           maxLength={10}
+          readOnly={amending}
           aria-describedby="train-number-hint"
           onChange={(e) => dispatch({ type: 'set', field: 'trainNumber', value: e.target.value })}
         />
       </Field>
+
+      {amending ? <p className="m-0 text-label text-muted">{t.timetable.amend.readOnly}</p> : null}
 
       <div className="flex flex-wrap gap-md">
         <Field id="category" label={w.category} issues={at('category')}>
@@ -47,6 +53,7 @@ export function DetailsStep({
             id="category"
             className={inputClass}
             value={draft.category}
+            disabled={amending}
             onChange={(e) => dispatch({ type: 'category', value: e.target.value as Draft['category'] })}
           >
             <option value="Regional">{t.timetable.categories.Regional}</option>
@@ -58,6 +65,7 @@ export function DetailsStep({
             id="service-type"
             className={inputClass}
             value={draft.serviceType}
+            disabled={amending}
             onChange={(e) => dispatch({ type: 'serviceType', value: e.target.value as Draft['serviceType'] })}
           >
             <option value="Slow">{t.timetable.types.Slow}</option>
@@ -80,13 +88,13 @@ export function DetailsStep({
 
       {draft.kind === 'Weekly' ? (
         <>
-          <Field id="effective-from" label={w.firstDate} issues={at('effectiveFrom')}>
+          <Field id="effective-from" label={amending ? t.timetable.amend.effectiveFrom : w.firstDate} hint={amending ? t.timetable.amend.effectiveHint : undefined} issues={at('effectiveFrom')}>
             <input
               id="effective-from"
               type="date"
               className={`${inputClass} max-w-[220px]`}
               value={draft.effectiveFrom}
-              min={today}
+              min={amending ? nextDay(today) : today}
               onChange={(e) => dispatch({ type: 'set', field: 'effectiveFrom', value: e.target.value })}
             />
           </Field>

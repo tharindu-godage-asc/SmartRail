@@ -1,4 +1,4 @@
-import type { LineOptions, ServiceRequest, StopRequest } from '../../../core/api/types'
+import type { LineOptions, ServiceDetail, ServiceRequest, StopRequest } from '../../../core/api/types'
 import { t } from '../../../core/strings'
 
 /**
@@ -165,4 +165,29 @@ export function toRequest(draft: Draft, acknowledgeWarnings = false): ServiceReq
   return draft.kind === 'Weekly'
     ? { kind: 'Weekly', ...base, days: dayCodes.filter((d) => draft.days.includes(d)), effectiveFrom: draft.effectiveFrom }
     : { kind: 'Extra', ...base, dates: [...draft.dates].sort() }
+}
+
+/**
+ * The draft of an amendment: the current version of a weekly service, ready to edit (spec 15 W4). A middle stop's time is its arrival
+ * (its departure is sent 1 minute later again), the first stop's time is its departure and the last stop's its arrival.
+ */
+export function draftFromDetail(detail: ServiceDetail, options: LineOptions, effectiveFrom: string): Draft {
+  const base = initialDraft('Weekly', options, effectiveFrom)
+  const byCode = new Map(detail.stops.map((s) => [s.stationCode, s]))
+  return {
+    ...base,
+    trainNumber: detail.trainNumber,
+    category: detail.category === 'LongDistance' ? 'LongDistance' : 'Regional',
+    serviceType: detail.serviceType === 'Express' ? 'Express' : 'Slow',
+    direction: detail.direction === 'Outbound' ? 'outbound' : 'inbound',
+    days: detail.runsOn ?? [],
+    effectiveFrom,
+    stopMode: detail.stops.length === options.stations.length ? 'every' : 'choose',
+    stops: base.stops.map((s) => {
+      const stop = byCode.get(s.stationCode)
+      return stop
+        ? { stationCode: s.stationCode, included: true, time: (stop.isFirst ? stop.departure : stop.arrival) ?? '', platform: stop.platform }
+        : { ...s, included: false }
+    }),
+  }
 }

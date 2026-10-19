@@ -130,8 +130,9 @@ describe('Timetable (spec 15, W1)', () => {
     expect(screen.getByText('Rolling stock not available')).toBeInTheDocument()
     expect(screen.getByText(/never deleted/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Back to the timetable/ })).toHaveAttribute('href', '/timetable')
-    // No button that goes nowhere: cancel and amend are not offered yet, and nothing can be deleted.
-    expect(screen.queryByRole('button')).toBeNull()
+    // Cancel and Amend are offered, and nothing can be deleted.
+    expect(screen.getByRole('button', { name: 'Cancel service' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Amend service' })).toBeInTheDocument()
     expect(screen.queryByText(/delete/i, { selector: 'button, a' })).toBeNull()
   })
 
