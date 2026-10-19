@@ -470,5 +470,31 @@ void main() {
         await app.close(tester);
       },
     );
+    testWidgets(
+      'when the assignment ends the next poll says no journey is assigned, and a new assignment appears on the poll after (spec 17)',
+      (tester) async {
+        final api = FakeJourneyApi(journey: demoJourney());
+        final app = TestApp(api: api);
+        await app.pump(tester);
+        expect(
+          find.text('Train 8058 · Veyangoda to Colombo Fort'),
+          findsOneWidget,
+        );
+
+        api.journey = null; // a controller ended the assignment
+        await tester.pump(const Duration(seconds: 31));
+        await tester.pump();
+        expect(find.text('No journey assigned'), findsOneWidget);
+
+        api.journey = demoJourney(); // and assigned a journey again
+        await tester.pump(const Duration(seconds: 31));
+        await tester.pump();
+        expect(
+          find.text('Train 8058 · Veyangoda to Colombo Fort'),
+          findsOneWidget,
+        );
+        await app.close(tester);
+      },
+    );
   });
 }
