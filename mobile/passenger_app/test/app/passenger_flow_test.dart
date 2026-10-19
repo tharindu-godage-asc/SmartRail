@@ -202,6 +202,24 @@ void main() {
     }
 
     testWidgets(
+      'shows the reason and "Verified by Operations" only once a controller has verified it (FR-52, D-10)',
+      (tester) async {
+        final h = await Harness.create(stored: Harness.used);
+        h.api.status = {
+          ...statusJson(delay: 8, reported: 1, departed: true),
+          'reason': {'code': 'Weather', 'verifiedAt': '2026-10-16T03:10:00Z'},
+        };
+
+        await open(tester, h);
+
+        expect(
+          find.text('Reason: Weather. Verified by Operations at 08:40.'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
       'shows "Arrives at Gampaha 08:38" with the delay, no reason, and the stops with progress and ETA together',
       (tester) async {
         final h = await Harness.create(stored: Harness.used);
