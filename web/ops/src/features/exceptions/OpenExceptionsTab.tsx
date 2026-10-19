@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import type { ResolveAction } from '../../core/api/types'
+import { Icon } from '../../core/Icon'
 import { exceptionTypeLabel, t } from '../../core/strings'
 import { formatAge, formatClock, formatClockShort } from '../../core/time'
 import { Button, cell, Panel, SeverityBadge, Th } from '../../core/ui'
 import { useNow } from '../../core/useNow'
 import { liveAge, useExceptions, whereOf } from './queries'
+import { BulkVerifyBar } from './BulkVerifyBar'
 import { ResolveDialog } from './ResolveDialog'
+import { VerifyPanel } from './VerifyPanel'
 
 const actions: ResolveAction[] = ['Acknowledged', 'NoActionNeeded', 'Escalated']
 
@@ -14,6 +17,8 @@ export function OpenExceptionsTab() {
   const now = useNow()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [pending, setPending] = useState<ResolveAction | null>(null)
+  const [selecting, setSelecting] = useState(false)
+  const [ticked, setTicked] = useState<string[]>([])
 
   const items = query.data?.items
   // A selection that is no longer in the list (resolved here or by someone else) simply goes away.
@@ -28,6 +33,17 @@ export function OpenExceptionsTab() {
       ) : null}
 
       <Panel title={t.exceptions.open}>
+        {items?.some((i) => i.type === 'ReasonAwaitingVerification') ? (
+          <BulkVerifyBar
+            selecting={selecting}
+            ticked={ticked}
+            onToggle={() => {
+              setSelecting(!selecting)
+              setTicked([])
+            }}
+            onDone={() => setTicked([])}
+          />
+        ) : null}
         {items === undefined ? (
           <p className="m-0 text-label text-muted">{query.isError ? t.freshness.neverLoaded : t.loading}</p>
         ) : items.length === 0 ? (
@@ -37,6 +53,7 @@ export function OpenExceptionsTab() {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
+                  {selecting ? <Th>{t.verify.selectMany}</Th> : null}
                   <Th>{t.exceptions.columns.severity}</Th>
                   <Th>{t.exceptions.columns.exception}</Th>
                   <Th>{t.exceptions.columns.where}</Th>
@@ -48,6 +65,24 @@ export function OpenExceptionsTab() {
                   const isSelected = item.id === selected?.id
                   return (
                     <tr key={item.id} data-exception-id={item.id} className={isSelected ? 'bg-surface outline-[3px] -outline-offset-[3px] outline-ink' : ''}>
+                      {selecting ? (
+                        <td className={cell}>
+                          {item.type !== 'ReasonAwaitingVerification' ? null : item.canVerify ? (
+                            <input
+                              type="checkbox"
+                              className="size-[22px]"
+                              aria-label={t.verify.selectOne(item.trainNumber)}
+                              checked={ticked.includes(item.id)}
+                              onChange={(e) => setTicked(e.target.checked ? [...ticked, item.id] : ticked.filter((x) => x !== item.id))}
+                            />
+                          ) : (
+                            <span className="inline-flex items-center gap-xs text-label text-muted">
+                              <Icon name="warning" size={16} />
+                              {t.verify.lockedRow}
+                            </span>
+                          )}
+                        </td>
+                      ) : null}
                       <td className={cell}>
                         <SeverityBadge severity={item.severity} />
                       </td>
@@ -83,6 +118,7 @@ export function OpenExceptionsTab() {
             <p className="m-0 max-w-[900px] text-[15px] leading-normal">
               {(t.exceptions.descriptions[selected.type] ?? (() => selected.type))(selected.trainNumber, selected.stationName)}
             </p>
+            {selected.type === 'ReasonAwaitingVerification' ? <VerifyPanel key={selected.id} item={selected} /> : null}
             <div role="group" aria-label={t.exceptions.resolveWith} className="flex flex-wrap gap-[10px]">
               {actions.map((action) => (
                 <Button key={action} variant={action === 'Acknowledged' ? 'primary' : 'secondary'} onClick={() => setPending(action)}>
