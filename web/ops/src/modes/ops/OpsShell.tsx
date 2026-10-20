@@ -29,7 +29,7 @@ export function OpsShell() {
   const name = String(auth.user?.profile.preferred_username ?? auth.user?.profile.name ?? '')
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface text-ink">
+    <div className="flex min-h-screen flex-col bg-surface text-ink md:h-screen md:overflow-hidden">
       <SafetyBar />
 
       <header className="flex flex-wrap items-center justify-between gap-md border-b border-line bg-page px-lg py-sm">
@@ -63,8 +63,8 @@ export function OpsShell() {
         </div>
       </header>
 
-      <div className="flex grow flex-col md:flex-row">
-        <nav aria-label={t.nav.label} className="shrink-0 border-b border-line bg-page pt-[12px] md:w-[220px] md:border-b-0 md:border-r">
+      <div className="flex grow flex-col md:min-h-0 md:flex-row">
+        <nav aria-label={t.nav.label} className="shrink-0 border-b border-line bg-page pt-[12px] md:w-[220px] md:overflow-y-auto md:border-b-0 md:border-r">
           <div className="mb-sm border-b border-line px-[12px] pb-[12px]">
             <div className="mb-[6px] text-[11px] font-bold uppercase tracking-[.6px] text-muted">{t.nav.line}</div>
             <div className="flex min-h-[48px] items-center gap-[10px] rounded-md border-[1.5px] border-ink px-[10px] text-[15px] font-bold">
@@ -80,7 +80,7 @@ export function OpsShell() {
           </ul>
         </nav>
 
-        <main className="flex min-w-0 grow flex-col gap-[14px] px-lg py-[20px]">
+        <main className="flex min-w-0 grow flex-col gap-[14px] px-lg py-[20px] md:min-h-0 md:overflow-y-auto">
           {notUpToDate ? (
             <div
               role="status"

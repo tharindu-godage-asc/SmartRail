@@ -87,7 +87,7 @@ export function StatusChip({ group, children, icon }: { group: string; children:
 
 export function Th({ children }: { children: ReactNode }) {
   return (
-    <th scope="col" className="border-b border-line px-[10px] py-[6px] text-left text-caption font-bold text-muted">
+    <th scope="col" className="sticky top-0 z-10 border-b border-line bg-page px-[10px] py-[6px] text-left text-caption font-bold text-muted">
       {children}
     </th>
   )

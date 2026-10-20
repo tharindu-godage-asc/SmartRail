@@ -107,7 +107,7 @@ export function ServiceDetailPage() {
           ) : null}
 
           <Panel title={t.timetable.detail.stops}>
-            <div className="overflow-x-auto">
+            <div className="max-h-[min(60vh,520px)] overflow-auto">
               <table className="w-full border-collapse">
                 <thead>
                   <tr>

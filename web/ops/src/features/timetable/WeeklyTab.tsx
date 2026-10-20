@@ -17,7 +17,7 @@ export function WeeklyTab() {
       onRetry={() => void query.refetch()}
       empty={query.data && rows.length === 0 ? t.timetable.empty.weekly : null}
     >
-      <div className="overflow-x-auto">
+      <div className="max-h-[min(60vh,520px)] overflow-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr>
