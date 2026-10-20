@@ -12,6 +12,11 @@ const dayAndTime = new Intl.DateTimeFormat('en-GB', {
   hourCycle: 'h23',
 })
 
+const dateNumeric = new Intl.DateTimeFormat('en-GB', { timeZone: zone, day: '2-digit', month: '2-digit', year: 'numeric' })
+
+/** 20/10/2026 in Sri Lanka time: digits only, so it reads the same in every language. */
+export const formatDate = (at: Date | string | number): string => dateNumeric.format(new Date(at))
+
 /** 14:02:10 in Sri Lanka time (the railway's time, whatever the laptop's zone). */
 export const formatClock = (at: Date | string | number): string => clock.format(new Date(at))
 

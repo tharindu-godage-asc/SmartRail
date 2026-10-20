@@ -139,7 +139,7 @@ Example: `POST /api/v1/journeys/{id}/assignments` `{ "operatorUserId": "d0d0d0d0
 - [x] Every assignment records who assigned it; every early end records who, why and when (NFR-17).
 - [x] Assigning a non-operator, disabled or unknown account is refused with a reason code and changes nothing.
 - [ ] The web Unassigned tab, Assign page and End dialog work by keyboard, targets 44 px, status not by colour alone (NFR-30, NFR-33). *(Not yet checked by hand.)*
-- [ ] The operator app shows the new journey, or "No longer assigned", on its next poll.
+- [x] The operator app shows the new journey, or "No longer assigned", on its next poll. *(No app change was needed: the Journey tab already polls every 30 s and shows "No journey assigned" on a 404. Proved by a widget test on 19 Oct; the wording is "No journey assigned", not "No longer assigned". Not tried on the emulator.)*
 
 ## 10) Test Plan
 ### 10.1 Seed and fixture data
@@ -182,3 +182,7 @@ Assign flow from the Unassigned tab, the overlap confirm, the end dialog, empty 
 - **Built (web):** the **Journeys** menu item; the Journeys page with the Unassigned and All journeys tabs and a date box (`/journeys`, `/journeys/all`); the Assign page (`/journeys/:id/assign?date=`: operators with Available or the train they are on and until when, a disabled account that cannot be chosen, From (default or a time) and To (until the journey ends or a time) as Sri Lanka time, the advice for an operator on another train with a confirm box and then `acknowledgeOverlap`, plain words for each refusal); Crew and control (`/journeys/:id`: every assignment with who, from, to, who assigned and how it ended, the one running now marked in words, Assign operator for a crew change); the End assignment dialog (reason, note with a counter, the lost-device and other-reason explanations, one request on a double click, plain words for `already_ended` and `not_started`). 19 new web tests; 213 in all pass; lint, typecheck and build are clean.
 - **Not ticked:** the web keyboard and 44 px criterion (labels and focus are tested, not tried by hand), the operator app criterion (it already shows "No journey assigned"/"No longer assigned" on its poll; not re-checked on the emulator), the Playwright flow. **Not built:** A3 (Keycloak directory), a screen to withdraw an assignment that has not started (Q9).
 - **Board differences (Q7), not applied to the Design canvas:** no "Signed in on 1 device" line, the sample operators are the two demo operators, and the End dialog says "Nobody can report on this journey until you assign another operator."
+
+## 16) Closing report (19 Oct 2026)
+- **Built:** A1 (backend: assign, crew change, end, lost-device rule) and A2 (web: Journeys list, Assign page, Crew and control with the End dialog).
+- **Not built / not done:** the Keycloak operator directory (A3, designed only: names come from configuration behind `IOperatorDirectory`); the Playwright flow; the hand check of keyboard use and 44 px targets, which stays unticked; an emulator run of the operator app after an assignment change.

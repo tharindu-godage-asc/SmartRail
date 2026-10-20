@@ -53,7 +53,7 @@ SmartRail provides a single authoritative source of live operational data for on
 |----|-------------|----------|-------|
 | FR-20 | The operator app shall show the assigned journey (train, route, stops, status) and only the next valid station action; "Report delay" is always available. | Must | M-05, D-42 |
 | FR-21 | The operator shall report a departure with one action; the event records its occurrence time (server-corrected). | Must | M-06, ADR-06 |
-| FR-22 | The operator shall report arrivals only at designated arrival stations. | Must | D-08, M-07 |
+| FR-22 | The operator shall report arrivals only at designated arrival stations. **CHANGED 20 Oct 2026 (owner, spec 19): arrivals can be reported at every stop that has a scheduled arrival; reporting one is optional. Original wording kept.** | Must | D-08, M-07 |
 | FR-23 | The operator shall report a delay with a reason (Signal issue, Technical fault, Obstruction, Weather/natural hazard, Unknown) and an estimated **total** delay or Unknown. | Must | D-07, M-08 |
 | FR-24 | Reports made offline shall be queued on the device with a client event ID and occurrence time, sent automatically when connectivity returns, and never lost because a token expired. | Must | D-09, D-35, CON-10 |
 | FR-25 | Each report shall show its delivery status: Delivered, Not sent yet, or Rejected (requires Operations review). | Must | M-09 |

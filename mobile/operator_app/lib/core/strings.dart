@@ -40,6 +40,8 @@ abstract final class Strings {
   static String nextDeparture(String station) => 'Next: $station (departure)';
   static String nextArrival(String station) =>
       'Next: $station (arrival report required)';
+  static String nextArrivalOrDeparture(String station) =>
+      'Next: $station (arrival or departure)';
   static String departedButton(String station) => 'Departed $station';
   static String arrivedButton(String station) => 'Arrived $station';
   static String departedLabel(String station) => 'Departed $station';

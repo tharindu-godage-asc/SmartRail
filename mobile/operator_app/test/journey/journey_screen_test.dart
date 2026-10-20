@@ -49,7 +49,7 @@ void main() {
 
         // Gampaha is a designated stop: the arrival is reported first (Nimal-Journey).
         expect(
-          find.text('Next: Gampaha (arrival report required)'),
+          find.text('Next: Gampaha (arrival or departure)'),
           findsOneWidget,
         );
         expect(
@@ -213,7 +213,7 @@ void main() {
     );
 
     testWidgets(
-      'no arrival is offered at a stop that is not designated (AC-E03-03 2)',
+      'an in-between stop offers Arrived and Departed together (spec 19)',
       (tester) async {
         final api = FakeJourneyApi(
           journey: demoJourney(),
@@ -222,10 +222,16 @@ void main() {
         final app = TestApp(api: api);
         await app.pump(tester);
 
-        expect(find.text('Next: Ragama (departure)'), findsOneWidget);
-        expect(find.textContaining('Arrived'), findsNothing);
         expect(
-          find.widgetWithText(FilledButton, 'Departed Ragama'),
+          find.text('Next: Ragama (arrival or departure)'),
+          findsOneWidget,
+        );
+        expect(
+          find.widgetWithText(FilledButton, 'Arrived Ragama'),
+          findsOneWidget,
+        );
+        expect(
+          find.widgetWithText(OutlinedButton, 'Departed Ragama'),
           findsOneWidget,
         );
         await app.close(tester);
@@ -467,6 +473,32 @@ void main() {
 
         expect(find.text('Not sent yet'), findsOneWidget);
         expect(find.byIcon(Icons.schedule_send), findsOneWidget);
+        await app.close(tester);
+      },
+    );
+    testWidgets(
+      'when the assignment ends the next poll says no journey is assigned, and a new assignment appears on the poll after (spec 17)',
+      (tester) async {
+        final api = FakeJourneyApi(journey: demoJourney());
+        final app = TestApp(api: api);
+        await app.pump(tester);
+        expect(
+          find.text('Train 8058 · Veyangoda to Colombo Fort'),
+          findsOneWidget,
+        );
+
+        api.journey = null; // a controller ended the assignment
+        await tester.pump(const Duration(seconds: 31));
+        await tester.pump();
+        expect(find.text('No journey assigned'), findsOneWidget);
+
+        api.journey = demoJourney(); // and assigned a journey again
+        await tester.pump(const Duration(seconds: 31));
+        await tester.pump();
+        expect(
+          find.text('Train 8058 · Veyangoda to Colombo Fort'),
+          findsOneWidget,
+        );
         await app.close(tester);
       },
     );

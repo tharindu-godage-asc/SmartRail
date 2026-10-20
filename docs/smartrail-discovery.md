@@ -903,7 +903,7 @@ Station display stories (Must) · Catering stories (Must) · Enabler stories: si
 | D-05 | ETA = timetable + current delay; no ML |
 | D-06 | Confidence based on overdue expected events |
 | D-07 | Operator estimate = total delay from timetable |
-| D-08 | Arrivals reported only at designated stations |
+| D-08 | Arrivals reported only at designated stations. **CHANGED 20 Oct 2026 (owner, spec 19): arrivals can be reported at every stop that has a scheduled arrival; reporting one is optional.** |
 | D-09 | Occurrence time governs journey order |
 | D-10 | Staged publishing: timing immediately, reason after verification |
 | D-11 | Customer information role merged into controller (MVP) |

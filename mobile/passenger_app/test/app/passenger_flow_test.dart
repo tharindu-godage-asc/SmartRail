@@ -235,9 +235,9 @@ void main() {
         expect(find.text('Delayed 8 min'), findsOneWidget);
         expect(find.textContaining('About 8 min late'), findsOneWidget);
         expect(
-          find.textContaining('Reason'),
-          findsNothing,
-        ); // D-10: nothing verifies a reason yet
+          find.text('Reason: pending verification by Operations.'),
+          findsOneWidget,
+        ); // D-10: the reason itself stays hidden until a controller verifies it
         expect(
           find.text('Departed'),
           findsOneWidget,

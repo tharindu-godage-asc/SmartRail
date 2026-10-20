@@ -231,3 +231,10 @@ Reason: a platform display that shows only the next train tells a passenger noth
   - [x] Train 8075 (night) is in the reference data and appears as an upcoming train on the platform display in the daytime. (Migration `SeedNightTrain`; integration and Playwright tests.)
   - [x] Existing tests are updated for the two extra services, and all pass. (13 tests changed for the daily night train; 223 unit and 276 integration tests pass.)
 
+
+## Change of 20 Oct 2026 (owner)
+- The platform display shows the date (digits only, `20/10/2026`) beside the clock.
+- The lines under the time ("Expected arrival/departure" and "Scheduled", "On time", "About n min late") are removed: the status chip already says it.
+- An arrow icon and the word **Arrival** or **Departure** (three languages) say what the time is. Arrow into a door = arrival, arrow out of a door = departure. The icon is decorative; the word carries the meaning. The Next trains list and the station board carry the same icon before each time.
+- The platform display already showed arrivals: a train that stops at the station shows its arrival time (a first stop has no arrival, so its departure), and once it is at the platform it shows "At platform" and its departure.
+- **Arrived screen (20 Oct):** when a train has arrived and not left, the platform display shows an arrow-in icon with "Arrived" (three languages), the arrival time (the reported time, otherwise the expected one) at the largest size, an "At platform" chip, and "Departs hh:mm" with an arrow-out icon. It stays while the train is at the platform. When the train departs the board stops listing it (after the next poll, up to 30 s) and the next train takes its place.

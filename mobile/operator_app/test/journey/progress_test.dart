@@ -75,7 +75,10 @@ void main() {
       final p = progress(departed: {3});
       expect(p.marks[stopId(1)], StopMark.done);
       expect(p.marks[stopId(2)], StopMark.done);
-      expect(describe(p), 'depart Maradana');
+      expect(
+        describe(p),
+        'arrive Maradana',
+      ); // every stop but the first has an Arrived button (spec 19)
     });
 
     test('works from the queue alone when the status read is not available (offline)', () {
@@ -108,14 +111,23 @@ void main() {
       expect(describe(p), 'depart Gampaha');
     });
 
-    test(
-      'no arrival is offered at a stop that is not designated (AC-E03-03 2)',
-      () {
-        // Gampaha is done, so Ragama (not designated) is next: only its departure.
-        expect(describe(progress(departed: {1, 2})), 'depart Ragama');
-        expect(describe(progress(departed: {1, 2, 3})), 'depart Maradana');
-      },
-    );
+    test('an in-between stop offers the arrival, and the departure beside it (spec 19)', () {
+      final ragama = progress(departed: {1, 2});
+      expect(describe(ragama), 'arrive Ragama');
+      expect((ragama.next as ArriveAt).canDepartInstead, isTrue);
+      expect(describe(progress(departed: {1, 2, 3})), 'arrive Maradana');
+    });
+
+    test('the final stop offers only the arrival', () {
+      final last = progress(departed: {1, 2, 3, 4});
+      expect(describe(last), 'arrive Colombo Fort');
+      expect((last.next as ArriveAt).canDepartInstead, isFalse);
+    });
+
+    test('once the departure from a stop is reported, its arrival is no longer offered', () {
+      // Gampaha: the operator left without reporting the arrival. The next action is at Ragama.
+      expect(describe(progress(departed: {1, 2})), isNot('arrive Gampaha'));
+    });
 
     test('the first stop never offers an arrival', () {
       expect(describe(progress()), 'depart Veyangoda');
@@ -134,7 +146,7 @@ void main() {
       () {
         // A queued departure from Gampaha does not count as an arrival there, but it does mean the train has left.
         final p = progress(departed: {1}, queued: [reportFor(2)]);
-        expect(describe(p), 'depart Ragama');
+        expect(describe(p), 'arrive Ragama');
         expect(p.marks[stopId(2)], StopMark.done);
       },
     );

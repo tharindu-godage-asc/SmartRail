@@ -68,6 +68,7 @@ enum K {
   arrivalAt,
   delayedFor,
   reasonVerified,
+  reasonPending,
   reasonSignalIssue,
   reasonTechnicalFault,
   reasonObstruction,
@@ -265,6 +266,11 @@ const Map<K, (String, String, String)> _table = {
     'Reason: {reason}. Verified by Operations at {time}.',
     'හේතුව: {reason}. මෙහෙයුම් අංශය විසින් {time} ට තහවුරු කළා.',
     'காரணம்: {reason}. செயல்பாட்டுப் பிரிவு {time} மணிக்கு உறுதிப்படுத்தியது.',
+  ),
+  K.reasonPending: (
+    'Reason: pending verification by Operations.',
+    'හේතුව: මෙහෙයුම් අංශයේ තහවුරු කිරීම බලාපොරොත්තුවෙන්.',
+    'காரணம்: செயல்பாட்டுப் பிரிவின் உறுதிப்படுத்தலுக்காகக் காத்திருக்கிறது.',
   ),
   K.reasonSignalIssue: ('Signal issue', 'සංඥා දෝෂයක්', 'சிக்னல் சிக்கல்'),
   K.reasonTechnicalFault: (

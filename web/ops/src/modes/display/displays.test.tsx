@@ -34,10 +34,14 @@ describe('Platform display', () => {
     expect(screen.getByText('කොළඹ කොටුව')).toBeInTheDocument()
     expect(screen.getByText('கொழும்பு கோட்டை')).toBeInTheDocument()
     expect(screen.getByText('Delayed 8 min')).toBeInTheDocument() // status as words (and an icon, not colour alone)
-    expect(screen.getByText('Expected arrival')).toBeInTheDocument()
-    expect(screen.getByText('අපේක්ෂිත පැමිණීම')).toBeInTheDocument()
-    expect(screen.getByText('எதிர்பார்க்கப்படும் வருகை')).toBeInTheDocument()
-    expect(screen.getByText('About 8 min late')).toBeInTheDocument()
+    // An arrow into the station and the word "Arrival" in three languages say what the time is; the old "Expected ..." lines are gone.
+    expect(document.querySelector('[data-direction="arrival"]')).not.toBeNull()
+    expect(screen.getByText('Arrival')).toBeInTheDocument()
+    expect(screen.getByText('පැමිණීම')).toBeInTheDocument()
+    expect(screen.getByText('வருகை')).toBeInTheDocument()
+    expect(screen.queryByText('Expected arrival')).not.toBeInTheDocument()
+    expect(screen.queryByText('About 8 min late')).not.toBeInTheDocument()
+    expect(screen.getByText('15/10/2026')).toBeInTheDocument() // the date, digits only
     expect(screen.queryByText(/verified/i)).not.toBeInTheDocument()
   })
 
@@ -46,9 +50,6 @@ describe('Platform display', () => {
       json(board({ trains: [call({ delayMinutes: 240, arrival: { scheduled: '2026-10-15T03:00:00Z', estimated: '2026-10-15T07:00:00Z' } })] })))
 
     expect(await screen.findByText('Delayed 4 h')).toBeInTheDocument()
-    expect(screen.getByText('About 4 h late')).toBeInTheDocument()
-    expect(screen.getByText('පැය 4ක් පමණ ප්‍රමාදයි')).toBeInTheDocument()
-    expect(screen.getByText('சுமார் 4 மணி தாமதம்')).toBeInTheDocument()
     expect(screen.queryByText(/240/)).not.toBeInTheDocument()
   })
 
@@ -93,16 +94,34 @@ describe('Platform display', () => {
       json(board({ trains: [call({ arrival: null, departure: { scheduled: '2026-10-15T02:50:00Z', estimated: '2026-10-15T02:50:00Z' }, statusKey: 'OnTime', delayMinutes: 0 })] })))
 
     expect(await screen.findByText('08:20')).toHaveClass('text-level1-time')
-    expect(screen.getByText('Expected departure')).toBeInTheDocument()
-    expect(screen.getAllByText('On time')).toHaveLength(2) // the chip and the line in three languages
+    expect(document.querySelector('[data-direction="departure"]')).not.toBeNull() // an arrow out of the station
+    expect(screen.getByText('Departure')).toBeInTheDocument()
+    expect(screen.getAllByText('On time')).toHaveLength(1) // the chip only
   })
 
-  it('says "At platform" with the departure time once the train has arrived (FR-81)', async () => {
-    renderDisplay('/display/platform/GPH/1', () => json(board({ trains: [call({ state: 'AtPlatform' })] })))
+  it('shows the Arrived screen once the train has arrived: the arrival time, "At platform" and the departure time (FR-81)', async () => {
+    renderDisplay('/display/platform/GPH/1', () =>
+      json(board({ trains: [call({ state: 'AtPlatform', lastSeen: { state: 'Arrived', stationName: 'Gampaha', at: '2026-10-15T03:07:00Z' } })] })))
 
-    expect(await screen.findByText('At platform', { selector: 'span.text-level1-status' })).toBeInTheDocument()
+    expect(await screen.findByText('08:37')).toHaveClass('text-level1-time') // when it arrived (03:07 UTC)
+    expect(document.querySelector('[data-direction="arrival"]')).not.toBeNull()
+    expect(screen.getByText('Arrived')).toBeInTheDocument()
+    expect(screen.getByText('පැමිණියේය')).toBeInTheDocument()
+    expect(screen.getByText('வந்தடைந்தது')).toBeInTheDocument()
+    expect(screen.getAllByText('At platform').length).toBeGreaterThan(0)
     expect(screen.getByText(/Departs 08:39/)).toBeInTheDocument()
-    expect(document.querySelectorAll('.text-level1-time')).toHaveLength(0)
+  })
+
+  it('removes the Arrived screen when the train has left: the next train takes its place', async () => {
+    let answer = board({ trains: [call({ state: 'AtPlatform', lastSeen: { state: 'Arrived', stationName: 'Gampaha', at: '2026-10-15T03:07:00Z' } })] })
+    renderDisplay('/display/platform/GPH/1', () => json(answer))
+    expect(await screen.findByText('Arrived')).toBeInTheDocument()
+
+    answer = board({ trains: [call({ trainNumber: '8060', state: 'Due' })] })
+    await pass(31_000) // past the next poll
+
+    expect(await screen.findByText('Train 8060')).toBeInTheDocument()
+    expect(screen.queryByText('Arrived')).not.toBeInTheDocument()
   })
 
   it('says "Waiting for update" with no time at all when the delay is unknown, and where the train was last seen (D-39)', async () => {

@@ -4,6 +4,17 @@
 -- The application schema will later be created by EF Core migrations;
 -- treat this file as a review artefact, not a second source of truth.
 --
+-- UPDATED 19 October 2026 to match the EF Core migrations (InitialCreate ... AddAssignmentEnd, model snapshot).
+-- BUILT tables carry no marker. Tables marked "DESIGN ONLY, NOT BUILT" are not created by any migration.
+-- Differences from the first draft, all in the built tables:
+--   train_service: no longer one row per train number. kind, version, effective_from/to and superseded_service_id added (specs 13, 14).
+--   journey.status: 'Cancelled' added (spec 14).
+--   operator_assignment: ended_by, end_reason, end_note added (spec 17).
+--   journey_exception: type limited to what is raised today; station_id and resolved_by_name added; no related_journey_id,
+--     platform_id or owner_user_id yet.
+--   new tables service_cancellation and service_change_log (specs 13, 14).
+--   train_event: the append-only trigger (UPDATE, DELETE, TRUNCATE refused) and the role grants live in the InitialCreate
+--     migration, not in this file.
 -- 12 October 2026 (D-71): food ordering is designed but not built. The table
 -- order_reference below is kept as part of the design and is NOT created by the
 -- MVP's migrations. menu_item and its translations are built (read-only list).
@@ -79,15 +90,48 @@ CREATE TABLE line_station (                      -- stations on a line, with dis
 
 CREATE TABLE train_service (
     id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    train_number  varchar(10) NOT NULL UNIQUE,
+    train_number  varchar(10) NOT NULL,      -- no longer unique alone: extra dates and later versions share a number
     line_id       uuid        NOT NULL REFERENCES line(id),
     service_type  varchar(20) NOT NULL CHECK (service_type IN ('Slow', 'Express')),
     service_category varchar(20) NOT NULL DEFAULT 'Regional'
                   CHECK (service_category IN ('Regional', 'LongDistance')),  -- push threshold 5 / 10 min (A-07c)
     direction     varchar(10) NOT NULL CHECK (direction IN ('Outbound', 'Inbound')),  -- away from / toward the line's first station
     runs_on       varchar(50) NOT NULL,      -- service calendar, e.g. 'Weekdays'
-    unreserved_capacity int NOT NULL DEFAULT 0 CHECK (unreserved_capacity >= 0)  -- D-67: tickets sold without a seat (long-distance)
+    unreserved_capacity int NOT NULL DEFAULT 0 CHECK (unreserved_capacity >= 0),  -- D-67: tickets sold without a seat (long-distance)
+    kind          varchar(10) NOT NULL DEFAULT 'Weekly' CHECK (kind IN ('Weekly', 'Extra')),   -- spec 13
+    version       int  NOT NULL DEFAULT 1 CHECK (version >= 1),                                  -- spec 14: amend inserts version N+1
+    effective_from date NOT NULL DEFAULT DATE '2000-01-01',
+    effective_to  date,                                   -- null = still in force; an amend ends the old version the day before
+    superseded_service_id uuid REFERENCES train_service(id),   -- the version this one replaced
+    UNIQUE (train_number, version, effective_from)
 );
+CREATE INDEX ix_train_service_line_kind_effective ON train_service (line_id, kind, effective_from);
+CREATE INDEX ix_train_service_superseded ON train_service (superseded_service_id);
+
+CREATE TABLE service_cancellation (               -- spec 14: a train number cancelled on a line for a date range (nothing is deleted)
+    id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    service_id    uuid NOT NULL REFERENCES train_service(id),
+    line_id       uuid NOT NULL REFERENCES line(id),
+    train_number  varchar(10) NOT NULL,
+    from_date     date NOT NULL,
+    to_date       date,                               -- null = onward
+    reason        varchar(200) NOT NULL,              -- for controllers only, never shown to passengers
+    created_at    timestamptz NOT NULL,
+    created_by    varchar(64) NOT NULL,
+    CHECK (to_date IS NULL OR to_date >= from_date)
+);
+CREATE INDEX ix_service_cancellation_service ON service_cancellation (service_id);
+CREATE INDEX ix_service_cancellation_line_train_from ON service_cancellation (line_id, train_number, from_date);
+
+CREATE TABLE service_change_log (                 -- specs 13, 14: audit of create, amend and cancel
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    service_id  uuid NOT NULL REFERENCES train_service(id),
+    action      varchar(12) NOT NULL CHECK (action IN ('Created', 'Amended', 'Cancelled')),
+    actor       varchar(64) NOT NULL,
+    at          timestamptz NOT NULL,
+    details     jsonb                                  -- for Amended: the changes that feed the version summary
+);
+CREATE INDEX ix_service_change_log_service ON service_change_log (service_id);
 
 CREATE TABLE service_stop (
     id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -113,7 +157,7 @@ CREATE TABLE journey (
     service_id              uuid NOT NULL REFERENCES train_service(id),
     operating_date          date NOT NULL,
     status                  varchar(20) NOT NULL DEFAULT 'Unassigned'
-                            CHECK (status IN ('Unassigned', 'Scheduled', 'Running', 'Completed')),
+                            CHECK (status IN ('Unassigned', 'Scheduled', 'Running', 'Completed', 'Cancelled')),  -- Cancelled: spec 14
     version                 int  NOT NULL DEFAULT 0 CHECK (version >= 0),   -- ADR-09
     current_delay_minutes   int  NOT NULL DEFAULT 0,
     expected_next_event_by  timestamptz,                                    -- overdue detection
@@ -129,11 +173,16 @@ CREATE TABLE operator_assignment (               -- MP-19: time-bounded
     valid_from        timestamptz NOT NULL,
     valid_to          timestamptz,               -- null = until journey end
     assigned_by       varchar(64) NOT NULL,
-    CHECK (valid_to IS NULL OR valid_to > valid_from)
+    ended_by          varchar(64),               -- spec 17: who ended it early
+    end_reason        varchar(15) CHECK (end_reason IN ('LostDevice', 'CrewChange', 'Other')),
+    end_note          varchar(200),
+    CHECK (valid_to IS NULL OR valid_to > valid_from),
+    CHECK (end_reason IS NULL OR ended_by IS NOT NULL)
 );
 CREATE INDEX ix_assignment_journey ON operator_assignment (journey_id);
 CREATE INDEX ix_assignment_operator ON operator_assignment (operator_user_id);
 
+-- DESIGN ONLY, NOT BUILT (FR-125, D-74)
 CREATE TABLE controller_assignment (             -- FR-125, D-74 (FR-126, D-75 senior-controller reassign is future work, D-76): the controller in charge (assigned_by is the actor, a senior controller when reassigned) of a journey, time-bounded like operator_assignment
     id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     journey_id          uuid NOT NULL REFERENCES journey(id) ON DELETE CASCADE,
@@ -180,6 +229,7 @@ CREATE TABLE train_event (                       -- append-only audit trail (D-3
 );
 CREATE INDEX ix_event_journey_occurred ON train_event (journey_id, occurred_at);
 
+-- DESIGN ONLY, NOT BUILT (spec 16 F3)
 CREATE TABLE journey_override (                  -- ADR-05: active until cleared
     id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     journey_id     uuid NOT NULL REFERENCES journey(id),
@@ -199,21 +249,26 @@ CREATE TABLE journey_exception (
     journey_id        uuid NOT NULL REFERENCES journey(id),
     related_event_id  uuid REFERENCES train_event(id),
     station_id        uuid REFERENCES station(id),   -- where the train was when raised (spec 07); null if nothing reported yet
-    related_journey_id uuid REFERENCES journey(id),  -- the other journey in a platform conflict (FR-57)
-    platform_id       uuid REFERENCES platform(id),  -- the platform in conflict (FR-57)
-    type              varchar(40) NOT NULL,      -- Overdue, ReasonAwaitingVerification, BackwardConflict, PlatformConflict, ...
+    station_id        uuid REFERENCES station(id),   -- where the train was last reported (null before any report)
+    -- related_journey_id and platform_id (platform conflict, FR-57): DESIGN ONLY, NOT BUILT (spec 16 F4)
+    type              varchar(40) NOT NULL
+                      CHECK (type IN ('ReasonAwaitingVerification', 'EarlyDeparture')),   -- built; Overdue, PlatformConflict ... will widen this check
     severity          varchar(10) NOT NULL CHECK (severity IN ('Critical', 'High')),   -- D-44
     created_at        timestamptz NOT NULL DEFAULT now(),
-    owner_user_id     varchar(64),               -- MP-13 (Should)
+    -- owner_user_id (MP-13, Should): NOT BUILT
     resolved_at       timestamptz,
-    resolved_by       varchar(64),
-    resolution        varchar(200)
+    resolved_by       varchar(64),               -- Keycloak subject; the audit key
+    resolved_by_name  varchar(64),               -- user name at resolve time, display only
+    resolution        varchar(200)               -- Acknowledged, NoActionNeeded, Escalated, ReasonVerified, ReasonChanged, Rejected
 );
+-- One report raises at most one exception of a type
+CREATE UNIQUE INDEX ux_exception_event_type ON journey_exception (related_event_id, type);
 -- Open exceptions queue: severity, then age
 CREATE INDEX ix_exception_open ON journey_exception (severity, created_at) WHERE resolved_at IS NULL;
 -- One report, one exception of a type (spec 07): a replayed report cannot raise it twice
 CREATE UNIQUE INDEX ux_exception_event_type ON journey_exception (related_event_id, type);
 
+-- DESIGN ONLY, NOT BUILT (spec 16 F5, F6)
 CREATE TABLE disruption_message (
     id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     journey_id    uuid REFERENCES journey(id),
@@ -231,6 +286,7 @@ CREATE TABLE disruption_message (
 -- ---------------------------------------------------------------
 
 -- D-72 (12 Oct 2026): the outbox is designed, not built in the MVP (no train events go to the caterer).
+-- DESIGN ONLY, NOT BUILT
 CREATE TABLE outbox_message (                    -- transactional outbox
     message_id       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     journey_id       uuid REFERENCES journey(id),
@@ -245,6 +301,7 @@ CREATE TABLE outbox_message (                    -- transactional outbox
 );
 CREATE INDEX ix_outbox_pending ON outbox_message (next_attempt_at) WHERE status = 'Pending';
 
+-- DESIGN ONLY, NOT BUILT (SmartRail pulls the menu from SmallBites; there is no feed, so no inbox)
 CREATE TABLE inbox_message (                     -- caterer messages already processed (MVP: menu messages; order status messages are deferred, D-71)
     message_id   uuid PRIMARY KEY,
     received_at  timestamptz NOT NULL DEFAULT now()
@@ -266,6 +323,7 @@ CREATE TABLE order_reference (
 CREATE INDEX ix_order_device ON order_reference (device_installation_id);
 CREATE INDEX ix_order_journey ON order_reference (journey_id);
 
+-- DESIGN ONLY, NOT BUILT (push, FR-75/76)
 CREATE TABLE train_subscription (                -- D-31: deleted after the journey
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     journey_id  uuid NOT NULL REFERENCES journey(id) ON DELETE CASCADE,
@@ -274,6 +332,7 @@ CREATE TABLE train_subscription (                -- D-31: deleted after the jour
     UNIQUE (journey_id, push_token)
 );
 
+-- DESIGN ONLY, NOT BUILT (the menu is read live from SmallBites and kept in memory, spec 11 section 14)
 CREATE TABLE menu_item (                         -- cached caterer menu (source of truth: caterer); shown as a read-only list (FR-90), updated_at gives 'Menu from [time]'
     item_id     varchar(64) PRIMARY KEY,
     station_id  uuid NOT NULL REFERENCES station(id),
@@ -283,6 +342,7 @@ CREATE TABLE menu_item (                         -- cached caterer menu (source 
     updated_at  timestamptz NOT NULL DEFAULT now()
 );
 
+-- DESIGN ONLY, NOT BUILT
 CREATE TABLE menu_item_translation (              -- names supplied by the caterer per language
     item_id        varchar(64) NOT NULL REFERENCES menu_item(item_id) ON DELETE CASCADE,
     language_code  varchar(5)  NOT NULL REFERENCES language(code),
@@ -299,6 +359,7 @@ CREATE TABLE menu_item_translation (              -- names supplied by the cater
 -- identity provider (NFR-49).
 -- ---------------------------------------------------------------
 
+-- DESIGN ONLY, NOT BUILT: everything from here to the end (ticketing, Should, D-60) has no migration.
 CREATE EXTENSION IF NOT EXISTS btree_gist;       -- for the seat exclusion constraint below
 
 CREATE TABLE fare_rate (                         -- A-26: seeded rate card

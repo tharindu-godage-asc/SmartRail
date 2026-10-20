@@ -36,8 +36,8 @@ OperatorJourney demoJourney({int version = 0}) => OperatorJourney(
         stationCode: 'S${i + 1}',
         stationName: stationNames[i],
         isFinalStop: i == stationNames.length - 1,
-        // Gampaha is designated in the seed; the final stop is an arrival station by rule (spec 06, Q2).
-        isArrivalStation: i == 1 || i == stationNames.length - 1,
+        // Every stop but the first has an arrival and so an Arrived button (spec 19).
+        isArrivalStation: i > 0,
       ),
   ],
 );
