@@ -79,7 +79,7 @@ Each criterion carries a **Trace** to the decision or requirement it verifies (D
 
 ### AC-E03-03 Report an arrival
 1. **Given** Gampaha is a designated arrival station, **when** Nimal taps "Arrived Gampaha" at 08:40, **then** the arrival is recorded with occurrence time 08:40 and passengers see "Arrived at Gampaha 08:40". *Trace: FR-22*
-2. **Given** a station is not designated, **when** Nimal views his actions, **then** no arrival action is offered and departure reporting remains. *Trace: D-08*
+2. **Given** a station is not designated, **when** Nimal views his actions, **then** no arrival action is offered and departure reporting remains. **CHANGED 20 Oct 2026 (owner, spec 19): arrivals can be reported at every stop that has a scheduled arrival; reporting one is optional. Now: an arrival action is offered at every stop but the first, beside Departed.** *Trace: D-08*
 3. **Given** he is offline, **when** he records the arrival, **then** it is stored with its occurrence time and syncs later. *Trace: FR-24*
 4. **Given** the arrival at the final station is accepted, **when** it is processed, **then** the journey is marked Completed without Nimal tapping anything else. *Trace: P-05*
 

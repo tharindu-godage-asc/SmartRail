@@ -328,6 +328,21 @@ class _ActionCard extends StatelessWidget {
             onPressed: saving ? null : () => onDepart(stop),
           ),
         ],
+        // An in-between stop: Arrived and Departed together, either one (spec 19). The final stop has only Arrived.
+        ArriveAt(:final stop, canDepartInstead: true) => [
+          Text(
+            Strings.nextArrivalOrDeparture(stop.stationName),
+            style: secondary,
+          ),
+          PrimaryButton(
+            label: Strings.arrivedButton(stop.stationName),
+            onPressed: saving ? null : () => onArrive(stop),
+          ),
+          SecondaryButton(
+            label: Strings.departedButton(stop.stationName),
+            onPressed: saving ? null : () => onDepart(stop),
+          ),
+        ],
         ArriveAt(:final stop) => [
           Text(Strings.nextArrival(stop.stationName), style: secondary),
           PrimaryButton(

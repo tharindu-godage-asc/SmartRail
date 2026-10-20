@@ -49,7 +49,7 @@ void main() {
 
         // Gampaha is a designated stop: the arrival is reported first (Nimal-Journey).
         expect(
-          find.text('Next: Gampaha (arrival report required)'),
+          find.text('Next: Gampaha (arrival or departure)'),
           findsOneWidget,
         );
         expect(
@@ -213,7 +213,7 @@ void main() {
     );
 
     testWidgets(
-      'no arrival is offered at a stop that is not designated (AC-E03-03 2)',
+      'an in-between stop offers Arrived and Departed together (spec 19)',
       (tester) async {
         final api = FakeJourneyApi(
           journey: demoJourney(),
@@ -222,10 +222,16 @@ void main() {
         final app = TestApp(api: api);
         await app.pump(tester);
 
-        expect(find.text('Next: Ragama (departure)'), findsOneWidget);
-        expect(find.textContaining('Arrived'), findsNothing);
         expect(
-          find.widgetWithText(FilledButton, 'Departed Ragama'),
+          find.text('Next: Ragama (arrival or departure)'),
+          findsOneWidget,
+        );
+        expect(
+          find.widgetWithText(FilledButton, 'Arrived Ragama'),
+          findsOneWidget,
+        );
+        expect(
+          find.widgetWithText(OutlinedButton, 'Departed Ragama'),
           findsOneWidget,
         );
         await app.close(tester);
