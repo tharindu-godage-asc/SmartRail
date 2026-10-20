@@ -110,7 +110,7 @@ describe('Journeys: the Unassigned list (spec 17 A2)', () => {
 
     const row = within((await screen.findAllByRole('row'))[1]!)
     expect(row.getByText('Nimal Perera')).toBeInTheDocument()
-    expect(row.getByRole('link', { name: 'Crew and control' })).toHaveAttribute('href', '/journeys/j1?date=2026-10-23')
+    expect(row.getByRole('link', { name: 'Crew and control' })).toHaveAttribute('href', '/journeys/j1/crew?date=2026-10-23')
   })
 
   it('says it could not load and offers Try again', async () => {

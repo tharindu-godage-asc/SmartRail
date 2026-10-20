@@ -18,6 +18,7 @@ using SmartRail.Application.Features.Events.ReportEvent;
 using SmartRail.Application.Features.Exceptions;
 using SmartRail.Application.Features.Verification;
 using SmartRail.Api.Features.Verification;
+using SmartRail.Api.Features.ControllerJourneys;
 using SmartRail.Api.Features.Status;
 using SmartRail.Infrastructure;
 
@@ -40,6 +41,7 @@ if (databaseConfigured)
     builder.Services.AddAssignmentFeatures(builder.Configuration);
     builder.Services.AddExceptionFeatures();
     builder.Services.AddVerificationFeatures();
+    builder.Services.AddControllerJourneyFeatures();
 }
 
 builder.Services.AddHealthChecks();
@@ -74,6 +76,7 @@ if (databaseConfigured)
     app.MapAssignmentFeatures();
     app.MapExceptionFeatures();
     app.MapVerificationFeatures();
+    app.MapControllerJourneyFeatures();
 }
 
 if (app.Configuration.GetValue<bool>("Diagnostics:WhoAmI"))
