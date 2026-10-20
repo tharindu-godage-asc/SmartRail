@@ -33,6 +33,20 @@ The first run builds the images and takes a few minutes. The demo data (a journe
 | Keycloak | http://localhost:8180 | `admin` / `admin-dev-only` |
 | Grafana (SmartRail Overview) | http://localhost:3000 | none (anonymous) |
 
+## Station codes
+
+The Main Line has five stations. Codes are not case-sensitive in the API. Each link opens that station's departure board or a platform display (platform 1 is the one the demo trains use) once the stack is running.
+
+| Code | Station | km from Colombo Fort | Station display | Platform 1 display | Train search to here |
+|---|---|---|---|---|---|
+| `CF` | Colombo Fort | 0.0 | [Board](http://localhost:5174/display/board/CF) | [Platform 1](http://localhost:5174/display/platform/CF/1) | [Trains to CF](http://localhost:8080/api/v1/trains?from=VYG&to=CF) |
+| `MDA` | Maradana | 1.9 | [Board](http://localhost:5174/display/board/MDA) | [Platform 1](http://localhost:5174/display/platform/MDA/1) | [Trains to MDA](http://localhost:8080/api/v1/trains?from=VYG&to=MDA) |
+| `RGM` | Ragama | 15.5 | [Board](http://localhost:5174/display/board/RGM) | [Platform 1](http://localhost:5174/display/platform/RGM/1) | [Trains to RGM](http://localhost:8080/api/v1/trains?from=VYG&to=RGM) |
+| `GPH` | Gampaha | 27.5 | [Board](http://localhost:5174/display/board/GPH) | [Platform 1](http://localhost:5174/display/platform/GPH/1) | [Trains to GPH](http://localhost:8080/api/v1/trains?from=VYG&to=GPH) |
+| `VYG` | Veyangoda | 37.5 | [Board](http://localhost:5174/display/board/VYG) | [Platform 1](http://localhost:5174/display/platform/VYG/1) | [Trains from VYG to CF](http://localhost:8080/api/v1/trains?from=VYG&to=CF) |
+
+Useful API links (public, no sign-in): [all stations](http://localhost:8080/api/v1/stations), [line status](http://localhost:8080/api/v1/lines/MAIN/status), [board data for Veyangoda](http://localhost:8080/api/v1/stations/VYG/board), [API health](http://localhost:8080/health/ready). The caterer's menu for Colombo Fort (the only station with catering) is at [SmallBites](http://localhost:8090/api/menus/CF).
+
 Other demo users: `nimal` (operator, assigned to 8058), `operator2` (operator, not assigned). All passwords are development-only.
 
 ## Step by step (without the script)

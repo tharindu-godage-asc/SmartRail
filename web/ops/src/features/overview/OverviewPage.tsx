@@ -58,7 +58,7 @@ export function OverviewPage() {
         ) : journeys.length === 0 ? (
           <p className="m-0 text-[15px]">{t.overview.noTrains}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="max-h-[min(60vh,520px)] overflow-auto">
             <table className="w-full border-collapse">
               <thead>
                 <tr>
