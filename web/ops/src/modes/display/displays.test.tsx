@@ -34,10 +34,14 @@ describe('Platform display', () => {
     expect(screen.getByText('කොළඹ කොටුව')).toBeInTheDocument()
     expect(screen.getByText('கொழும்பு கோட்டை')).toBeInTheDocument()
     expect(screen.getByText('Delayed 8 min')).toBeInTheDocument() // status as words (and an icon, not colour alone)
-    expect(screen.getByText('Expected arrival')).toBeInTheDocument()
-    expect(screen.getByText('අපේක්ෂිත පැමිණීම')).toBeInTheDocument()
-    expect(screen.getByText('எதிர்பார்க்கப்படும் வருகை')).toBeInTheDocument()
-    expect(screen.getByText('About 8 min late')).toBeInTheDocument()
+    // An arrow into the station and the word "Arrival" in three languages say what the time is; the old "Expected ..." lines are gone.
+    expect(document.querySelector('[data-direction="arrival"]')).not.toBeNull()
+    expect(screen.getByText('Arrival')).toBeInTheDocument()
+    expect(screen.getByText('පැමිණීම')).toBeInTheDocument()
+    expect(screen.getByText('வருகை')).toBeInTheDocument()
+    expect(screen.queryByText('Expected arrival')).not.toBeInTheDocument()
+    expect(screen.queryByText('About 8 min late')).not.toBeInTheDocument()
+    expect(screen.getByText('15/10/2026')).toBeInTheDocument() // the date, digits only
     expect(screen.queryByText(/verified/i)).not.toBeInTheDocument()
   })
 
@@ -46,9 +50,6 @@ describe('Platform display', () => {
       json(board({ trains: [call({ delayMinutes: 240, arrival: { scheduled: '2026-10-15T03:00:00Z', estimated: '2026-10-15T07:00:00Z' } })] })))
 
     expect(await screen.findByText('Delayed 4 h')).toBeInTheDocument()
-    expect(screen.getByText('About 4 h late')).toBeInTheDocument()
-    expect(screen.getByText('පැය 4ක් පමණ ප්‍රමාදයි')).toBeInTheDocument()
-    expect(screen.getByText('சுமார் 4 மணி தாமதம்')).toBeInTheDocument()
     expect(screen.queryByText(/240/)).not.toBeInTheDocument()
   })
 
@@ -93,8 +94,9 @@ describe('Platform display', () => {
       json(board({ trains: [call({ arrival: null, departure: { scheduled: '2026-10-15T02:50:00Z', estimated: '2026-10-15T02:50:00Z' }, statusKey: 'OnTime', delayMinutes: 0 })] })))
 
     expect(await screen.findByText('08:20')).toHaveClass('text-level1-time')
-    expect(screen.getByText('Expected departure')).toBeInTheDocument()
-    expect(screen.getAllByText('On time')).toHaveLength(2) // the chip and the line in three languages
+    expect(document.querySelector('[data-direction="departure"]')).not.toBeNull() // an arrow out of the station
+    expect(screen.getByText('Departure')).toBeInTheDocument()
+    expect(screen.getAllByText('On time')).toHaveLength(1) // the chip only
   })
 
   it('says "At platform" with the departure time once the train has arrived (FR-81)', async () => {

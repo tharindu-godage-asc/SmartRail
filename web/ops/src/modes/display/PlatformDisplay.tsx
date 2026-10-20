@@ -1,5 +1,6 @@
 import { useParams } from 'react-router'
-import { formatClock, formatClockShort, formatDayAndTime } from '../../core/time'
+import { Icon } from '../../core/Icon'
+import { formatClock, formatClockShort, formatDate, formatDayAndTime } from '../../core/time'
 import { d, type Tri } from './displayStrings'
 import { DisplayFooter, Message, OfflineBanner, Stage, StatusChip, TriText } from './parts'
 import { expectedTime, isTomorrow, platformScreen, statusOf, statusText, upcomingOf, type PlatformScreen } from './screens'
@@ -31,7 +32,10 @@ export function PlatformDisplay() {
           </div>
           <StationNames board={board} />
         </div>
-        <div className="text-level3 font-semibold tabular-nums">{formatClock(state.serverNow ?? board.serverTime)}</div>
+        <div className="flex items-baseline gap-[40px] text-level3 font-semibold tabular-nums">
+          <span>{formatDate(state.serverNow ?? board.serverTime)}</span>
+          <span>{formatClock(state.serverNow ?? board.serverTime)}</span>
+        </div>
       </header>
       <main className="flex grow flex-col gap-[16px] px-[72px] pb-[28px] pt-[16px]">
         {/* Keyed by the lead train: when it leaves, the new first train and the list rise into place. */}
@@ -84,6 +88,20 @@ function Content({ screen, board, offline }: { screen: PlatformScreen; board: Bo
   }
 }
 
+/**
+ * Says whether the time is an arrival or a departure: an arrow into or out of the station, and the word in three languages. The icon is
+ * decorative, the word carries the meaning (status is never by icon alone).
+ */
+export function DirectionMark({ kind, label, size = 52 }: { kind: 'arrival' | 'departure'; label?: Tri; size?: number }) {
+  const words = label ?? (kind === 'arrival' ? d.arrival : d.departure)
+  return (
+    <div className="flex items-center gap-[20px] text-muted" data-direction={kind}>
+      <Icon name={kind} size={size} />
+      <TriText text={words} className="text-level3 font-semibold" />
+    </div>
+  )
+}
+
 function Destination({ call }: { call: BoardCall }) {
   return (
     <div className="flex flex-col gap-[6px]">
@@ -134,8 +152,9 @@ function TrainContent({ screen, offline }: { screen: Extract<PlatformScreen, { k
         </div>
         <TriText text={d.atPlatform} className="text-level3 text-muted" order={['si', 'ta', 'en']} />
         {departs ? (
-          <div className="text-level3 tabular-nums">
-            {d.departs.en} {formatClockShort(departs)}
+          <div className="flex items-center gap-[20px] text-level3 tabular-nums">
+            <Icon name="departure" size={44} />
+            <span>{d.departs.en} {formatClockShort(departs)}</span>
           </div>
         ) : null}
       </>
@@ -147,28 +166,19 @@ function TrainContent({ screen, offline }: { screen: Extract<PlatformScreen, { k
     : offline
       ? time.kind === 'arrival' ? d.lastKnownArrival : d.lastKnownDeparture
       : null
-  const expected: Tri = time?.kind === 'departure' ? d.expectedDeparture : d.expectedArrival
 
   return (
     <>
       <Destination call={call} />
       <div className="flex items-center gap-[56px]">
-        <div>
-          {label ? <div className="mb-[6px] text-level3 text-muted">{label.en}</div> : null}
+        <div className="flex flex-col gap-[10px]">
+          {time ? <DirectionMark kind={time.kind} label={label ?? undefined} /> : null}
           <div className={`text-level1-time font-bold leading-none tabular-nums ${offline ? 'text-muted' : ''}`}>
             {time ? formatClockShort(time.at) : '—'}
           </div>
         </div>
         <StatusChip group={status.group} text={statusText(status.kind, call.delayMinutes)} />
       </div>
-      <TriText text={expected} className="text-level3 text-muted" />
-      {status.kind === 'delayed' ? (
-        <TriText text={d.aboutLate(call.delayMinutes ?? 0)} className="text-level3 text-muted" />
-      ) : status.kind === 'onTime' ? (
-        <TriText text={d.onTime} className="text-level3 text-muted" />
-      ) : (
-        <TriText text={d.scheduled} className="text-level3 text-muted" />
-      )}
     </>
   )
 }
