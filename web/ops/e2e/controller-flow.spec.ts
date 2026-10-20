@@ -6,6 +6,7 @@ import { expect, test, type Page } from '@playwright/test'
  * Dev passwords only (docker/keycloak/realm-smartrail.json). The demo journey 8058 is used; each run reports a delay of "unknown"
  * length, which is always accepted, so the test can be run again and again without resetting the database.
  */
+import { assignNimal, createTrainToday, findJourneyId, nimalJourney, releaseNimal, report } from './flow-helpers.js'
 const API = 'http://localhost:8080'
 const KEYCLOAK = 'http://localhost:8180/realms/smartrail/protocol/openid-connect/token'
 const password = (user: string) => `${user}-dev-only`
@@ -38,28 +39,30 @@ async function signInOnKeycloak(page: Page, user: string) {
   await page.locator('#kc-login').click()
 }
 
-/** Nimal reports "delay, technical fault, length unknown" on his journey now. Returns the event ID. */
-async function nimalReportsATechnicalFault(): Promise<string> {
+/**
+ * Nimal reports "delay, technical fault, length unknown" on a train made for this run (the demo journey 8058 is finished once its
+ * day is over, so it cannot be used again). Returns the event ID. Nimal is released from the train afterwards.
+ */
+async function nimalReportsATechnicalFault(): Promise<{ eventId: string; trainNumber: string }> {
+  const controller = await tokenFor('jayasinghe')
   const nimal = await tokenFor('nimal')
-  const journey = await api<{ journeyId: string }>(nimal, '/api/v1/operator/journey')
-  expect(journey.status).toBe(200)
-
-  const report = await api<{ eventId: string }>(nimal, `/api/v1/journeys/${journey.body.journeyId}/events`, {
-    method: 'POST',
-    body: {
-      clientEventId: crypto.randomUUID(),
-      eventType: 'DelayReported',
-      occurredAt: new Date().toISOString(),
-      reason: 'TechnicalFault',
-      delayUnknown: true,
-    },
-  })
-  expect(report.status).toBe(201)
-  return report.body.eventId
+  const trainNumber = await createTrainToday(controller)
+  const journeyId = await findJourneyId(controller, trainNumber)
+  await assignNimal(controller, journeyId)
+  const journey = await nimalJourney(nimal)
+  expect(journey.journeyId).toBe(journeyId)
+  try {
+    await report(nimal, journeyId, { eventType: 'Departed', serviceStopId: journey.stops[0]!.serviceStopId })
+    const delay = await report(nimal, journeyId, { eventType: 'DelayReported', reason: 'TechnicalFault', delayUnknown: true })
+    expect(delay.status).toBe(201)
+    return { eventId: delay.body.eventId, trainNumber }
+  } finally {
+    await releaseNimal(controller, journeyId)
+  }
 }
 
 test('a Technical fault report reaches the controller, who resolves it', async ({ page }) => {
-  const eventId = await nimalReportsATechnicalFault()
+  const { eventId, trainNumber } = await nimalReportsATechnicalFault()
   const jayasinghe = await tokenFor('jayasinghe')
   const queue = await api<{ items: { id: string; relatedEventId: string }[] }>(jayasinghe, '/api/v1/exceptions?status=open')
   const created = queue.body.items.find((item) => item.relatedEventId === eventId)
@@ -77,7 +80,7 @@ test('a Technical fault report reaches the controller, who resolves it', async (
   await expect(row).toBeVisible()
   await expect(row.getByText('Critical')).toBeVisible()
   await expect(row.getByText('Delay reason waiting for verification')).toBeVisible()
-  await expect(row.getByText(/^8058/)).toBeVisible()
+  await expect(row.getByText(new RegExp(`^${trainNumber}`))).toBeVisible()
 
   // Resolve with the three-step flow: select, choose, confirm. One deliberate confirm.
   await row.getByRole('button', { name: /Delay reason waiting for verification/ }).click()
@@ -96,7 +99,7 @@ test('a Technical fault report reaches the controller, who resolves it', async (
   await expect(card).toBeVisible()
   await expect(card.getByText('Closed · Acknowledged')).toBeVisible()
   await expect(card.getByText('Critical')).toBeVisible()
-  await expect(card.getByText(/8058/)).toBeVisible()
+  await expect(card.getByText(new RegExp(trainNumber))).toBeVisible()
   await expect(card.getByText('jayasinghe', { exact: true })).toBeVisible() // the name stored at resolve time, not a UUID
   await expect(card.getByText(/after it was raised/)).toBeVisible()
 

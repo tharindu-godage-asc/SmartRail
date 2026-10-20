@@ -67,6 +67,20 @@ Reset the database: `cd smartrail-platform && docker compose down -v`, then star
 | Web | `web/ops`: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`; `npm run e2e` by hand against Compose |
 | Mobile | `mobile/<app>`: `dart format lib test tool`, `flutter analyze --fatal-infos`, `flutter test` |
 
+### The five critical end-to-end flows
+
+Run by hand against the Compose stack (start it first with `./start.sh`), from `web/ops`: `npm run e2e:critical`. Each flow makes its own train for today (numbers 9xxx), so it can be repeated without resetting the database. Run it between 01:00 and 23:00 Sri Lanka time (a train made for today cannot pass midnight). Test trains stay in the database, because events are never deleted.
+
+| # | Flow | What it proves | File |
+|---|---|---|---|
+| 1 | Operator reports reach passengers | A departure, a delay and an arrival at an in-between stop appear in the public status and a station board; the reason is not public (NFR-04, D-10) | `e2e/critical-flows.spec.ts` |
+| 2 | Verify a delay reason | The controller verifies in the web app and the passenger status then carries the reason and the time (FR-52) | `e2e/critical-flows.spec.ts` |
+| 3 | Lost device | The controller ends an assignment in the web app and the operator is refused, even for an earlier claimed time (FR-12, FR-56) | `e2e/critical-flows.spec.ts` |
+| 4 | Timetable | Schedule a service, find it, cancel one date, find it under Cancelled (FR-11) | `e2e/timetable.spec.ts` |
+| 5 | Catering | An item sold out at SmallBites shows as sold out in SmartRail's menu; the caterer's token cannot read operations (FR-90, D-72) | `e2e/critical-flows.spec.ts` |
+
+`e2e/controller-flow.spec.ts` (resolve an exception, no dashboard access for an operator, sign out) and `e2e/display.spec.ts` are extra checks. Two display tests depend on the demo trains, which the local database cleanup removed, so they can fail on a changed database.
+
 ### Test report (every test, pass or fail, and coverage)
 
 `./scripts/test-report.sh` runs all suites with verbose output (each test name with PASS or FAIL in the terminal), measures line coverage and writes **`test-report/index.html`**: a summary card per suite, a filter box, a "failures only" switch, every test grouped by class or file with its time, and coverage by area (lowest first).

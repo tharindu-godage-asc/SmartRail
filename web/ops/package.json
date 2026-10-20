@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "e2e:critical": "playwright test e2e/critical-flows.spec.ts e2e/timetable.spec.ts",
     "preview": "vite preview"
   },
   "dependencies": {
