@@ -6,6 +6,7 @@ import { OpenExceptionsTab } from './features/exceptions/OpenExceptionsTab'
 import { OverviewPage } from './features/overview/OverviewPage'
 import { AssignPage } from './features/assignments/AssignPage'
 import { JourneyCrewPage } from './features/assignments/JourneyCrewPage'
+import { JourneyDetailPage } from './features/journey/JourneyDetailPage'
 import { JourneysPage } from './features/assignments/JourneysPage'
 import { CancelledTab } from './features/timetable/CancelledTab'
 import { ExtraTab } from './features/timetable/ExtraTab'
@@ -43,7 +44,8 @@ function OpsRoutes() {
           </Route>
           <Route path="journeys" element={<JourneysPage />} />
           <Route path="journeys/all" element={<JourneysPage all />} />
-          <Route path="journeys/:journeyId" element={<JourneyCrewPage />} />
+          <Route path="journeys/:journeyId" element={<JourneyDetailPage />} />
+          <Route path="journeys/:journeyId/crew" element={<JourneyCrewPage />} />
           <Route path="journeys/:journeyId/assign" element={<AssignPage />} />
           <Route path="timetable" element={<TimetablePage />}>
             <Route index element={<WeeklyTab />} />
