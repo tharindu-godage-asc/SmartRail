@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Icon } from '../../core/Icon'
 import { formatClockShort } from '../../core/time'
 import { d } from './displayStrings'
 import { StatusChip, TriText } from './parts'
@@ -50,7 +51,15 @@ function Row({ call, offline }: { call: BoardCall; offline: boolean }) {
   const status = statusOf(call)
   return (
     <li className="grid grid-cols-[190px_1fr_auto] items-center gap-x-[28px] py-[4px]">
-      <span className={`text-level3 font-bold leading-none tabular-nums ${offline ? 'text-muted' : ''}`}>{time ? formatClockShort(time.at) : '—'}</span>
+      <span className={`flex items-center gap-[14px] text-level3 font-bold leading-none tabular-nums ${offline ? 'text-muted' : ''}`}>
+        {time ? (
+          <>
+            <Icon name={time.kind} size={34} />
+            <span className="sr-only">{time.kind === 'arrival' ? d.arrival.en : d.departure.en}</span>
+          </>
+        ) : null}
+        {time ? formatClockShort(time.at) : '—'}
+      </span>
       <span className="flex flex-wrap items-baseline gap-x-[24px]">
         <span lang="en" className="text-[36px] font-bold leading-[1.2]">{call.destination.name.en}</span>
         <span lang="si" className="text-level4 text-muted" style={{ fontFamily: 'var(--font-family-sinhala)' }}>{call.destination.name.si}</span>

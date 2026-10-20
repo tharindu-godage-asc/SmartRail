@@ -43,6 +43,9 @@ export const d = {
   scheduledArrival: tri('Scheduled arrival', 'නියමිත පැමිණීම', 'திட்டமிட்ட வருகை'),
   scheduledDeparture: tri('Scheduled departure', 'නියමිත පිටත්වීම', 'திட்டமிட்ட புறப்பாடு'),
 
+  arrival: tri('Arrival', 'පැමිණීම', 'வருகை'),
+  departure: tri('Departure', 'පිටත්වීම', 'புறப்பாடு'),
+
   onTime: tri('On time', 'නියමිත වේලාවට', 'சரியான நேரத்தில்'),
   scheduled: tri('Scheduled', 'කාලසටහනට අනුව', 'அட்டவணைப்படி'),
   atPlatform: tri('At platform', 'වේදිකාවේ ඇත', 'நடைமேடையில் உள்ளது'),

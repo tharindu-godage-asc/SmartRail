@@ -1,4 +1,5 @@
 import { useParams } from 'react-router'
+import { Icon } from '../../core/Icon'
 import { formatClock, formatClockShort } from '../../core/time'
 import { d } from './displayStrings'
 import { DisplayFooter, Message, OfflineBanner, Stage, StatusChip, TriText } from './parts'
@@ -83,7 +84,15 @@ function Row({ call, offline }: { call: BoardCall; offline: boolean }) {
 
   return (
     <li className={`${columns} h-[92px] border-b border-line`}>
-      <span className={`text-level2 font-bold leading-none tabular-nums ${offline ? 'text-muted' : ''}`}>{shown ? formatClockShort(shown) : '—'}</span>
+      <span className={`flex items-center gap-[16px] text-level2 font-bold leading-none tabular-nums ${offline ? 'text-muted' : ''}`}>
+        {time ? (
+          <>
+            <Icon name={time.kind} size={40} />
+            <span className="sr-only">{time.kind === 'arrival' ? d.arrival.en : d.departure.en}</span>
+          </>
+        ) : null}
+        {shown ? formatClockShort(shown) : '—'}
+      </span>
       <div className="flex flex-col">
         <div className="flex items-baseline gap-[20px]">
           <span className="text-level3 font-bold leading-[1.15]" lang="en">{call.destination.name.en}</span>
