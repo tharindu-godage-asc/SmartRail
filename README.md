@@ -69,7 +69,28 @@ Reset the database: `cd smartrail-platform && docker compose down -v`, then star
 
 ### The five critical end-to-end flows
 
-Run by hand against the Compose stack (start it first with `./start.sh`), from `web/ops`: `npm run e2e:critical`. Each flow makes its own train for today (numbers 9xxx), so it can be repeated without resetting the database. Run it between 01:00 and 23:00 Sri Lanka time (a train made for today cannot pass midnight). Test trains stay in the database, because events are never deleted.
+These are the flows I automated as the most critical (QA section of the brief). They run in a real browser (Playwright, Chromium) against the running Docker Compose stack, by hand, not in CI.
+
+**Before you run them**
+1. Docker Desktop is running and the stack is up: `./start.sh` from the repo root (API on 8080, Keycloak on 8180, SmallBites on 8090, and the web app on 5173).
+2. Once only, install the browser: `cd web/ops && npm install && npx playwright install chromium`.
+3. It is between 01:00 and 23:00 Sri Lanka time. A train made for today cannot pass midnight, so the flows skip themselves outside that window.
+
+**Run them** (from `web/ops`)
+```bash
+npm run e2e:critical                                   # flows 1 to 5, one after the other (about 40 seconds)
+npx playwright test e2e/critical-flows.spec.ts         # flows 1, 2, 3 and 5
+npx playwright test -g "flow 3"                        # one flow, by its name
+npx playwright test e2e/critical-flows.spec.ts --headed   # watch the browser
+npm run e2e                                            # every Playwright test, including the extra checks below
+```
+
+**Look at the results**
+- The terminal prints each flow with `ok` or `x` and its time. A failure shows the line that failed.
+- Screenshots and a trace of a failed run are written to `web/ops/test-results/`. Open one with `npx playwright show-trace test-results/<folder>/trace.zip`.
+- For an HTML report of a run: `npx playwright test e2e/critical-flows.spec.ts --reporter=html`, then `npx playwright show-report`.
+
+**What each run does to the data:** every flow schedules its own extra train for today (numbers 9xxx, with a random number, so run again on a 409), assigns Nimal to it, and releases him at the end. The flows can be repeated without resetting the database. Test trains stay in the database because events are never deleted.
 
 | # | Flow | What it proves | File |
 |---|---|---|---|
