@@ -50,7 +50,7 @@ enum AuthStatus {
 }
 
 class AuthState {
-  const AuthState(this.status, {this.displayName});
+  const AuthState(this.status, {this.displayName, this.userId});
 
   const AuthState.signedOut() : this(AuthStatus.signedOut);
 
@@ -58,6 +58,9 @@ class AuthState {
 
   /// For the header, for example "Nimal P.".
   final String? displayName;
+
+  /// The Keycloak subject (the token's `sub`): who owns the reports on this phone.
+  final String? userId;
 
   bool get isSignedIn => status == AuthStatus.signedIn;
 }
@@ -74,6 +77,23 @@ class RefreshUnavailable implements Exception {
 
 class SignInCancelled implements Exception {
   const SignInCancelled();
+}
+
+/// The token's subject, or null when it cannot be read.
+String? userIdFromToken(String accessToken) {
+  try {
+    final parts = accessToken.split('.');
+    if (parts.length != 3) {
+      return null;
+    }
+    final payload = jsonDecode(
+      utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+    ) as Map<String, dynamic>;
+    final sub = payload['sub'] as String?;
+    return sub == null || sub.isEmpty ? null : sub;
+  } on FormatException {
+    return null;
+  }
 }
 
 /// A short name for the header from the access token's claims: "Nimal P." from given and family name, otherwise the user name.

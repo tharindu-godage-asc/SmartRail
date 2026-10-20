@@ -22,7 +22,11 @@ class AuthController extends AsyncNotifier<AuthState> {
       return;
     }
     state = AsyncData(
-      AuthState(AuthStatus.sessionExpired, displayName: current.displayName),
+      AuthState(
+        AuthStatus.sessionExpired,
+        displayName: current.displayName,
+        userId: current.userId,
+      ),
     );
   }
 

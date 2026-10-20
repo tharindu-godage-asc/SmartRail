@@ -10,6 +10,7 @@ import '../core/config.dart';
 import '../features/auth/data/app_auth_gateway.dart';
 import '../features/auth/data/secure_token_store.dart';
 import '../features/auth/domain/auth_repository.dart';
+import '../features/auth/presentation/auth_controller.dart';
 import '../features/journey/data/drift_local_cache.dart';
 import '../features/journey/data/smartrail_api.dart';
 import '../features/journey/domain/journey_api.dart';
@@ -31,9 +32,14 @@ final databaseProvider = Provider<AppDatabase>((ref) {
   return db;
 });
 
-final reportQueueProvider = Provider<ReportQueue>(
-  (ref) => DriftReportQueue(ref.watch(databaseProvider)),
-);
+/// The queue of the operator who is signed in: it is rebuilt when someone else signs in, so a shared phone never shows one
+/// operator's reports to the next.
+final reportQueueProvider = Provider<ReportQueue>((ref) {
+  final owner = ref.watch(
+    authControllerProvider.select((a) => a.value?.userId),
+  );
+  return DriftReportQueue.forOwner(ref.watch(databaseProvider), owner);
+});
 
 final localCacheProvider = Provider<LocalCache>(
   (ref) => DriftLocalCache(ref.watch(databaseProvider)),

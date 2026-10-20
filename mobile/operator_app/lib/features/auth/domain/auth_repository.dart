@@ -23,6 +23,7 @@ class AuthRepository {
       return AuthState(
         AuthStatus.signedIn,
         displayName: displayNameFromToken(stored.accessToken),
+        userId: userIdFromToken(stored.accessToken),
       );
     }
     if (await store.readSignInStarted()) {
@@ -44,6 +45,7 @@ class AuthRepository {
       return AuthState(
         AuthStatus.signedIn,
         displayName: displayNameFromToken(tokens.accessToken),
+        userId: userIdFromToken(tokens.accessToken),
       );
     } on SignInCancelled {
       return const AuthState(AuthStatus.signInCancelled);

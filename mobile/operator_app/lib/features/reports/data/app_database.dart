@@ -25,6 +25,10 @@ class Reports extends Table {
   DateTimeColumn get nextTryAt => dateTime().nullable()();
   TextColumn get lastReason => text().nullable()();
 
+  /// The Keycloak subject of the operator who made the report (version 3). Empty for reports saved before it existed: no operator
+  /// owns those, so no one sees them. Each operator sees only his own reports on a shared phone.
+  TextColumn get owner => text().withDefault(const Constant(''))();
+
   @override
   Set<Column> get primaryKey => {clientEventId};
 }
@@ -43,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -58,9 +62,13 @@ class AppDatabase extends _$AppDatabase {
               reports.kind,
               reports.delayReason,
               reports.totalDelayMinutes,
+              reports.owner, // the rebuild copies the table as it is now, so it needs the newest column too
             ],
           ),
         );
+      }
+      if (from >= 2 && from < 3) {
+        await m.addColumn(reports, reports.owner);
       }
     },
   );

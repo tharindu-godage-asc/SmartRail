@@ -139,6 +139,16 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _ownerMeta = const VerificationMeta('owner');
+  @override
+  late final GeneratedColumn<String> owner = GeneratedColumn<String>(
+    'owner',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     clientEventId,
@@ -153,6 +163,7 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
     attempts,
     nextTryAt,
     lastReason,
+    owner,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -247,6 +258,12 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
         lastReason.isAcceptableOrUnknown(data['last_reason']!, _lastReasonMeta),
       );
     }
+    if (data.containsKey('owner')) {
+      context.handle(
+        _ownerMeta,
+        owner.isAcceptableOrUnknown(data['owner']!, _ownerMeta),
+      );
+    }
     return context;
   }
 
@@ -308,6 +325,10 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
         DriftSqlType.string,
         data['${effectivePrefix}last_reason'],
       ),
+      owner: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner'],
+      )!,
     );
   }
 
@@ -341,6 +362,10 @@ class Report extends DataClass implements Insertable<Report> {
   final int attempts;
   final DateTime? nextTryAt;
   final String? lastReason;
+
+  /// The Keycloak subject of the operator who made the report (version 3). Empty for reports saved before it existed: no operator
+  /// owns those, so no one sees them. Each operator sees only his own reports on a shared phone.
+  final String owner;
   const Report({
     required this.clientEventId,
     required this.journeyId,
@@ -354,6 +379,7 @@ class Report extends DataClass implements Insertable<Report> {
     required this.attempts,
     this.nextTryAt,
     this.lastReason,
+    required this.owner,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -384,6 +410,7 @@ class Report extends DataClass implements Insertable<Report> {
     if (!nullToAbsent || lastReason != null) {
       map['last_reason'] = Variable<String>(lastReason);
     }
+    map['owner'] = Variable<String>(owner);
     return map;
   }
 
@@ -411,6 +438,7 @@ class Report extends DataClass implements Insertable<Report> {
       lastReason: lastReason == null && nullToAbsent
           ? const Value.absent()
           : Value(lastReason),
+      owner: Value(owner),
     );
   }
 
@@ -436,6 +464,7 @@ class Report extends DataClass implements Insertable<Report> {
       attempts: serializer.fromJson<int>(json['attempts']),
       nextTryAt: serializer.fromJson<DateTime?>(json['nextTryAt']),
       lastReason: serializer.fromJson<String?>(json['lastReason']),
+      owner: serializer.fromJson<String>(json['owner']),
     );
   }
   @override
@@ -456,6 +485,7 @@ class Report extends DataClass implements Insertable<Report> {
       'attempts': serializer.toJson<int>(attempts),
       'nextTryAt': serializer.toJson<DateTime?>(nextTryAt),
       'lastReason': serializer.toJson<String?>(lastReason),
+      'owner': serializer.toJson<String>(owner),
     };
   }
 
@@ -472,6 +502,7 @@ class Report extends DataClass implements Insertable<Report> {
     int? attempts,
     Value<DateTime?> nextTryAt = const Value.absent(),
     Value<String?> lastReason = const Value.absent(),
+    String? owner,
   }) => Report(
     clientEventId: clientEventId ?? this.clientEventId,
     journeyId: journeyId ?? this.journeyId,
@@ -489,6 +520,7 @@ class Report extends DataClass implements Insertable<Report> {
     attempts: attempts ?? this.attempts,
     nextTryAt: nextTryAt.present ? nextTryAt.value : this.nextTryAt,
     lastReason: lastReason.present ? lastReason.value : this.lastReason,
+    owner: owner ?? this.owner,
   );
   Report copyWithCompanion(ReportsCompanion data) {
     return Report(
@@ -518,6 +550,7 @@ class Report extends DataClass implements Insertable<Report> {
       lastReason: data.lastReason.present
           ? data.lastReason.value
           : this.lastReason,
+      owner: data.owner.present ? data.owner.value : this.owner,
     );
   }
 
@@ -535,7 +568,8 @@ class Report extends DataClass implements Insertable<Report> {
           ..write('state: $state, ')
           ..write('attempts: $attempts, ')
           ..write('nextTryAt: $nextTryAt, ')
-          ..write('lastReason: $lastReason')
+          ..write('lastReason: $lastReason, ')
+          ..write('owner: $owner')
           ..write(')'))
         .toString();
   }
@@ -554,6 +588,7 @@ class Report extends DataClass implements Insertable<Report> {
     attempts,
     nextTryAt,
     lastReason,
+    owner,
   );
   @override
   bool operator ==(Object other) =>
@@ -570,7 +605,8 @@ class Report extends DataClass implements Insertable<Report> {
           other.state == this.state &&
           other.attempts == this.attempts &&
           other.nextTryAt == this.nextTryAt &&
-          other.lastReason == this.lastReason);
+          other.lastReason == this.lastReason &&
+          other.owner == this.owner);
 }
 
 class ReportsCompanion extends UpdateCompanion<Report> {
@@ -586,6 +622,7 @@ class ReportsCompanion extends UpdateCompanion<Report> {
   final Value<int> attempts;
   final Value<DateTime?> nextTryAt;
   final Value<String?> lastReason;
+  final Value<String> owner;
   final Value<int> rowid;
   const ReportsCompanion({
     this.clientEventId = const Value.absent(),
@@ -600,6 +637,7 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     this.attempts = const Value.absent(),
     this.nextTryAt = const Value.absent(),
     this.lastReason = const Value.absent(),
+    this.owner = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ReportsCompanion.insert({
@@ -615,6 +653,7 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     this.attempts = const Value.absent(),
     this.nextTryAt = const Value.absent(),
     this.lastReason = const Value.absent(),
+    this.owner = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : clientEventId = Value(clientEventId),
        journeyId = Value(journeyId),
@@ -633,6 +672,7 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     Expression<int>? attempts,
     Expression<DateTime>? nextTryAt,
     Expression<String>? lastReason,
+    Expression<String>? owner,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -648,6 +688,7 @@ class ReportsCompanion extends UpdateCompanion<Report> {
       if (attempts != null) 'attempts': attempts,
       if (nextTryAt != null) 'next_try_at': nextTryAt,
       if (lastReason != null) 'last_reason': lastReason,
+      if (owner != null) 'owner': owner,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -665,6 +706,7 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     Value<int>? attempts,
     Value<DateTime?>? nextTryAt,
     Value<String?>? lastReason,
+    Value<String>? owner,
     Value<int>? rowid,
   }) {
     return ReportsCompanion(
@@ -680,6 +722,7 @@ class ReportsCompanion extends UpdateCompanion<Report> {
       attempts: attempts ?? this.attempts,
       nextTryAt: nextTryAt ?? this.nextTryAt,
       lastReason: lastReason ?? this.lastReason,
+      owner: owner ?? this.owner,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -727,6 +770,9 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     if (lastReason.present) {
       map['last_reason'] = Variable<String>(lastReason.value);
     }
+    if (owner.present) {
+      map['owner'] = Variable<String>(owner.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -748,6 +794,7 @@ class ReportsCompanion extends UpdateCompanion<Report> {
           ..write('attempts: $attempts, ')
           ..write('nextTryAt: $nextTryAt, ')
           ..write('lastReason: $lastReason, ')
+          ..write('owner: $owner, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -985,6 +1032,7 @@ typedef $$ReportsTableCreateCompanionBuilder = ReportsCompanion Function({
   Value<int> attempts,
   Value<DateTime?> nextTryAt,
   Value<String?> lastReason,
+  Value<String> owner,
   Value<int> rowid,
 });
 typedef $$ReportsTableUpdateCompanionBuilder = ReportsCompanion Function({
@@ -1000,6 +1048,7 @@ typedef $$ReportsTableUpdateCompanionBuilder = ReportsCompanion Function({
   Value<int> attempts,
   Value<DateTime?> nextTryAt,
   Value<String?> lastReason,
+  Value<String> owner,
   Value<int> rowid,
 });
 
@@ -1073,6 +1122,11 @@ class $$ReportsTableFilterComposer
     column: $table.lastReason,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get owner => $composableBuilder(
+    column: $table.owner,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$ReportsTableOrderingComposer
@@ -1143,6 +1197,11 @@ class $$ReportsTableOrderingComposer
     column: $table.lastReason,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get owner => $composableBuilder(
+    column: $table.owner,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ReportsTableAnnotationComposer
@@ -1203,6 +1262,9 @@ class $$ReportsTableAnnotationComposer
     column: $table.lastReason,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get owner =>
+      $composableBuilder(column: $table.owner, builder: (column) => column);
 }
 
 class $$ReportsTableTableManager
@@ -1245,6 +1307,7 @@ class $$ReportsTableTableManager
                 Value<int> attempts = const Value.absent(),
                 Value<DateTime?> nextTryAt = const Value.absent(),
                 Value<String?> lastReason = const Value.absent(),
+                Value<String> owner = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReportsCompanion(
                 clientEventId: clientEventId,
@@ -1259,6 +1322,7 @@ class $$ReportsTableTableManager
                 attempts: attempts,
                 nextTryAt: nextTryAt,
                 lastReason: lastReason,
+                owner: owner,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1275,6 +1339,7 @@ class $$ReportsTableTableManager
                 Value<int> attempts = const Value.absent(),
                 Value<DateTime?> nextTryAt = const Value.absent(),
                 Value<String?> lastReason = const Value.absent(),
+                Value<String> owner = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReportsCompanion.insert(
                 clientEventId: clientEventId,
@@ -1289,6 +1354,7 @@ class $$ReportsTableTableManager
                 attempts: attempts,
                 nextTryAt: nextTryAt,
                 lastReason: lastReason,
+                owner: owner,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
