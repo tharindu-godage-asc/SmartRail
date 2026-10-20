@@ -83,6 +83,61 @@ export interface Overview {
   serverTime: string
 }
 
+// ---- Controller journey detail (spec 16 F1, read only). ----
+
+export interface DetailStop {
+  serviceStopId: string
+  sequence: number
+  stationCode: string
+  stationName: string
+  scheduledArrival: string | null
+  scheduledDeparture: string | null
+  estimatedArrival: string | null
+  estimatedDeparture: string | null
+  actualArrival: string | null
+  actualDeparture: string | null
+  confirmation: string
+  /** `Passed`, `AtStation`, `Next` or `Upcoming`. */
+  state: string
+  plannedPlatform: string | null
+  platform: string | null
+}
+
+export interface DetailEvent {
+  id: string
+  at: string
+  type: string
+  source: string
+  actor: string
+  stationName: string | null
+  totalDelayMinutes: number | null
+  delayUnknown: boolean
+  reason: string | null
+  reasonCode: string | null
+}
+
+export interface ControllerJourneyDetail {
+  journeyId: string
+  trainNumber: string
+  operatingDate: string
+  direction: string
+  category: string
+  serviceType: string
+  status: string
+  statusKey: string
+  statusGroup: string
+  delayMinutes: number
+  delayKnown: boolean
+  serverTime: string
+  /** What the operator reported; for controllers only. */
+  reportedReason: string | null
+  verifiedReason?: { code: string; verifiedAt: string } | null
+  position: { stationCode: string; stationName: string; state: string; at: string } | null
+  operator: { name: string; validFrom: string; validTo: string | null } | null
+  stops: DetailStop[]
+  events: DetailEvent[]
+}
+
 // ---- Timetable (specs 13 and 14). Dates are YYYY-MM-DD, times HH:mm. ----
 
 export interface OptionsStation {

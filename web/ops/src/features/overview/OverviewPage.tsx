@@ -74,7 +74,11 @@ export function OverviewPage() {
               <tbody>
                 {journeys.map((journey) => (
                   <tr key={journey.journeyId}>
-                    <td className={`${cell} font-bold`}>{journey.trainNumber}</td>
+                    <td className={`${cell} font-bold`}>
+                      <Link to={`/journeys/${journey.journeyId}`} className="text-ink underline underline-offset-4">
+                        {journey.trainNumber}
+                      </Link>
+                    </td>
                     <td className={cell}>
                       {journey.from} → {journey.to}
                     </td>

@@ -83,7 +83,11 @@ export function JourneysPage({ all = false }: { all?: boolean }) {
               <tbody>
                 {rows.map((journey) => (
                   <tr key={journey.journeyId}>
-                    <td className={`${cell} font-bold`}>{journey.trainNumber}</td>
+                    <td className={`${cell} font-bold`}>
+                      <Link to={`/journeys/${journey.journeyId}${search}`} className="text-ink underline underline-offset-4">
+                        {journey.trainNumber}
+                      </Link>
+                    </td>
                     <td className={cell}>{t.timetable.to(journey.from, journey.to)}</td>
                     <td className={cell}>
                       {formatClockShort(journey.firstDeparture)} · {formatDate(journey.operatingDate)}
@@ -101,7 +105,7 @@ export function JourneysPage({ all = false }: { all?: boolean }) {
                     </td>
                     <td className={cell}>
                       <Link
-                        to={journey.operator ? `/journeys/${journey.journeyId}${search}` : `/journeys/${journey.journeyId}/assign${search}`}
+                        to={journey.operator ? `/journeys/${journey.journeyId}/crew${search}` : `/journeys/${journey.journeyId}/assign${search}`}
                         className="inline-flex min-h-touch items-center text-ink underline"
                       >
                         {journey.operator ? t.assignments.crew : t.assignments.assign}
