@@ -32,6 +32,7 @@ The first run builds the images and takes a few minutes. The demo data (a journe
 | SmallBites admin (sell an item out) | http://localhost:8090/admin | none |
 | Keycloak | http://localhost:8180 | `admin` / `admin-dev-only` |
 | Grafana (SmartRail Overview) | http://localhost:3000 | none (anonymous) |
+| Argo CD (the delivery cluster, see below) | https://localhost:8443 after a port-forward | `admin` / the password in the cluster secret (see below) |
 
 ## Station codes
 
@@ -48,6 +49,41 @@ The Main Line has five stations. Codes are not case-sensitive in the API. Each l
 Useful API links (public, no sign-in): [all stations](http://localhost:8080/api/v1/stations), [line status](http://localhost:8080/api/v1/lines/MAIN/status), [board data for Veyangoda](http://localhost:8080/api/v1/stations/VYG/board), [API health](http://localhost:8080/health/ready). The caterer's menu for Colombo Fort (the only station with catering) is at [SmallBites](http://localhost:8090/api/menus/CF).
 
 Other demo users: `nimal` (operator, assigned to 8058), `operator2` (operator, not assigned). All passwords are development-only.
+
+## Argo CD and the delivery cluster
+
+Besides Docker Compose there is a local Kubernetes cluster (kind, context `kind-smartrail`) where **Argo CD** deploys the API to four environments, one namespace each: `smartrail-dev`, `smartrail-test`, `smartrail-staging` and `smartrail-prod`, plus `observability`. CI only edits the image tag in `smartrail-platform/deploy/overlays/<env>`; Argo CD pulls the change in. Prod changes only through the manual `promote-prod` workflow and a manual sync (`smartrail-platform/docs/workflows.md`). The cluster has no database yet and no Keycloak, so the cluster API runs without the database features; the full system is the Compose stack above.
+
+**Create or repair the cluster** (Git Bash, safe to re-run): `./smartrail-platform/scripts/bootstrap-cluster.sh`. It needs Docker Desktop, `kind` and `kubectl`.
+
+**Check it without a browser**
+```bash
+kubectl config current-context                 # kind-smartrail
+kubectl get applications -n argocd             # the five apps: SYNC STATUS Synced, HEALTH STATUS Healthy
+kubectl get pods -A                            # the Argo CD pods and one smartrail-api pod per environment
+```
+
+**Open the Argo CD web page**
+1. Leave this running in a terminal (the UI is not published to your machine until you do):
+   ```bash
+   kubectl -n argocd port-forward svc/argocd-server 8443:443
+   ```
+2. Open https://localhost:8443 in Chrome or Edge. Argo CD uses a self-signed certificate, so the browser warns: click **Advanced**, then **Proceed to localhost**. (If there is no proceed link, click the page and type `thisisunsafe`.) VS Code's built-in browser cannot get past the warning.
+3. Sign in as **`admin`**. The password is generated when Argo CD is installed and is **not stored in this repository** (a secret must not be committed). Read it from the cluster:
+   ```bash
+   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+   ```
+   If that secret is gone, the password was changed or the secret deleted: reset it with `kubectl -n argocd patch secret argocd-secret -p '{"stringData":{"admin.password":"","admin.passwordMtime":""}}'` and restart `argocd-server`, or ask for a new install with `bootstrap-cluster.sh`.
+
+**Without the certificate warning (optional, local cluster only).** This changes the Argo CD server setting so it serves plain HTTP:
+```bash
+kubectl -n argocd patch configmap argocd-cmd-params-cm --type merge -p '{"data":{"server.insecure":"true"}}'
+kubectl -n argocd rollout restart deployment argocd-server
+kubectl -n argocd port-forward svc/argocd-server 8081:80      # then open http://localhost:8081
+```
+Do not do this in a real environment.
+
+**What to look at:** the apps `smartrail-dev`, `-test`, `-staging`, `-prod` and `smartrail-observability`, each Synced and Healthy. Open `smartrail-dev` to see its Deployment and pod, and its image tag: it is the Git commit of the last `main` build, from the commit named `deploy: dev, test, staging <sha>` that CI pushed.
 
 ## Step by step (without the script)
 
