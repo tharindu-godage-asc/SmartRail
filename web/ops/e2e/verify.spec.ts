@@ -33,6 +33,8 @@ async function signIn(page: Page) {
   await page.locator('#kc-login').click()
 }
 
+test.skip(true, 'Superseded by flow 2 in critical-flows.spec.ts (this one needs the demo journey 8058 to be in progress).')
+
 test('a controller edits an unapproved reason and publishes it; passengers then see it with the time', async ({ page }) => {
   const nimal = await tokenFor('nimal')
   const journey = await getJson<{ journeyId: string }>(nimal, '/api/v1/operator/journey')
