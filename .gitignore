@@ -27,3 +27,6 @@ web-dev.log
 smallbites/**/bin/
 smallbites/**/obj/
 smallbites/**/TestResults/
+
+# Test report written by scripts/test-report.sh
+test-report/

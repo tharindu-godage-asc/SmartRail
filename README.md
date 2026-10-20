@@ -67,6 +67,19 @@ Reset the database: `cd smartrail-platform && docker compose down -v`, then star
 | Web | `web/ops`: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`; `npm run e2e` by hand against Compose |
 | Mobile | `mobile/<app>`: `dart format lib test tool`, `flutter analyze --fatal-infos`, `flutter test` |
 
+### Test report (every test, pass or fail, and coverage)
+
+`./scripts/test-report.sh` runs all suites with verbose output (each test name with PASS or FAIL in the terminal), measures line coverage and writes **`test-report/index.html`**: a summary card per suite, a filter box, a "failures only" switch, every test grouped by class or file with its time, and coverage by area (lowest first).
+
+```bash
+./scripts/test-report.sh                  # everything, with coverage (about 10 minutes; Docker must be running)
+./scripts/test-report.sh --quick          # skip the slow .NET integration tests
+./scripts/test-report.sh --no-coverage    # no coverage
+./scripts/test-report.sh --only web       # one suite: unit | integration | smallbites | web | passenger | operator
+```
+
+Coverage comes from coverlet (.NET), vitest with v8 (web) and `flutter test --coverage`. The .NET unit and integration suites are reported separately, so the unit figure is low by design: the API and database code is exercised by the integration tests. The `test-report/` folder is git-ignored.
+
 Design tokens come from one file, `mobile/operator_app/smartrail-tokens.json`; CI fails if the generated files are stale (`npm run tokens` in `web/ops`, `dart run tool/generate_tokens.dart` in each Flutter app).
 
 ## More
