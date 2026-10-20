@@ -99,12 +99,29 @@ describe('Platform display', () => {
     expect(screen.getAllByText('On time')).toHaveLength(1) // the chip only
   })
 
-  it('says "At platform" with the departure time once the train has arrived (FR-81)', async () => {
-    renderDisplay('/display/platform/GPH/1', () => json(board({ trains: [call({ state: 'AtPlatform' })] })))
+  it('shows the Arrived screen once the train has arrived: the arrival time, "At platform" and the departure time (FR-81)', async () => {
+    renderDisplay('/display/platform/GPH/1', () =>
+      json(board({ trains: [call({ state: 'AtPlatform', lastSeen: { state: 'Arrived', stationName: 'Gampaha', at: '2026-10-15T03:07:00Z' } })] })))
 
-    expect(await screen.findByText('At platform', { selector: 'span.text-level1-status' })).toBeInTheDocument()
+    expect(await screen.findByText('08:37')).toHaveClass('text-level1-time') // when it arrived (03:07 UTC)
+    expect(document.querySelector('[data-direction="arrival"]')).not.toBeNull()
+    expect(screen.getByText('Arrived')).toBeInTheDocument()
+    expect(screen.getByText('පැමිණියේය')).toBeInTheDocument()
+    expect(screen.getByText('வந்தடைந்தது')).toBeInTheDocument()
+    expect(screen.getAllByText('At platform').length).toBeGreaterThan(0)
     expect(screen.getByText(/Departs 08:39/)).toBeInTheDocument()
-    expect(document.querySelectorAll('.text-level1-time')).toHaveLength(0)
+  })
+
+  it('removes the Arrived screen when the train has left: the next train takes its place', async () => {
+    let answer = board({ trains: [call({ state: 'AtPlatform', lastSeen: { state: 'Arrived', stationName: 'Gampaha', at: '2026-10-15T03:07:00Z' } })] })
+    renderDisplay('/display/platform/GPH/1', () => json(answer))
+    expect(await screen.findByText('Arrived')).toBeInTheDocument()
+
+    answer = board({ trains: [call({ trainNumber: '8060', state: 'Due' })] })
+    await pass(31_000) // past the next poll
+
+    expect(await screen.findByText('Train 8060')).toBeInTheDocument()
+    expect(screen.queryByText('Arrived')).not.toBeInTheDocument()
   })
 
   it('says "Waiting for update" with no time at all when the delay is unknown, and where the train was last seen (D-39)', async () => {

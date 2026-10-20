@@ -143,14 +143,21 @@ function TrainContent({ screen, offline }: { screen: Extract<PlatformScreen, { k
   }
 
   if (screen.mode === 'atPlatform') {
+    // The "Arrived" screen: it stays while the train is at the platform and is replaced when it leaves (the board stops listing a train
+    // once it has departed). The big time is when it arrived (the report), otherwise when it was expected.
     const departs = call.departure ? (call.departure.estimated ?? call.departure.scheduled) : null
+    const arrivedAt = call.lastSeen?.state === 'Arrived' ? call.lastSeen.at : (time?.at ?? null)
     return (
       <>
         <Destination call={call} />
         <div className="flex items-center gap-[56px]">
-          <span className="text-level1-status font-bold">{d.atPlatform.en}</span>
+          <div className="flex flex-col gap-[10px]">
+            <DirectionMark kind="arrival" label={d.arrivedAt} />
+            <div className="text-level1-time font-bold leading-none tabular-nums">{arrivedAt ? formatClockShort(arrivedAt) : '—'}</div>
+          </div>
+          <StatusChip group="normal" text={d.atPlatform.en} icon="done" />
         </div>
-        <TriText text={d.atPlatform} className="text-level3 text-muted" order={['si', 'ta', 'en']} />
+        <TriText text={d.atPlatform} className="text-level3 text-muted" order={['si', 'ta']} />
         {departs ? (
           <div className="flex items-center gap-[20px] text-level3 tabular-nums">
             <Icon name="departure" size={44} />
