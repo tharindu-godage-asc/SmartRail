@@ -76,9 +76,7 @@ public sealed class ReportArrivalTests(PostgresFixture postgres) : JourneyApiTes
 
     [Theory]
     [InlineData(0)] // the first stop has no arrival
-    [InlineData(2)] // Ragama is not designated
-    [InlineData(3)] // Maradana is not designated
-    public async Task An_arrival_at_a_stop_that_is_not_designated_is_a_422_and_stores_nothing(int stopIndex)
+    public async Task An_arrival_at_a_stop_with_no_scheduled_arrival_is_a_422_and_stores_nothing(int stopIndex)
     {
         var response = await ReportAt(Stops[stopIndex], Local(8, 28), "Arrived");
 
@@ -87,13 +85,39 @@ public sealed class ReportArrivalTests(PostgresFixture postgres) : JourneyApiTes
         Assert.Equal(0, await EventCountAsync());
     }
 
+    // ---- spec 19: an arrival at every stop that has one ----
+
+    [Theory]
+    [InlineData(2)] // Ragama
+    [InlineData(3)] // Maradana
+    public async Task An_arrival_at_an_in_between_stop_is_accepted(int stopIndex)
+    {
+        await Report(Stops[0], Local(8, 21), eventType: "Departed");
+        Clock.SetUtcNow(Local(8, 45));
+
+        var response = await ReportAt(Stops[stopIndex], Local(8, 44), "Arrived");
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
     [Fact]
-    public async Task The_operator_journey_marks_only_Gampaha_and_the_final_stop_as_arrival_stations()
+    public async Task A_departure_from_an_in_between_stop_does_not_need_its_arrival()
+    {
+        await Report(Stops[0], Local(8, 21), eventType: "Departed");
+        Clock.SetUtcNow(Local(8, 45));
+
+        var response = await ReportAt(Stops[2], Local(8, 44), "Departed");
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_operator_journey_marks_every_stop_but_the_first_as_an_arrival_station()
     {
         var body = await ReadAsync(await Get("/api/v1/operator/journey", OperatorToken));
 
         var flags = body.GetProperty("stops").EnumerateArray().Select(s => s.GetProperty("isArrivalStation").GetBoolean()).ToList();
-        Assert.Equal([false, true, false, false, true], flags);
+        Assert.Equal([false, true, true, true, true], flags);
     }
 
     // ---- AC-E03-03 (3), AC-E04-02 (4) ----

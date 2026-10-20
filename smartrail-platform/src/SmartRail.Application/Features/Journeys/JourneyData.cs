@@ -15,10 +15,11 @@ public sealed record StopInfo(
     Guid StationId = default)
 {
     /// <summary>
-    /// D-08, FR-22: an arrival is reported at a stop flagged for it and at the final stop, and only where the stop has a
-    /// scheduled arrival (the first stop has none).
+    /// Spec 19 (changes D-08 and FR-22 of 20 Oct 2026): an arrival can be reported at every stop that has a scheduled arrival, so at every
+    /// stop but the first. Reporting it is the operator's choice: a departure is never held up for a missing arrival. The
+    /// <see cref="ArrivalReportRequired"/> flag is kept in the data but no longer decides this.
     /// </summary>
-    public bool IsArrivalStation => (ArrivalReportRequired || IsFinalStop) && ScheduledArrival is not null;
+    public bool IsArrivalStation => ScheduledArrival is not null;
 }
 
 /// <summary>The stored state of one stop of one journey (the result of the last rebuild, R10).</summary>
