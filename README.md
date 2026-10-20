@@ -74,4 +74,34 @@ Design tokens come from one file, `mobile/operator_app/smartrail-tokens.json`; C
 - Working rules, conventions and the full endpoint notes: `.claude/CLAUDE.md`.
 - Delivery (GitHub Actions, Argo CD, kind cluster): `smartrail-platform/docs/workflows.md`, `smartrail-platform/docs/` ADRs; create the cluster with `smartrail-platform/scripts/bootstrap-cluster.sh`.
 - Each app has its own README with details.
-- Not built: push notifications, food ordering (designed only), rate limiting.
+- Not built: see **Project status** below.
+
+## Project status (20 October 2026)
+
+The MVP is **not fully met**. This is what is built and what is not.
+
+### What is built and working
+- **Operator app:** reports for departures, arrivals and delays (an Arrived button at every stop but the first), offline queueing, My reports, and Previous journeys.
+- **Live status:** public journey and train status, search, and line status.
+- **Passenger app:** live screen, follow, offline labelling, the food menu, and the verified delay reason.
+- **Station displays:** station boards and platform displays, including an Arrived screen.
+- **Controller dashboard:** the exceptions queue, verifying a delay reason (FR-52), and the journey detail page with a one-track view.
+- **Scheduling:** timetable creation, journeys generated 7 days ahead (FR-11), cancel and amend with versions.
+- **Assignment:** assigning operators and ending an assignment, including the lost-device case (FR-12, FR-56).
+- **Catering:** the read-only food menu from SmallBites (FR-90).
+
+### What is not met
+- **Must requirements not built:**
+  - FR-53: the controller entering an event for an operator.
+  - FR-54: suspending, cancelling or terminating a journey.
+  - FR-55: disruption messages.
+  - FR-75 and FR-76: push notifications.
+  - NFR-13: rate limiting.
+  - FR-07: caterer authentication (dropped by decision; SmartRail pulls the menu, D-72).
+- **Should requirements not built:** FR-57 platform change, FR-59 line closure, FR-60 correcting a report, and FR-125 controller in charge.
+- **Designed only:** food ordering and payment (D-71), ticketing, and the passenger design gallery.
+- **Still open:**
+  - Sinhala and Tamil text is unverified by a native speaker.
+  - The keyboard-only and 44 px hand checks are not done.
+  - The verify Playwright flow (`web/ops/e2e/verify.spec.ts`) was written but not run.
+  - The Keycloak operator directory is not built (operator names come from configuration).
