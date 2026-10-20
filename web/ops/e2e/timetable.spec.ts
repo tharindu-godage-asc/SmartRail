@@ -33,7 +33,7 @@ async function signIn(page: Page) {
   await page.locator('#kc-login').click()
 }
 
-test('a controller schedules a service, finds it in the list, cancels one date and finds it under Cancelled', async ({ page }) => {
+test('flow 4: a controller schedules a service, finds it in the list, cancels one date and finds it under Cancelled', async ({ page }) => {
   const trainNumber = `9${Math.floor(100 + Math.random() * 900)}`
   const token = await controllerToken()
   const created = await fetch(`${API}/api/v1/timetable/services`, {
