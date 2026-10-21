@@ -113,6 +113,42 @@ describe('Journeys: the Unassigned list (spec 17 A2)', () => {
     expect(row.getByRole('link', { name: 'Crew and control' })).toHaveAttribute('href', '/journeys/j1/crew?date=2026-10-23')
   })
 
+  it('filters the journeys by where they are in the day and by train number, with counts, and clears the filters', async () => {
+    const user = userEvent.setup()
+    const all = [
+      journey({ journeyId: 'a', trainNumber: '8104', status: 'Running' }),
+      journey({ journeyId: 'b', trainNumber: '8106', status: 'Scheduled' }),
+      journey({ journeyId: 'c', trainNumber: '8108', status: 'Completed' }),
+    ]
+    renderWithApi(screens, fakeApi({ unassigned: [], all }), '/journeys/all?date=2026-10-23')
+
+    expect(await screen.findByText('Showing 3 of 3 journeys')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Ongoing\s*\(1\)/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Not started yet\s*\(1\)/ })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^Ongoing/ }))
+    expect(screen.getByText('Showing 1 of 3 journeys')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '8104' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '8106' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Ongoing/ })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: /^All/ }))
+    await user.type(screen.getByLabelText('Train number'), '8108')
+    expect(screen.getByText('Showing 1 of 3 journeys')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '8108' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^Ongoing/ }))
+    expect(screen.getByText('No journey matches these filters.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }))
+    expect(await screen.findByText('Showing 3 of 3 journeys')).toBeInTheDocument()
+  })
+
+  it('shows the status of each journey as words with an icon', async () => {
+    renderWithApi(screens, fakeApi({ unassigned: [], all: [journey({ status: 'Running' })] }), '/journeys/all?date=2026-10-23')
+
+    expect(await screen.findByText('Ongoing', { selector: 'span.inline-flex' })).toBeInTheDocument()
+  })
+
   it('says it could not load and offers Try again', async () => {
     const user = userEvent.setup()
     const get = vi.fn().mockRejectedValueOnce(new ApiError(500, null)).mockRejectedValueOnce(new ApiError(500, null)).mockResolvedValue([journey()])
