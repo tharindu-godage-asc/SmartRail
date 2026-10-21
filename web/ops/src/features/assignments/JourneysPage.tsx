@@ -76,7 +76,7 @@ export function JourneysPage({ all = false }: { all?: boolean }) {
             <fieldset className="m-0 flex flex-wrap items-center gap-xs border-0 p-0">
               <legend className="mb-xs p-0 text-label font-bold">{t.assignments.filters.status}</legend>
               {(['all', ...stages] as const).map((value) => {
-                const count = value === 'all' ? everyRow.length : everyRow.filter((r) => stageOf(r.status) === value).length
+                const count = value === 'all' ? everyRow.length : everyRow.filter((r) => stageOf(r) === value).length
                 const selected = stage === value
                 return (
                   <button
@@ -162,8 +162,8 @@ export function JourneysPage({ all = false }: { all?: boolean }) {
                     </td>
                     <td className={cell}>
                       <span className="inline-flex items-center gap-xs font-semibold">
-                        <Icon name={stageIcon[stageOf(journey.status)]} size={16} />
-                        {t.assignments.stages[stageOf(journey.status)]}
+                        <Icon name={stageIcon[stageOf(journey)]} size={16} />
+                        {t.assignments.stages[stageOf(journey)]}
                       </span>
                     </td>
                     <td className={cell}>{t.assignments.sources[journey.source] ?? journey.source}</td>

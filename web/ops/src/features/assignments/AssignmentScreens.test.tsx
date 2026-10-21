@@ -143,6 +143,22 @@ describe('Journeys: the Unassigned list (spec 17 A2)', () => {
     expect(await screen.findByText('Showing 3 of 3 journeys')).toBeInTheDocument()
   })
 
+  it('has an Overdue to start filter for journeys that nothing has started, apart from Not started yet', async () => {
+    const user = userEvent.setup()
+    const all = [
+      journey({ journeyId: 'a', trainNumber: '8061', status: 'Scheduled', overdueToStart: true }),
+      journey({ journeyId: 'b', trainNumber: '8106', status: 'Scheduled' }),
+    ]
+    renderWithApi(screens, fakeApi({ unassigned: [], all }), '/journeys/all?date=2026-10-23')
+
+    expect(await screen.findByRole('button', { name: /^Overdue to start\s*\(1\)/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Not started yet\s*\(1\)/ })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^Overdue to start/ }))
+
+    expect(screen.getByRole('link', { name: '8061' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '8106' })).not.toBeInTheDocument()
+  })
+
   it('shows the status of each journey as words with an icon', async () => {
     renderWithApi(screens, fakeApi({ unassigned: [], all: [journey({ status: 'Running' })] }), '/journeys/all?date=2026-10-23')
 

@@ -58,6 +58,14 @@ export const t = {
     oldest: (age: string) => `oldest ${age}`,
     running: 'Running journeys',
     noTrains: 'No trains running now',
+    overdueTitle: 'Overdue to start',
+    overdueKpi: 'Overdue to start',
+    overdueNote: 'Departure time passed, not started',
+    noOverdue: 'No journey is overdue to start.',
+    overdueHelp: 'The departure time has passed and nothing has started the journey: nobody is assigned, or the operator has not reported the departure.',
+    overdueCols: { train: 'Train', route: 'Route', scheduled: 'Scheduled departure', late: 'Late by', operator: 'Operator', action: 'Action' },
+    overdueOperator: (has: boolean) => (has ? 'Assigned, no departure reported' : 'No operator assigned'),
+    overdueAction: (has: boolean) => (has ? 'Open journey' : 'Assign operator'),
     latest: 'Latest exceptions',
     viewAll: 'View all exceptions',
     columns: {
@@ -474,7 +482,7 @@ export const t = {
     tabs: { label: 'Journeys', unassigned: 'Unassigned', all: 'All journeys' },
     date: 'Date',
     cols: { train: 'Train', route: 'Route', departs: 'Departs', status: 'Status', source: 'From', operator: 'Operator', action: 'Action' },
-    stages: { notStarted: 'Not started yet', ongoing: 'Ongoing', completed: 'Completed', cancelled: 'Cancelled' } as Record<string, string>,
+    stages: { overdue: 'Overdue to start', notStarted: 'Not started yet', ongoing: 'Ongoing', completed: 'Completed', cancelled: 'Cancelled' } as Record<string, string>,
     filters: {
       label: 'Filter the journeys',
       status: 'Show',

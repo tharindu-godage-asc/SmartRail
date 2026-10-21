@@ -32,7 +32,8 @@ public sealed class AssignmentRepository(SmartrailDbContext db) : IAssignmentRep
     public async Task<IReadOnlyList<JourneyListItem>> ListJourneysAsync(DateOnly date, bool unassignedOnly, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var journeys = await db.Journeys.AsNoTracking()
-            .Where(j => j.OperatingDate == date && j.Status != JourneyStatus.Cancelled && j.Status != JourneyStatus.Completed)
+            // The Unassigned tab lists only journeys that can still be assigned; All journeys also lists the finished and cancelled ones, for the filters.
+            .Where(j => j.OperatingDate == date && (!unassignedOnly || (j.Status != JourneyStatus.Cancelled && j.Status != JourneyStatus.Completed)))
             .ToListAsync(cancellationToken);
         if (journeys.Count == 0)
         {
