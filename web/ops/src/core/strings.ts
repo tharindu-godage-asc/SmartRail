@@ -508,6 +508,8 @@ export const t = {
       operator: 'Operator',
       available: 'Available',
       busy: (train: string, until: string) => `On train ${train} until ${until}`,
+      busyNote: 'An operator who is on another train cannot be chosen. They become available when that train gets another operator, their assignment is ended, or that train is cancelled.',
+      busyRefused: (name: string, train: string, until: string) => `${name} is on train ${train} until ${until}, so cannot be assigned here. Nothing was changed.`,
       disabled: 'Account disabled',
       directoryFailed: 'Operators could not be loaded. Try again.',
       noOperators: 'There are no operators in the directory.',
@@ -524,9 +526,6 @@ export const t = {
       cancel: 'Cancel',
       needOperator: 'Choose an operator.',
       needTime: 'Enter the time as HH:mm.',
-      adviceTitle: 'Advice',
-      advice: (name: string, train: string, until: string) => `${name} is on train ${train} until ${until}.`,
-      adviceConfirm: 'I know, and want to assign them anyway',
     },
     crewPage: {
       title: (train: string) => `Crew and control · ${train}`,

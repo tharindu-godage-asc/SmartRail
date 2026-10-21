@@ -185,7 +185,9 @@ describe('Assign an operator (spec 17 A2)', () => {
     renderWithApi(screens, api, '/journeys/j1/assign?date=2026-10-23')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Assign an operator to 8072' })).toBeInTheDocument()
-    expect(await screen.findByText('On train 8058 until 18:51')).toBeInTheDocument()
+    expect(await screen.findByText('On train 8058 until Fri 23 Oct · 18:51')).toBeInTheDocument() // the day is shown, so 00:00 is not mistaken for "now"
+    expect(screen.getByRole('radio', { name: /Nimal Perera/ })).toBeDisabled() // busy: not chosen
+    expect(screen.getByText(/cannot be chosen/)).toBeInTheDocument()
     expect(screen.getByText('Available')).toBeInTheDocument()
 
     await user.click(screen.getByRole('radio', { name: /Second Operator/ }))
@@ -232,7 +234,7 @@ describe('Assign an operator (spec 17 A2)', () => {
     })
   })
 
-  it('shows the advice for an operator on another train, needs the box, never blocks, then sends acknowledgeOverlap', async () => {
+  it('refuses an operator on another train even if the list was out of date, names who and until when, and sends no acknowledgement', async () => {
     const user = userEvent.setup()
     const busy = new ApiError(409, 'operator_overlaps_another_journey', {
       reason: 'operator_overlaps_another_journey',
@@ -240,21 +242,16 @@ describe('Assign an operator (spec 17 A2)', () => {
       trainNumber: '8058',
       until: '2026-10-23T13:21:00+00:00',
     })
-    const post = vi.fn().mockRejectedValueOnce(busy).mockResolvedValue({ name: 'Nimal Perera' })
+    const post = vi.fn().mockRejectedValue(busy)
     renderWithApi(screens, fakeApi({}, post as unknown as Api['post']), '/journeys/j1/assign?date=2026-10-23')
 
-    await user.click(await screen.findByRole('radio', { name: /Nimal Perera/ }))
+    await user.click(await screen.findByRole('radio', { name: /Nimal Perera/ })) // the list said available
     await user.click(screen.getByRole('button', { name: 'Assign operator' }))
 
-    expect(await screen.findByText('Nimal Perera is on train 8058 until 18:51.')).toBeInTheDocument()
-    const submit = screen.getByRole('button', { name: 'Assign operator' })
-    expect(submit).toBeDisabled()
-    await user.click(screen.getByRole('checkbox', { name: /I know, and want to assign them anyway/ }))
-    expect(submit).toBeEnabled()
-    await user.click(submit)
-
-    await waitFor(() => expect(post).toHaveBeenCalledTimes(2))
-    expect(post).toHaveBeenLastCalledWith('/api/v1/journeys/j1/assignments', { operatorUserId: 'op-1', acknowledgeOverlap: true })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Nimal Perera is on train 8058 until Fri 23 Oct · 18:51, so cannot be assigned here. Nothing was changed.')
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument() // no "assign anyway" box any more
+    expect(post).toHaveBeenCalledTimes(1)
+    expect(post).toHaveBeenCalledWith('/api/v1/journeys/j1/assignments', { operatorUserId: 'op-1' })
   })
 
   it('words a refused assignment in plain language', async () => {

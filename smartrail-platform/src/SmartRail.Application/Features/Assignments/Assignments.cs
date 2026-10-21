@@ -137,12 +137,21 @@ public sealed class ListAssignmentJourneysHandler(IAssignmentRepository reposito
     }
 }
 
-public sealed class ListOperatorsHandler(IOperatorDirectory directory, IAssignmentRepository repository, TimeProvider clock)
+public sealed class ListOperatorsHandler(IOperatorDirectory directory, IAssignmentRepository repository, TimeProvider clock, AssignmentSettings settings)
 {
     public async Task<IReadOnlyList<OperatorChoice>> HandleAsync(Guid? journeyId, DateTimeOffset? from, DateTimeOffset? to, CancellationToken cancellationToken)
     {
         var operators = (await directory.ListAsync(cancellationToken)).Where(o => o.IsOperator).ToList();
         var start = from ?? clock.GetUtcNow();
+
+        // For a journey, "available" means free for that journey's own window (the default start to its last arrival), the same window the assign
+        // check uses, so the list never disables an operator the assign would accept, or the other way round.
+        if (journeyId is { } id && from is null && to is null && await repository.GetJourneyTimesAsync(id, cancellationToken) is { } times)
+        {
+            start = AssignmentRules.DefaultFrom(times.FirstDeparture, TimeSpan.FromMinutes(settings.LeadMinutes), clock.GetUtcNow());
+            to = times.LastArrival;
+        }
+
         var busy = await repository.BusyOperatorsAsync(journeyId, start, to, cancellationToken);
         return operators.Select(o => new OperatorChoice(o.UserId, o.Name, o.Enabled, !busy.ContainsKey(o.UserId), busy.GetValueOrDefault(o.UserId))).ToList();
     }
