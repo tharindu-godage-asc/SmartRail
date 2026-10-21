@@ -38,6 +38,7 @@ public static class TimetableFeatures
         services.AddScoped<ValidateServiceHandler>();
         services.AddScoped<CreateServiceHandler>();
         services.AddScoped<CancelServiceHandler>();
+        services.AddScoped<RestoreServiceHandler>();
         services.AddScoped<AmendServiceHandler>();
         services.AddScoped<JourneyGenerationHandler>();
         services.AddHostedService<TimetableGeneratorService>();
@@ -53,6 +54,7 @@ public static class TimetableFeatures
         group.MapPost("/validate", Validate).WithName("ValidateTimetableService");
         group.MapPost("/services", Create).WithName("CreateTimetableService");
         group.MapPost("/services/{serviceId:guid}/cancel", Cancel).WithName("CancelTimetableService");
+        group.MapPost("/cancellations/{cancellationId:guid}/restore", Restore).WithName("RestoreTimetableService");
         group.MapPost("/services/{serviceId:guid}/amend", Amend).WithName("AmendTimetableService");
         return app;
     }
@@ -122,6 +124,28 @@ public static class TimetableFeatures
                 return TypedResults.Problem(
                     title: $"Train {result.ClashTrainNumber} already runs on these dates", statusCode: StatusCodes.Status409Conflict,
                     extensions: new Dictionary<string, object?> { ["reason"] = "train_number_in_use", ["trainNumber"] = result.ClashTrainNumber });
+        }
+    }
+
+    private static async Task<IResult> Restore(Guid cancellationId, HttpContext http, RestoreServiceHandler handler, ILoggerFactory loggers, CancellationToken cancellationToken)
+    {
+        var subject = http.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(subject))
+        {
+            return Problem(StatusCodes.Status403Forbidden, "Forbidden", "no_subject");
+        }
+
+        var result = await handler.HandleAsync(cancellationId, subject, cancellationToken);
+        switch (result.Kind)
+        {
+            case RestoreResultKind.Done:
+                loggers.CreateLogger("SmartRail.Timetable").LogInformation(
+                    "Cancellation {CancellationId} restored by {Actor}: {Journeys} journeys.", cancellationId, LogSafe.Clean(subject), result.RestoredJourneys);
+                return TypedResults.Ok(new { cancellationId, restoredJourneys = result.RestoredJourneys });
+            case RestoreResultKind.NotFound:
+                return Problem(StatusCodes.Status404NotFound, "Cancellation not found", "cancellation_not_found");
+            default:
+                return Problem(StatusCodes.Status409Conflict, "This service was already restored", "already_restored");
         }
     }
 

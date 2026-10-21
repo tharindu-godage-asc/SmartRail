@@ -103,6 +103,39 @@ describe('Timetable (spec 15, W1)', () => {
     expect(document.querySelector('td b')).toBeNull()
   })
 
+  it('restores a cancelled service after a confirm, and says what came back', async () => {
+    const user = userEvent.setup()
+    const post = vi.fn(async () => ({ restoredJourneys: 4 }))
+    const api = { ...fakeApi({ cancelled: [cancellation()] }), post }
+    renderWithApi(screens, api, '/timetable/cancelled')
+
+    await user.click(await screen.findByRole('button', { name: 'Restore service 8072' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Restore service 8072?')).toBeInTheDocument()
+    expect(within(dialog).getByText(/Nothing is deleted/)).toBeInTheDocument()
+    expect(post).not.toHaveBeenCalled() // the dialog asks first
+    await user.click(within(dialog).getByRole('button', { name: 'Restore service' }))
+
+    expect(post).toHaveBeenCalledWith('/api/v1/timetable/cancellations/c1/restore', {})
+    expect(await screen.findByText('Service 8072 restored. 4 journeys came back.')).toBeInTheDocument()
+  })
+
+  it('keeping it cancelled sends nothing, and a second restore is explained', async () => {
+    const user = userEvent.setup()
+    const post = vi.fn(async () => {
+      throw new ApiError(409, 'already_restored')
+    })
+    renderWithApi(screens, { ...fakeApi({ cancelled: [cancellation()] }), post }, '/timetable/cancelled')
+    await user.click(await screen.findByRole('button', { name: 'Restore service 8072' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Keep it cancelled' }))
+    expect(post).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Restore service 8072' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Restore service' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('This service was already restored')
+  })
+
   it('says it could not load and offers Try again, then loads', async () => {
     const user = userEvent.setup()
     const get = vi.fn().mockRejectedValueOnce(new ApiError(500, null)).mockResolvedValue([row()])
