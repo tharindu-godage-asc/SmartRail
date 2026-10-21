@@ -123,6 +123,9 @@ public interface ITimetableRepository
     /// </summary>
     Task<CancelOutcome> CancelAsync(Guid serviceId, DateOnly from, DateOnly? to, string reason, string actor, DateTimeOffset now, CancellationToken cancellationToken);
 
+    /// <summary>The service and the operating date of a journey, or null when the journey is unknown.</summary>
+    Task<(Guid ServiceId, DateOnly Date)?> GetJourneyServiceAsync(Guid journeyId, CancellationToken cancellationToken);
+
     /// <summary>The latest version of the service's train number on its line, or null when the service is unknown.</summary>
     Task<LatestVersion?> GetLatestVersionAsync(Guid serviceId, CancellationToken cancellationToken);
 
@@ -359,6 +362,22 @@ public sealed class CancelServiceHandler(ITimetableRepository repository, TimePr
     {
         TimetableMetrics.Change("cancelled", "rejected");
         return new CancelResult(error, null, 0, null, null, null);
+    }
+}
+
+/// <summary>Cancel one journey: just that day's run of its train. It is the service cancel for a single date, with the same rules and reason.</summary>
+public sealed class CancelJourneyHandler(ITimetableRepository repository, CancelServiceHandler cancel)
+{
+    /// <summary>NotFound here means the journey is unknown; the other errors are those of the service cancel.</summary>
+    public async Task<CancelResult> HandleAsync(Guid journeyId, string? reason, string actor, CancellationToken cancellationToken)
+    {
+        var found = await repository.GetJourneyServiceAsync(journeyId, cancellationToken);
+        if (found is not { } journey)
+        {
+            return new CancelResult(CancelError.NotFound, null, 0, null, null, null);
+        }
+
+        return await cancel.HandleAsync(journey.ServiceId, journey.Date, journey.Date, reason, actor, cancellationToken);
     }
 }
 

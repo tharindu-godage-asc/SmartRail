@@ -522,6 +522,12 @@ public sealed class TimetableRepository(SmartrailDbContext db) : ITimetableRepos
             : null;
     }
 
+    public async Task<(Guid ServiceId, DateOnly Date)?> GetJourneyServiceAsync(Guid journeyId, CancellationToken cancellationToken)
+    {
+        var journey = await db.Journeys.AsNoTracking().SingleOrDefaultAsync(j => j.Id == journeyId, cancellationToken);
+        return journey is null ? null : (journey.ServiceId, journey.OperatingDate);
+    }
+
     public async Task<LatestVersion?> GetLatestVersionAsync(Guid serviceId, CancellationToken cancellationToken)
     {
         var service = await db.TrainServices.AsNoTracking().SingleOrDefaultAsync(s => s.Id == serviceId, cancellationToken);

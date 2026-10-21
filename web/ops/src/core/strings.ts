@@ -173,6 +173,22 @@ export const t = {
   },
 
   journeyDetail: {
+    cancelJourney: {
+      action: 'Cancel journey',
+      title: (train: string) => `Cancel journey ${train}?`,
+      help: 'Only the run on this date is cancelled. The service and its other days stay. It can be restored under Timetable, Cancelled.',
+      reason: 'Reason',
+      reasonHint: '1 to 200 characters, plain text.',
+      counter: (n: number) => `${n} / 200`,
+      confirm: 'Confirm cancellation',
+      sending: 'Cancelling…',
+      keep: 'Keep the journey',
+      close: 'Close',
+      refused: 'This journey already has reports, so it cannot be cancelled. Nothing was changed.',
+      refusedHelp: 'Reports are never removed.',
+      failed: 'Could not cancel. Nothing was changed. Try again.',
+      done: 'Journey cancelled.',
+    },
     back: 'Back to journeys',
     title: (train: string) => `Train ${train}`,
     notFound: 'This journey was not found.',

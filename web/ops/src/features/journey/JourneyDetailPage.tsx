@@ -7,8 +7,9 @@ import type { ControllerJourneyDetail, DetailEvent, DetailStop } from '../../cor
 import { Icon } from '../../core/Icon'
 import { journeyStatusLabel, t } from '../../core/strings'
 import { formatClockShort, formatDayAndTime } from '../../core/time'
-import { cell, Panel, StatusChip, Th } from '../../core/ui'
+import { Button, cell, Panel, StatusChip, Th } from '../../core/ui'
 import { useApi } from '../auth/apiContext'
+import { CancelJourneyDialog } from './CancelJourneyDialog'
 import { PlatformDialog } from './PlatformDialog'
 import { TrackView } from './TrackView'
 
@@ -64,6 +65,7 @@ export function JourneyDetailPage() {
   const d = query.data
   const [editing, setEditing] = useState<DetailStop | null>(null)
   const [done, setDone] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
   const search = params.toString() ? `?${params.toString()}` : ''
 
   if (query.isError && query.error instanceof ApiError && query.error.status === 404) {
@@ -111,6 +113,18 @@ export function JourneyDetailPage() {
           ) : null}
         </div>
       </div>
+
+      {cancelling && d ? (
+        <CancelJourneyDialog
+          journeyId={journeyId}
+          trainNumber={d.trainNumber}
+          onClose={() => setCancelling(false)}
+          onDone={(message) => {
+            setCancelling(false)
+            setDone(message)
+          }}
+        />
+      ) : null}
 
       {editing ? (
         <PlatformDialog
@@ -247,6 +261,9 @@ export function JourneyDetailPage() {
               >
                 {j.crew.history}
               </Link>
+              {d.status === 'Unassigned' || d.status === 'Scheduled' ? (
+                <Button onClick={() => setCancelling(true)}>{j.cancelJourney.action}</Button>
+              ) : null}
             </div>
           </Panel>
 
