@@ -134,6 +134,33 @@ class _JourneyBodyState extends ConsumerState<_JourneyBody> {
   bool _saving = false;
 
   /// Runs one report action once: the buttons stay off until it is saved, so a double tap cannot make two reports.
+  /// A report cannot be taken back, so each stop report asks first (modal, Cancel or Confirm).
+  Future<bool> _confirm(String title) async {
+    final colors = context.colors;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: colors.bgPage,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Radii.lg),
+        ),
+        title: Text(title, style: context.text.headlineMedium),
+        content: const Text(Strings.confirmReportBody),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(Strings.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(Strings.confirmReport),
+          ),
+        ],
+      ),
+    );
+    return ok ?? false;
+  }
+
   Future<void> _act(Future<void> Function(ReportActions actions) action) async {
     if (_saving) {
       return;
@@ -191,8 +218,20 @@ class _JourneyBodyState extends ConsumerState<_JourneyBody> {
               _ActionCard(
                 action: progress?.next,
                 saving: _saving,
-                onDepart: (stop) => _act((a) => a.departed(journey, stop)),
-                onArrive: (stop) => _act((a) => a.arrived(journey, stop)),
+                onDepart: (stop) async {
+                  if (await _confirm(
+                    Strings.confirmDepartedTitle(stop.stationName),
+                  )) {
+                    await _act((a) => a.departed(journey, stop));
+                  }
+                },
+                onArrive: (stop) async {
+                  if (await _confirm(
+                    Strings.confirmArrivedTitle(stop.stationName),
+                  )) {
+                    await _act((a) => a.arrived(journey, stop));
+                  }
+                },
               ),
               const SizedBox(height: 12),
               SecondaryButton(
