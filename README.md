@@ -22,6 +22,8 @@ Needs: Docker Desktop (running), Git Bash, Node 22+, Flutter, Android SDK with a
 ./start.sh --stop         # stop everything (data is kept)
 ```
 
+**Only the screens** (when the backend is already running): `./scripts/start-ui.sh` starts the Operations Dashboard (Vite dev server on 5173) and makes sure the station displays (port 5174) are up, then prints every address, including all five main boards and platform displays. Options: `--open` opens the dashboard and a board in the browser, `--emulator` starts the Pixel_6 emulator and forwards ports 8080, 8180 and 8090 (without this the apps cannot reach the API or sign in), `--apps` also installs the passenger and operator apps, `--stop` stops the dashboard dev server.
+
 The first run builds the images and takes a few minutes. The demo data (a journey for train 8058, eight more demo trains, with `nimal` assigned to 8102 because 8058 leaves at 08:20 in both directions, a night train and a train leaving within minutes) is created at every API start.
 
 | What | Address | Sign in |
