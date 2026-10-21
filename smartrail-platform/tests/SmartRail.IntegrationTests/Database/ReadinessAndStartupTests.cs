@@ -109,6 +109,26 @@ public sealed class ReadinessAndStartupTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task The_demo_seed_puts_back_the_reference_services_when_the_timetable_was_cleared()
+    {
+        // A migrated database whose trains were all removed (the reference services of the migration included).
+        var database = await postgres.CreateDatabaseAsync();
+        await database.ExecuteAsync("delete from service_stop; delete from train_service;");
+        Assert.Equal(0, await database.ScalarAsync<long>("select count(*) from train_service"));
+        await using var api = Api(
+            ("ConnectionStrings:Smartrail", database.AppConnection),
+            ("ConnectionStrings:SmartrailMigrations", database.AdminConnection),
+            ("Database:ApplyMigrationsOnStartup", "true"),
+            ("Seeding:DemoData", "true"));
+
+        Assert.Equal(HttpStatusCode.OK, await Get(api, "/health/ready"));
+
+        await using var admin = database.AdminContext();
+        Assert.True(await admin.Journeys.CountAsync() >= 1); // the demo journey of 8058 exists again, so its service does too
+        Assert.True(await database.ScalarAsync<long>("select count(*) from train_service where train_number = '8058'") >= 1);
+    }
+
+    [Fact]
     public async Task Turning_migrations_on_without_the_admin_connection_stops_startup_with_a_clear_message()
     {
         var database = await postgres.CreateDatabaseAsync(migrate: false);

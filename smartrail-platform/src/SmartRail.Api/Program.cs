@@ -20,6 +20,7 @@ using SmartRail.Application.Features.Exceptions;
 using SmartRail.Application.Features.Verification;
 using SmartRail.Api.Features.Verification;
 using SmartRail.Api.Features.ControllerJourneys;
+using SmartRail.Api.Features.PlatformChanges;
 using SmartRail.Api.Features.Status;
 using SmartRail.Infrastructure;
 
@@ -43,6 +44,7 @@ if (databaseConfigured)
     builder.Services.AddExceptionFeatures();
     builder.Services.AddVerificationFeatures();
     builder.Services.AddControllerJourneyFeatures();
+    builder.Services.AddPlatformChangeFeatures();
 }
 
 builder.Services.AddHealthChecks();
@@ -72,7 +74,7 @@ if (openApiEnabled)
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService("smartrail-api").AddAttributes(new Dictionary<string, object>
         { ["deployment.environment"] = env }))
-    .WithMetrics(m => m.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddRuntimeInstrumentation().AddMeter(AuthMetrics.MeterName).AddMeter(EventMetrics.MeterName).AddMeter(SearchMetrics.MeterName).AddMeter(BoardMetrics.MeterName).AddMeter(ExceptionMetrics.MeterName).AddOtlpExporter())
+    .WithMetrics(m => m.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddRuntimeInstrumentation().AddMeter(AuthMetrics.MeterName).AddMeter(EventMetrics.MeterName).AddMeter(SearchMetrics.MeterName).AddMeter(BoardMetrics.MeterName).AddMeter(ExceptionMetrics.MeterName).AddMeter(SmartRail.Application.Features.PlatformChanges.PlatformChangeMetrics.MeterName).AddOtlpExporter())
     .WithTracing(t => t.AddAspNetCoreInstrumentation(o => o.Filter = context => !context.Request.Path.StartsWithSegments("/health")).AddHttpClientInstrumentation().AddNpgsql().AddOtlpExporter());
 builder.Logging.AddOpenTelemetry(o => { o.IncludeScopes = true; o.AddOtlpExporter(); });
 
@@ -111,6 +113,7 @@ if (databaseConfigured)
     app.MapExceptionFeatures();
     app.MapVerificationFeatures();
     app.MapControllerJourneyFeatures();
+    app.MapPlatformChangeFeatures();
 }
 
 if (openApiEnabled)

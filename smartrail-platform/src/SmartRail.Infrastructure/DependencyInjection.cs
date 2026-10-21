@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SmartRail.Application.Features.Exceptions;
 using SmartRail.Application.Features.Verification;
 using SmartRail.Application.Features.ControllerJourneys;
+using SmartRail.Application.Features.PlatformChanges;
 using SmartRail.Application.Features.Journeys;
 using SmartRail.Application.Features.Assignments;
 using SmartRail.Application.Features.OperatorHistory;
@@ -33,6 +34,7 @@ public static class DependencyInjection
             services.AddScoped<IExceptionRepository, ExceptionRepository>();
             services.AddScoped<IVerificationRepository, VerificationRepository>();
             services.AddScoped<IControllerJourneyQueries, ControllerJourneyQueries>();
+            services.AddScoped<IPlatformChangeRepository, PlatformChangeRepository>();
             services.AddScoped<IOperatorHistoryQueries, OperatorHistoryQueries>();
             services.AddScoped<ITimetableRepository, TimetableRepository>();
             services.AddScoped<IAssignmentRepository, AssignmentRepository>();

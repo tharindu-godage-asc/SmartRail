@@ -12,9 +12,50 @@ namespace SmartRail.Infrastructure.Seeding;
 /// </summary>
 public sealed class DemoSeeder(SmartrailDbContext db, TimeProvider clock)
 {
+    /// <summary>
+    /// The demo journeys belong to the reference services of the migration (8058, 8061, 8075). If someone cleared the timetable, put
+    /// them back first, so that starting the demo never fails on a missing service. Services that exist are left as they are.
+    /// </summary>
+    private async Task EnsureReferenceServicesAsync(CancellationToken cancellationToken)
+    {
+        var present = await db.TrainServices.Select(s => s.Id).ToListAsync(cancellationToken);
+        var missing = ReferenceData.TrainServices.Where(s => !present.Contains(s.Id)).ToList();
+        if (missing.Count == 0)
+        {
+            return;
+        }
+
+        var ids = missing.Select(s => s.Id).ToHashSet();
+        foreach (var service in missing)
+        {
+            db.TrainServices.Add(new Domain.Reference.TrainService
+            {
+                Id = service.Id, TrainNumber = service.TrainNumber, LineId = service.LineId, ServiceType = service.ServiceType,
+                ServiceCategory = service.ServiceCategory, Direction = service.Direction, RunsOn = service.RunsOn,
+                UnreservedCapacity = service.UnreservedCapacity,
+            });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        foreach (var stop in ReferenceData.ServiceStops.Where(s => ids.Contains(s.ServiceId)))
+        {
+            db.ServiceStops.Add(new Domain.Reference.ServiceStop
+            {
+                Id = stop.Id, ServiceId = stop.ServiceId, StationId = stop.StationId, Sequence = stop.Sequence,
+                ScheduledArrival = stop.ScheduledArrival, ScheduledDeparture = stop.ScheduledDeparture,
+                PlannedPlatformId = stop.PlannedPlatformId, ArrivalReportRequired = stop.ArrivalReportRequired,
+                CollectionEligible = stop.CollectionEligible,
+            });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     /// <summary>Returns true when it created the journey, false when today's journey already existed.</summary>
     public async Task<bool> SeedAsync(string? operatorSubject, CancellationToken cancellationToken = default)
     {
+        await EnsureReferenceServicesAsync(cancellationToken);
+
         var today = OperatingTime.Today(clock);
         var subject = string.IsNullOrWhiteSpace(operatorSubject) ? DemoIds.Nimal.ToString() : operatorSubject;
 
