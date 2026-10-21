@@ -87,11 +87,19 @@ public sealed class GetOverviewHandler(IJourneyRepository journeys, IExceptionRe
     }
 
     /// <summary>The same rule as the passenger line status: started, and not past its expected end plus the grace period.</summary>
+    /// <summary>
+    /// Running means the train has actually started: the first stop report made the journey Running (a journey nobody has started is
+    /// "overdue to start", listed on its own), and it is not past its expected end plus the grace period.
+    /// </summary>
     private static bool InProgress(JourneyData data, DateTimeOffset now, TimeSpan grace)
     {
+        if (data.Status != JourneyStatus.Running)
+        {
+            return false;
+        }
+
         var schedule = data.Schedule();
-        var start = schedule[0].Departure ?? schedule[0].Arrival;
         var end = (schedule[^1].Arrival ?? schedule[^1].Departure) + TimeSpan.FromMinutes(data.DelayMinutes);
-        return start is { } startAt && end is { } endAt && now >= startAt && now <= endAt + grace;
+        return end is { } endAt && now <= endAt + grace;
     }
 }
