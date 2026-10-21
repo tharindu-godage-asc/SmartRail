@@ -52,4 +52,21 @@ public sealed class ApiHardeningTests : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/live")).StatusCode);
     }
+
+    [Fact]
+    public async Task Swagger_ui_and_a_bearer_scheme_are_there_only_when_the_api_description_is_on()
+    {
+        await using var on = new AuthApiFactory(_issuer, settings: new Dictionary<string, string> { ["OpenApi:Enabled"] = "true" });
+        using var client = on.CreateClient();
+
+        var page = await client.GetAsync("/swagger/index.html");
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Contains("SmartRail API", await page.Content.ReadAsStringAsync());
+        var description = await (await client.GetAsync("/openapi/v1.json")).Content.ReadAsStringAsync();
+        Assert.Contains("\"bearer\"", description);
+
+        await using var off = new AuthApiFactory(_issuer);
+        using var other = off.CreateClient();
+        Assert.NotEqual(HttpStatusCode.OK, (await other.GetAsync("/swagger/index.html")).StatusCode);
+    }
 }

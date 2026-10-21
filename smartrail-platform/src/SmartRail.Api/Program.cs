@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.OpenApi;
 using Npgsql;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -53,7 +54,17 @@ builder.Services.AddProblemDetails();
 var openApiEnabled = builder.Configuration.GetValue<bool>("OpenApi:Enabled");
 if (openApiEnabled)
 {
-    builder.Services.AddOpenApi();
+    // A bearer scheme in the description gives Swagger UI an Authorize button: paste a token (scripts/get-token.sh nimal) and try the routes.
+    builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
+    {
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes = new Dictionary<string, IOpenApiSecurityScheme>
+        {
+            ["Bearer"] = new OpenApiSecurityScheme { Type = SecuritySchemeType.Http, Scheme = "bearer", BearerFormat = "JWT", Description = "A Keycloak access token (dev: scripts/get-token.sh nimal | jayasinghe)." },
+        };
+        document.Security = [new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("Bearer", document)] = [] }];
+        return Task.CompletedTask;
+    }));
 }
 
 // One instrumentation (OpenTelemetry) for metrics, traces and logs. The environment name is a resource
@@ -68,6 +79,18 @@ builder.Logging.AddOpenTelemetry(o => { o.IncludeScopes = true; o.AddOtlpExporte
 var app = builder.Build();
 app.UseExceptionHandler();
 app.UseSmartRailCors();
+if (openApiEnabled)
+{
+    // Swagger UI at /swagger reads that description. It is a page of static files (not an endpoint), so it holds no data and needs no sign-in.
+    app.UseSwaggerUI(o =>
+    {
+        o.SwaggerEndpoint("/openapi/v1.json", "SmartRail API v1");
+        o.RoutePrefix = "swagger";
+        o.DocumentTitle = "SmartRail API";
+        o.EnablePersistAuthorization();
+    });
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 
