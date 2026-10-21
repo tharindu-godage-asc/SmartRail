@@ -132,4 +132,7 @@ public sealed class JourneySettings
     /// Completed: a Completed journey leaves "in progress" by its status (spec 06 R11), and 0 would hide a train that runs late.
     /// </summary>
     public int VisibleAfterEndMinutes { get; set; } = 15;
+
+    /// <summary>How long after its first departure time a journey that nothing has started counts as overdue to start (A-07: configurable).</summary>
+    public int OverdueToStartMinutes { get; set; } = 5;
 }

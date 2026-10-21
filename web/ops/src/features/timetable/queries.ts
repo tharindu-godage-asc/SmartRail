@@ -101,6 +101,16 @@ export function useCancelService(serviceId: string) {
   })
 }
 
+/** Restores a cancelled service: the cancellation is closed (kept as history) and its journeys come back. */
+export function useRestoreService(cancellationId: string) {
+  const { api } = useApi()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.post(`${base}/cancellations/${cancellationId}/restore`, {}) as Promise<{ restoredJourneys: number }>,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['timetable'] }),
+  })
+}
+
 /** Amends a weekly service from a date: the result is a new version. */
 export function useAmendService(serviceId: string) {
   const { api } = useApi()

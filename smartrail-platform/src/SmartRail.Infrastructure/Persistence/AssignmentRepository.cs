@@ -32,7 +32,8 @@ public sealed class AssignmentRepository(SmartrailDbContext db) : IAssignmentRep
     public async Task<IReadOnlyList<JourneyListItem>> ListJourneysAsync(DateOnly date, bool unassignedOnly, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var journeys = await db.Journeys.AsNoTracking()
-            .Where(j => j.OperatingDate == date && j.Status != JourneyStatus.Cancelled && j.Status != JourneyStatus.Completed)
+            // The Unassigned tab lists only journeys that can still be assigned; All journeys also lists the finished and cancelled ones, for the filters.
+            .Where(j => j.OperatingDate == date && (!unassignedOnly || (j.Status != JourneyStatus.Cancelled && j.Status != JourneyStatus.Completed)))
             .ToListAsync(cancellationToken);
         if (journeys.Count == 0)
         {
@@ -158,14 +159,12 @@ public sealed class AssignmentRepository(SmartrailDbContext db) : IAssignmentRep
             return Outcome(AssignOutcomeKind.OverlapsLaterAssignment);
         }
 
-        // Rule 5: an operator on another journey in that range is advice, confirmed by the controller.
-        if (!command.AcknowledgeOverlap)
+        // Rule 5 (changed 21 Oct 2026): an operator who is on another journey in that range cannot be assigned here. It is no longer advice
+        // that can be confirmed. The block goes away when that journey gets another operator, the assignment is ended, or it is cancelled.
+        var busy = await BusyOperatorsAsync(journey.Id, validFrom, command.ValidTo ?? times.LastArrival, cancellationToken);
+        if (busy.TryGetValue(command.OperatorUserId, out var other))
         {
-            var busy = await BusyOperatorsAsync(journey.Id, validFrom, command.ValidTo ?? times.LastArrival, cancellationToken);
-            if (busy.TryGetValue(command.OperatorUserId, out var other))
-            {
-                return new AssignOutcome(AssignOutcomeKind.OperatorBusy, null, null, null, other);
-            }
+            return new AssignOutcome(AssignOutcomeKind.OperatorBusy, null, null, null, other);
         }
 
         AssignmentView? ended = null;

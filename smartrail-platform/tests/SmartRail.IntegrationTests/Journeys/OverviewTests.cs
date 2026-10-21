@@ -45,19 +45,30 @@ public sealed class OverviewTests(PostgresFixture postgres) : JourneyApiTestBase
     // ---- AC-E05-01 1: what a controller sees ----
 
     [Fact]
-    public async Task A_journey_with_no_report_yet_is_listed_with_no_last_event_and_nothing_awaiting()
+    public async Task A_journey_nobody_has_started_is_not_running_it_is_overdue_to_start_instead()
     {
         var overview = await OverviewAsync();
 
         Assert.Equal(0, overview.GetProperty("openExceptionCount").GetInt32());
+        Assert.Equal(0, overview.GetProperty("journeys").GetArrayLength()); // running means a first stop report started it
+        var overdue = Assert.Single(overview.GetProperty("overdueToStart").EnumerateArray());
+        Assert.Equal("8058", overdue.GetProperty("trainNumber").GetString());
+    }
+
+    [Fact]
+    public async Task A_journey_that_has_started_is_listed_with_its_last_event_and_is_no_longer_overdue()
+    {
+        await Depart(0, Local(8, 27));
+
+        var overview = await OverviewAsync();
+
         var journey = Assert.Single(overview.GetProperty("journeys").EnumerateArray());
         Assert.Equal("8058", journey.GetProperty("trainNumber").GetString());
         Assert.Equal("Veyangoda", journey.GetProperty("from").GetString());
         Assert.Equal("Colombo Fort", journey.GetProperty("to").GetString());
-        Assert.Equal(JsonValueKind.Null, journey.GetProperty("lastEvent").ValueKind);
-        Assert.Equal(JsonValueKind.Null, journey.GetProperty("nextStop").ValueKind);
-        Assert.Equal(JsonValueKind.Null, journey.GetProperty("secondsSinceUpdate").ValueKind);
+        Assert.Equal("Departed", journey.GetProperty("lastEvent").GetProperty("type").GetString());
         Assert.Equal("none", journey.GetProperty("verification").GetString());
+        Assert.Equal(0, overview.GetProperty("overdueToStart").GetArrayLength());
     }
 
     [Fact]
@@ -107,6 +118,7 @@ public sealed class OverviewTests(PostgresFixture postgres) : JourneyApiTestBase
     [Fact]
     public async Task A_reported_reason_shows_awaiting_and_counts_until_a_controller_resolves_it()
     {
+        await Depart(0, Local(8, 24)); // the journey must have started to be listed as running
         await Delay(Local(8, 28), "TechnicalFault", total: 10);
 
         var before = await OverviewAsync();

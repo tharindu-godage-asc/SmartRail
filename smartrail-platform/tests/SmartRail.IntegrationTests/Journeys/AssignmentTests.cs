@@ -244,7 +244,7 @@ public sealed class AssignmentTests(PostgresFixture postgres) : JourneyApiTestBa
     }
 
     [Fact]
-    public async Task An_operator_on_another_journey_in_that_range_is_advice_that_needs_confirming()
+    public async Task An_operator_on_another_journey_in_that_range_cannot_be_assigned_until_that_journey_is_cancelled_or_gets_another_operator()
     {
         await GenerateJourneys();
         var first = await JourneyOf("8061"); // 07:50 to 08:30
@@ -257,8 +257,33 @@ public sealed class AssignmentTests(PostgresFixture postgres) : JourneyApiTestBa
         Assert.Equal("8061", problem.GetProperty("trainNumber").GetString());
         Assert.Equal(first, problem.GetProperty("journeyId").GetGuid());
 
-        var confirmed = await Assign(JourneyId, Operator2, from: Local(8, 29), acknowledge: true);
-        Assert.Equal(HttpStatusCode.Created, confirmed.StatusCode);
+        // It is a block now, not advice: acknowledging changes nothing.
+        Assert.Equal(HttpStatusCode.Conflict, (await Assign(JourneyId, Operator2, from: Local(8, 29), acknowledge: true)).StatusCode);
+
+        // The operator list says the same, for the journey's own window.
+        var listed = (await Body(await Get($"/api/v1/assignments/operators?journeyId={JourneyId}", ControllerToken))).EnumerateArray()
+            .First(o => o.GetProperty("userId").GetString() == Operator2);
+        Assert.False(listed.GetProperty("available").GetBoolean());
+        Assert.Equal("8061", listed.GetProperty("busyOn").GetProperty("trainNumber").GetString());
+
+        // When the first journey is cancelled, the operator can be assigned here.
+        await Scalar($"update journey set status = 'Cancelled' where id = '{first}' returning 'x'");
+        Assert.Equal(HttpStatusCode.Created, (await Assign(JourneyId, Operator2, from: Local(8, 29))).StatusCode);
+    }
+
+    [Fact]
+    public async Task An_operator_is_free_again_when_the_assignment_on_the_other_journey_is_ended()
+    {
+        await GenerateJourneys();
+        var first = await JourneyOf("8061");
+        var made = await Body(await Assign(first, Operator2));
+        var assignmentId = made.GetProperty("assignmentId").GetGuid();
+        Assert.Equal(HttpStatusCode.Conflict, (await Assign(JourneyId, Operator2, from: Local(8, 29))).StatusCode);
+
+        // The controller ends Operator2's assignment on 8061 (for example a crew change): they are free for 8058.
+        Assert.Equal(HttpStatusCode.OK, (await End(first, assignmentId, "CrewChange")).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Created, (await Assign(JourneyId, Operator2, from: Local(8, 29))).StatusCode);
     }
 
     [Fact]

@@ -170,7 +170,7 @@ public sealed class TimetableRepository(SmartrailDbContext db) : ITimetableRepos
 
         var ids = services.Select(s => s.Id).ToList();
         var numbers = services.Select(s => s.TrainNumber).Distinct().ToList();
-        var cancelled = (await db.ServiceCancellations.AsNoTracking().Where(c => numbers.Contains(c.TrainNumber)).ToListAsync(cancellationToken))
+        var cancelled = (await db.ServiceCancellations.AsNoTracking().Where(c => c.RestoredAt == null && numbers.Contains(c.TrainNumber)).ToListAsync(cancellationToken))
             .ToLookup(c => (c.LineId, c.TrainNumber), c => new CancellationRange(c.FromDate, c.ToDate));
         var stops = await db.ServiceStops.AsNoTracking().Where(s => ids.Contains(s.ServiceId)).ToListAsync(cancellationToken);
         var existing = (await db.Journeys.AsNoTracking()
@@ -234,6 +234,13 @@ public sealed class TimetableRepository(SmartrailDbContext db) : ITimetableRepos
         {
             // One row per train number: its newest version (the one in force, or the one that starts later, spec 14 section 4.3).
             services = services.GroupBy(s => s.TrainNumber).Select(g => g.OrderByDescending(s => s.Version).First()).OrderBy(s => s.TrainNumber).ToList();
+
+            // A service cancelled from today onward is no longer in the weekly schedule: it is under Cancelled until it is restored.
+            var numbersNow = services.Select(s => s.TrainNumber).ToList();
+            var cancelledOnward = (await db.ServiceCancellations.AsNoTracking()
+                    .Where(c => c.RestoredAt == null && c.LineId == lineId && numbersNow.Contains(c.TrainNumber) && c.ToDate == null && c.FromDate <= today)
+                    .Select(c => c.TrainNumber).ToListAsync(cancellationToken)).ToHashSet();
+            services = services.Where(s => !cancelledOnward.Contains(s.TrainNumber)).ToList();
         }
 
         if (services.Count == 0)
@@ -251,7 +258,7 @@ public sealed class TimetableRepository(SmartrailDbContext db) : ITimetableRepos
         var lineStationCount = await db.LineStations.AsNoTracking().CountAsync(l => l.LineId == lineId, cancellationToken);
         var shownNumbers = services.Select(s => s.TrainNumber).Distinct().ToList();
         var cancelledRanges = (await db.ServiceCancellations.AsNoTracking()
-                .Where(c => c.LineId == lineId && shownNumbers.Contains(c.TrainNumber) && (c.ToDate == null || c.ToDate >= today))
+                .Where(c => c.RestoredAt == null && c.LineId == lineId && shownNumbers.Contains(c.TrainNumber) && (c.ToDate == null || c.ToDate >= today))
                 .ToListAsync(cancellationToken))
             .ToLookup(c => c.TrainNumber, c => new DateRange(c.FromDate, c.ToDate));
 
@@ -340,7 +347,7 @@ public sealed class TimetableRepository(SmartrailDbContext db) : ITimetableRepos
         await db.Database.ExecuteSqlInterpolatedAsync($"select pg_advisory_xact_lock(hashtext({service.TrainNumber}))", cancellationToken);
 
         var repeat = await db.ServiceCancellations.AsNoTracking()
-            .Where(c => c.LineId == service.LineId && c.TrainNumber == service.TrainNumber && c.FromDate == from && c.ToDate == to)
+            .Where(c => c.RestoredAt == null && c.LineId == service.LineId && c.TrainNumber == service.TrainNumber && c.FromDate == from && c.ToDate == to)
             .Select(c => (Guid?)c.Id).FirstOrDefaultAsync(cancellationToken);
         if (repeat is not null)
         {
@@ -350,7 +357,7 @@ public sealed class TimetableRepository(SmartrailDbContext db) : ITimetableRepos
         var services = await db.TrainServices.AsNoTracking()
             .Where(s => s.LineId == service.LineId && s.TrainNumber == service.TrainNumber).ToListAsync(cancellationToken);
         var existingRanges = (await db.ServiceCancellations.AsNoTracking()
-                .Where(c => c.LineId == service.LineId && c.TrainNumber == service.TrainNumber).ToListAsync(cancellationToken))
+                .Where(c => c.RestoredAt == null && c.LineId == service.LineId && c.TrainNumber == service.TrainNumber).ToListAsync(cancellationToken))
             .Select(c => new CancellationRange(c.FromDate, c.ToDate)).ToList();
 
         // Dates on which no version runs (a Sunday for a weekday train) are skipped; nothing in the range at all is an error.
@@ -407,6 +414,67 @@ public sealed class TimetableRepository(SmartrailDbContext db) : ITimetableRepos
         return new CancelOutcome(CancelResultKind.Done, cancellation.Id, cancelled, null);
     }
 
+    public async Task<RestoreOutcome> RestoreAsync(Guid cancellationId, string actor, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var cancellation = await db.ServiceCancellations.AsNoTracking().SingleOrDefaultAsync(c => c.Id == cancellationId, cancellationToken);
+        if (cancellation is null)
+        {
+            return new RestoreOutcome(RestoreResultKind.NotFound, 0);
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        // The same lock as create and cancel: one change per train number at a time.
+        await db.Database.ExecuteSqlInterpolatedAsync($"select pg_advisory_xact_lock(hashtext({cancellation.TrainNumber}))", cancellationToken);
+
+        // Read again under the lock: another controller may have restored it a moment ago.
+        var current = await db.ServiceCancellations.SingleAsync(c => c.Id == cancellationId, cancellationToken);
+        if (current.RestoredAt is not null)
+        {
+            return new RestoreOutcome(RestoreResultKind.AlreadyRestored, 0);
+        }
+
+        current.RestoredAt = now;
+        current.RestoredBy = actor;
+
+        // The journeys of the range that this cancellation had cancelled go back, unless another active cancellation still covers their date,
+        // or the service does not run that day (an amendment removed it). A journey with an operator assigned returns as Scheduled.
+        var remaining = (await db.ServiceCancellations.AsNoTracking()
+                .Where(c => c.RestoredAt == null && c.Id != cancellationId && c.LineId == current.LineId && c.TrainNumber == current.TrainNumber)
+                .ToListAsync(cancellationToken))
+            .Select(c => new CancellationRange(c.FromDate, c.ToDate)).ToList();
+        var services = await db.TrainServices.AsNoTracking()
+            .Where(s => s.LineId == current.LineId && s.TrainNumber == current.TrainNumber).ToDictionaryAsync(s => s.Id, cancellationToken);
+        var journeys = await db.Journeys
+            .Where(j => services.Keys.Contains(j.ServiceId) && j.Status == JourneyStatus.Cancelled && j.OperatingDate >= current.FromDate && (current.ToDate == null || j.OperatingDate <= current.ToDate))
+            .ToListAsync(cancellationToken);
+        var assigned = (await db.OperatorAssignments.AsNoTracking().Where(a => journeys.Select(j => j.Id).Contains(a.JourneyId)).Select(a => a.JourneyId).Distinct()
+            .ToListAsync(cancellationToken)).ToHashSet();
+
+        var restored = 0;
+        foreach (var journey in journeys)
+        {
+            var service = services[journey.ServiceId];
+            if (ServiceRuns.On(service.RunsOn, service.EffectiveFrom, service.EffectiveTo, journey.OperatingDate, remaining) != true)
+            {
+                continue;
+            }
+
+            journey.Status = assigned.Contains(journey.Id) ? JourneyStatus.Scheduled : JourneyStatus.Unassigned;
+            journey.Version += 1;
+            restored++;
+        }
+
+        db.ServiceChangeLogs.Add(new ServiceChangeLog
+        {
+            Id = Guid.CreateVersion7(now), ServiceId = current.ServiceId, Action = "Restored", Actor = actor, At = now,
+            Details = JsonSerializer.Serialize(new { cancellationId, from = current.FromDate, to = current.ToDate, journeys = restored }),
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return new RestoreOutcome(RestoreResultKind.Done, restored);
+    }
+
     public async Task<IReadOnlyList<CancellationView>> ListCancellationsAsync(string lineCode, DateOnly today, CancellationToken cancellationToken)
     {
         var lineId = await db.Lines.AsNoTracking().Where(l => l.Code == lineCode).Select(l => l.Id).SingleAsync(cancellationToken);
@@ -416,7 +484,7 @@ public sealed class TimetableRepository(SmartrailDbContext db) : ITimetableRepos
     private async Task<IReadOnlyList<CancellationView>> ListCancellationsForAsync(Guid lineId, string? trainNumber, DateOnly? today, CancellationToken cancellationToken)
     {
         var rows = await db.ServiceCancellations.AsNoTracking()
-            .Where(c => c.LineId == lineId && (trainNumber == null || c.TrainNumber == trainNumber) && (today == null || c.ToDate == null || c.ToDate >= today))
+            .Where(c => c.RestoredAt == null && c.LineId == lineId && (trainNumber == null || c.TrainNumber == trainNumber) && (today == null || c.ToDate == null || c.ToDate >= today))
             .OrderBy(c => c.FromDate).ThenBy(c => c.CreatedAt)
             .ToListAsync(cancellationToken);
         if (rows.Count == 0)
@@ -565,7 +633,7 @@ public sealed class TimetableRepository(SmartrailDbContext db) : ITimetableRepos
         // Re-point the journeys that have not started: same id, same assignment, same date; new service and fresh Pending stop states. A day the
         // new version no longer runs on is cancelled ("Removed by amendment"). A journey that is already Cancelled is left alone.
         var cancellations = (await db.ServiceCancellations.AsNoTracking()
-                .Where(c => c.LineId == previous.LineId && c.TrainNumber == previous.TrainNumber).ToListAsync(cancellationToken))
+                .Where(c => c.RestoredAt == null && c.LineId == previous.LineId && c.TrainNumber == previous.TrainNumber).ToListAsync(cancellationToken))
             .Select(c => new CancellationRange(c.FromDate, c.ToDate)).ToList();
         var schedules = new Dictionary<DateOnly, IReadOnlyDictionary<Guid, StopSchedule>>();
         var repointed = 0;

@@ -131,7 +131,7 @@ public sealed class PassengerQueries(SmartrailDbContext db) : IPassengerQueries
         var lineCodes = await db.Lines.AsNoTracking().ToDictionaryAsync(l => l.Id, l => l.Code, cancellationToken);
         var platformCodes = await db.Platforms.AsNoTracking().ToDictionaryAsync(p => p.Id, p => p.Code, cancellationToken);
         var numbers = list.Select(s => s.TrainNumber).Distinct().ToList();
-        var cancellations = await db.ServiceCancellations.AsNoTracking().Where(c => numbers.Contains(c.TrainNumber)).ToListAsync(cancellationToken);
+        var cancellations = await db.ServiceCancellations.AsNoTracking().Where(c => c.RestoredAt == null && numbers.Contains(c.TrainNumber)).ToListAsync(cancellationToken);
 
         return list.Select(s => new ServiceRecord(
             s.Id, s.TrainNumber, lineCodes[s.LineId], s.ServiceType.ToString(), s.RunsOn,
