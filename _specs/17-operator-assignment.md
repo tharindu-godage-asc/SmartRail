@@ -186,3 +186,9 @@ Assign flow from the Unassigned tab, the overlap confirm, the end dialog, empty 
 ## 16) Closing report (19 Oct 2026)
 - **Built:** A1 (backend: assign, crew change, end, lost-device rule) and A2 (web: Journeys list, Assign page, Crew and control with the End dialog).
 - **Not built / not done:** the Keycloak operator directory (A3, designed only: names come from configuration behind `IOperatorDirectory`); the Playwright flow; the hand check of keyboard use and 44 px targets, which stays unticked; an emulator run of the operator app after an assignment change.
+
+## 17) Change of rule 5 (21 Oct 2026, owner)
+- **Rule 5 was advice** (an operator on another journey in the range could be assigned after a confirm). The owner changed it to a **block**: an operator who is on another live journey in that range cannot be assigned. `POST .../assignments` answers 409 `operator_overlaps_another_journey` (with `journeyId`, `trainNumber`, `until`) whatever `acknowledgeOverlap` says (the field is still accepted and ignored). They become free when that journey gets another operator (the assignment is ended or replaced), or the journey is cancelled or completed.
+- `GET /assignments/operators?journeyId=` now judges availability for **that journey's own window** (default start to last arrival), the window the assign check uses, so the list and the check agree. Previously it looked at every later assignment of the operator.
+- Web: a busy operator's radio is disabled with "On train 8102 until Thu 22 Oct · 00:00" (the day is now shown, so an end at midnight is not read as "now"); the advice box and its checkbox are gone. A refusal that still arrives (a stale list) says who, which train and until when, and changes nothing.
+- A crew change of the same journey is unaffected (it is the same journey).

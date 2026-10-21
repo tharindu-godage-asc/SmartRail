@@ -78,6 +78,7 @@ public sealed class AuthApiFactory(
                 endpoints.MapGet("/test/controller", () => Results.NoContent()).RequireAuthorization(Policies.Controller);
                 endpoints.MapGet("/test/caterer", () => Results.NoContent()).RequireAuthorization(Policies.Caterer);
                 endpoints.MapGet("/test/any-signed-in-user", () => Results.NoContent());
+                endpoints.MapGet("/test/boom", () => { throw new InvalidOperationException("secret detail that must not leak"); }).RequireAuthorization(Policies.Operator);
             });
         };
     }

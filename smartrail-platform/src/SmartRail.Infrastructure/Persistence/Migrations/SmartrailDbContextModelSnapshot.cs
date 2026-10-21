@@ -1234,6 +1234,15 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("reason");
 
+                    b.Property<DateTimeOffset?>("RestoredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("restored_at");
+
+                    b.Property<string>("RestoredBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("restored_by");
+
                     b.Property<Guid>("ServiceId")
                         .HasColumnType("uuid")
                         .HasColumnName("service_id");
@@ -1303,7 +1312,7 @@ namespace SmartRail.Infrastructure.Persistence.Migrations
 
                     b.ToTable("service_change_log", null, t =>
                         {
-                            t.HasCheckConstraint("ck_service_change_log_action", "action in ('Created', 'Amended', 'Cancelled')");
+                            t.HasCheckConstraint("ck_service_change_log_action", "action in ('Created', 'Amended', 'Cancelled', 'Restored')");
                         });
                 });
 

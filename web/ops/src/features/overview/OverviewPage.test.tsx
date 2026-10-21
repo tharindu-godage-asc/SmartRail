@@ -51,6 +51,38 @@ describe('Overview page', () => {
     expect(within(awaiting).getByText('1')).toBeInTheDocument()
   })
 
+  it('lists the journeys that are overdue to start, with how late, whether anyone is assigned and where to go', async () => {
+    const get = vi.fn(async (path: string) =>
+      path.includes('overview')
+        ? {
+            ...overview([journey()], 0),
+            overdueToStart: [
+              { journeyId: 'o1', trainNumber: '8061', from: 'Veyangoda', to: 'Colombo Fort', scheduledDeparture: '2026-10-15T02:20:00Z', minutesLate: 48, hasOperator: false },
+              { journeyId: 'o2', trainNumber: '8070', from: 'Colombo Fort', to: 'Veyangoda', scheduledDeparture: '2026-10-15T02:40:00Z', minutesLate: 28, hasOperator: true },
+            ],
+          }
+        : queue([]),
+    )
+    renderWithApi(<OverviewPage />, { get: get as unknown as Api['get'], post: vi.fn() })
+
+    const panel = within((await screen.findByRole('heading', { name: 'Overdue to start' })).closest('section')!)
+    const unassigned = within(panel.getByText('8061').closest('tr')!)
+    expect(unassigned.getByText('48 min')).toBeInTheDocument()
+    expect(unassigned.getByText('No operator assigned')).toBeInTheDocument()
+    expect(unassigned.getByRole('link', { name: 'Assign operator' })).toHaveAttribute('href', '/journeys/o1/assign')
+    const assigned = within(panel.getByText('8070').closest('tr')!)
+    expect(assigned.getByText('Assigned, no departure reported')).toBeInTheDocument()
+    expect(assigned.getByRole('link', { name: 'Open journey' })).toHaveAttribute('href', '/journeys/o2')
+    expect(screen.getByText('Departure time passed, not started')).toBeInTheDocument() // the tile note
+  })
+
+  it('shows no overdue panel when nothing is overdue, and the tile says 0', async () => {
+    renderWithApi(<OverviewPage />, fakeApi())
+
+    await screen.findByText('Veyangoda → Colombo Fort')
+    expect(screen.queryByRole('heading', { name: 'Overdue to start' })).not.toBeInTheDocument()
+  })
+
   it('says "No trains running now" when nothing is in progress', async () => {
     renderWithApi(<OverviewPage />, fakeApi([], []))
 

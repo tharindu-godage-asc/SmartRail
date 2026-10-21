@@ -186,3 +186,9 @@ Compose smoke by hand: create 8072, cancel 23 Oct, amend 8058, read the passenge
 ## 15) Closing report (19 Oct 2026)
 - **Built:** cancel (one date or from a date onward, with a reason; all or none; 409 `journey_has_events`) and amend with versions (weekly services), as in the delivery notes above. The screens are spec 15.
 - **Not built:** passenger notification, refunds, caterer messages (D-72), amending extra trains (cancel and add another instead), un-cancelling, and showing "Cancelled" to passengers. A cancelled train is absent from search, board and status. A per-journey "Cancelled" state for passengers belongs to the overrides of spec 16 (F3), which is **not built**.
+
+## 16) Restore a cancelled service (21 Oct 2026, owner request)
+- A service cancelled **from today onward** leaves the weekly schedule and shows under Cancelled; a cancellation for one date or a later start leaves the service in the weekly schedule and also shows under Cancelled. The Cancelled tab has a **Restore** button with a modal like Cancel (it says what comes back, that nothing is deleted and that passengers are not messaged).
+- `POST /api/v1/timetable/cancellations/{cancellationId}/restore` (controller): 200 `{ cancellationId, restoredJourneys }`, 404 `cancellation_not_found`, 409 `already_restored`. Migration `AddCancellationRestore`: `service_cancellation.restored_at` and `restored_by`; the change-log action check gains `Restored`. The row stays as history; every read of cancellations (list, generator, passenger reads, amend, a repeat cancel) ignores restored ones.
+- The journeys that the cancellation had cancelled return: Unassigned, or Scheduled if an operator is assigned. A journey stays Cancelled if another active cancellation still covers its date, or if the service no longer runs that day (an amendment removed it).
+- Un-cancelling, listed as not built in section 14, is now built. Passengers are still not notified.

@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
+import type { CancellationView } from '../../core/api/types'
 import { t } from '../../core/strings'
 import { formatDayAndTime } from '../../core/time'
-import { cell, Th } from '../../core/ui'
+import { Button, cell, Th } from '../../core/ui'
 import { formatRange } from './dates'
 import { ListState } from './parts'
+import { RestoreDialog } from './RestoreDialog'
 import { useCancelled } from './queries'
 
 /**
@@ -13,6 +16,8 @@ import { useCancelled } from './queries'
 export function CancelledTab() {
   const query = useCancelled()
   const rows = query.data ?? []
+  const [restoring, setRestoring] = useState<CancellationView | null>(null)
+  const [done, setDone] = useState<string | null>(null)
 
   return (
     <ListState
@@ -21,6 +26,11 @@ export function CancelledTab() {
       onRetry={() => void query.refetch()}
       empty={query.data && rows.length === 0 ? t.timetable.empty.cancelled : null}
     >
+      {done ? (
+        <p role="status" className="m-0 mb-sm rounded-md border-[1.5px] border-ink p-[12px] text-label font-semibold">
+          {done}
+        </p>
+      ) : null}
       <div className="max-h-[min(60vh,520px)] overflow-auto">
         <table className="w-full border-collapse">
           <thead>
@@ -31,6 +41,7 @@ export function CancelledTab() {
               <Th>{t.timetable.cols.reason}</Th>
               <Th>{t.timetable.cols.cancelledBy}</Th>
               <Th>{t.timetable.cols.cancelledAt}</Th>
+              <Th>{t.timetable.restore.action}</Th>
             </tr>
           </thead>
           <tbody>
@@ -46,11 +57,26 @@ export function CancelledTab() {
                 <td className={`${cell} whitespace-normal`}>{row.reason}</td>
                 <td className={cell}>{row.cancelledBy}</td>
                 <td className={cell}>{formatDayAndTime(row.cancelledAt)}</td>
+                <td className={cell}>
+                  <Button onClick={() => setRestoring(row)} aria-label={t.timetable.restore.actionFor(row.trainNumber)}>
+                    {t.timetable.restore.action}
+                  </Button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {restoring ? (
+        <RestoreDialog
+          row={restoring}
+          onClose={() => setRestoring(null)}
+          onDone={(message) => {
+            setRestoring(null)
+            setDone(message)
+          }}
+        />
+      ) : null}
     </ListState>
   )
 }

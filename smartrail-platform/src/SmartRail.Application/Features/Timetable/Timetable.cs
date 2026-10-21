@@ -91,6 +91,10 @@ public sealed record AmendOutcome(
 
 public enum CancelResultKind { Done, Repeat, NotFound, NothingToCancel, HasEvents }
 
+public enum RestoreResultKind { Done, NotFound, AlreadyRestored }
+
+public sealed record RestoreOutcome(RestoreResultKind Kind, int RestoredJourneys);
+
 public sealed record CancelOutcome(CancelResultKind Kind, Guid? CancellationId, int CancelledJourneys, DateOnly? EventDate);
 
 public interface ITimetableRepository
@@ -129,7 +133,13 @@ public interface ITimetableRepository
     /// </summary>
     Task<AmendOutcome> AmendAsync(NewService next, Guid serviceId, string actor, DateTimeOffset now, CancellationToken cancellationToken);
 
-    /// <summary>Cancellations that cover a date from <paramref name="today"/> on, for the Cancelled tab.</summary>
+    /// <summary>
+    /// Restores a cancelled service: the cancellation stays as history with who restored it and when, no longer applies, and the journeys it had
+    /// cancelled go back to Unassigned (or Scheduled with an operator assigned). Under the train-number lock, in one transaction.
+    /// </summary>
+    Task<RestoreOutcome> RestoreAsync(Guid cancellationId, string actor, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>Cancellations that cover a date from <paramref name="today"/> on and are not restored, for the Cancelled tab.</summary>
     Task<IReadOnlyList<CancellationView>> ListCancellationsAsync(string lineCode, DateOnly today, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<ServiceRow>> ListAsync(string lineCode, string tab, DateOnly today, CancellationToken cancellationToken);
@@ -461,5 +471,18 @@ public sealed class AmendServiceHandler(
     {
         TimetableMetrics.Change("amended", "rejected");
         return new AmendResult(error, null, null, 0, 0, 0, 0);
+    }
+}
+
+public sealed record RestoreResult(RestoreResultKind Kind, int RestoredJourneys);
+
+/// <summary>Restore a cancelled service (the other half of FR-11C): nothing is deleted, the cancellation is closed with the actor and the time.</summary>
+public sealed class RestoreServiceHandler(ITimetableRepository repository, TimeProvider clock)
+{
+    public async Task<RestoreResult> HandleAsync(Guid cancellationId, string actor, CancellationToken cancellationToken)
+    {
+        var outcome = await repository.RestoreAsync(cancellationId, actor, clock.GetUtcNow(), cancellationToken);
+        TimetableMetrics.Change("restored", outcome.Kind == RestoreResultKind.Done ? "ok" : "conflict");
+        return new RestoreResult(outcome.Kind, outcome.RestoredJourneys);
     }
 }

@@ -1,4 +1,5 @@
-import { screen, within } from '@testing-library/react'
+import { screen, within, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError, type Api } from '../../core/api/client'
@@ -115,7 +116,7 @@ describe('Controller journey detail (spec 16 F1)', () => {
     renderPage(detail())
 
     await screen.findByRole('heading', { name: /Train 8058/ })
-    expect(screen.queryByRole('button', { name: /suspend|cancel|terminate|platform/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /suspend|cancel|terminate/i })).not.toBeInTheDocument()
     expect(screen.getByText(/does not control any train and does not predict/)).toBeInTheDocument()
   })
 
@@ -123,5 +124,79 @@ describe('Controller journey detail (spec 16 F1)', () => {
     renderPage(new ApiError(404, 'journey_not_found'))
 
     expect(await screen.findByText('This journey was not found.')).toBeInTheDocument()
+  })
+})
+
+describe('Set the platform of a stop (spec 20, FR-57)', () => {
+  const options = {
+    lineCode: 'MAIN',
+    stations: [
+      { code: 'VEY', sequence: 5, names: { en: 'Veyangoda' }, platforms: ['1', '2'] },
+      { code: 'GAM', sequence: 4, names: { en: 'Gampaha' }, platforms: ['1', '2'] },
+      { code: 'COL', sequence: 1, names: { en: 'Colombo Fort' }, platforms: ['1', '2'] },
+    ],
+  }
+
+  function renderWith(post: Api['post'], answer = detail()) {
+    const get = vi.fn(async (path: string) => (path.includes('/timetable/options') ? options : answer))
+    const api = { get: get as unknown as Api['get'], post } satisfies Api
+    return renderWithApi(
+      <Routes>
+        <Route path="/journeys/:journeyId" element={<JourneyDetailPage />} />
+      </Routes>,
+      api,
+      '/journeys/j1',
+    )
+  }
+
+  it('offers Set platform on stops the train has not left, and sends the chosen platform', async () => {
+    const post = vi.fn(async () => ({}))
+    renderWith(post)
+
+    expect(screen.queryByRole('button', { name: 'Set the platform at Veyangoda' })).not.toBeInTheDocument() // already passed
+    await userEvent.click(await screen.findByRole('button', { name: 'Set the platform at Gampaha' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.selectOptions(within(dialog).getByLabelText('Platform'), '2')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save platform' }))
+
+    expect(post).toHaveBeenCalledWith('/api/v1/journeys/j1/stops/s2/platform', { platformCode: '2', acknowledgeWarnings: false })
+    expect(await screen.findByText('Platform at Gampaha is now 2.')).toBeInTheDocument()
+  })
+
+  it('shows another train on the platform as advice that needs a tick, stronger for the opposite direction, and then allows it', async () => {
+    const advice = new ApiError(409, 'warnings_not_acknowledged', { warnings: [{ trainNumber: '8043', minutesApart: 4, oppositeDirection: true }] })
+    const post = vi.fn().mockRejectedValueOnce(advice).mockResolvedValue({})
+    renderWith(post)
+    await userEvent.click(await screen.findByRole('button', { name: 'Set the platform at Gampaha' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.selectOptions(within(dialog).getByLabelText('Platform'), '2')
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save platform' }))
+
+    expect(await within(dialog).findByText(/opposite direction uses this platform/)).toBeInTheDocument()
+    expect(within(dialog).getByText('Train 8043, 4 min apart, opposite direction')).toBeInTheDocument()
+    expect(within(dialog).getByText(/does not control trains or detect collisions/)).toBeInTheDocument()
+    const change = within(dialog).getByRole('button', { name: 'Change anyway' })
+    expect(change).toBeDisabled() // not until the controller has ticked that they checked
+    await userEvent.click(within(dialog).getByRole('checkbox'))
+    await userEvent.click(change)
+
+    await waitFor(() => expect(post).toHaveBeenLastCalledWith('/api/v1/journeys/j1/stops/s2/platform', { platformCode: '2', acknowledgeWarnings: true }))
+  })
+
+  it('offers no platform change on a completed journey', async () => {
+    renderWith(vi.fn(), detail({ status: 'Completed' }))
+
+    await screen.findByRole('heading', { name: /Train 8058/ })
+    expect(screen.queryByRole('button', { name: /Set the platform/ })).not.toBeInTheDocument()
+  })
+
+  it('names the platform event in the list', async () => {
+    renderWith(
+      vi.fn(),
+      detail({ events: [{ id: 'e9', at: '2026-10-15T03:08:00Z', type: 'PlatformChanged', source: 'Controller', actor: 'jayasinghe', stationName: 'Gampaha', totalDelayMinutes: null, delayUnknown: false, reason: null, reasonCode: null, platform: '2' }] }),
+    )
+
+    expect(await screen.findByText(/Controller set the platform to 2/)).toBeInTheDocument()
   })
 })

@@ -58,6 +58,9 @@ function NothingDue({ board }: { board: Board }) {
 
 const columns = 'grid grid-cols-[330px_1fr_170px_560px] items-center gap-x-[24px]'
 
+/** A train with no platform yet: the controller sets it later (spec 20). "TBA" is the same abbreviation in all three languages of the board. */
+const PLATFORM_TBA = 'TBA'
+
 function Rows({ board, offline }: { board: Board; offline: boolean }) {
   return (
     <>
@@ -103,7 +106,7 @@ function Row({ call, offline }: { call: BoardCall; offline: boolean }) {
           <span lang="ta" style={{ fontFamily: 'var(--font-family-tamil)' }}>{call.destination.name.ta}</span>
         </div>
       </div>
-      <span className="text-level2 font-bold tabular-nums">{call.platform ?? '–'}</span>
+      <span className="text-level2 font-bold tabular-nums">{call.platform ?? PLATFORM_TBA}</span>
       <div className="flex flex-col items-start gap-[2px]">
         {offline ? (
           <StatusChip group="unknown" text={d.notLive.en} size="small" />

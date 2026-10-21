@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { ApiError } from '../../core/api/client'
-import type { AssignRequest, BusyOn } from '../../core/api/types'
+import type { AssignRequest } from '../../core/api/types'
 import { Icon } from '../../core/Icon'
 import { assignmentReason, t } from '../../core/strings'
-import { formatClockShort, todayInColombo } from '../../core/time'
+import { formatClockShort, formatDayAndTime, todayInColombo } from '../../core/time'
 import { Button, Panel } from '../../core/ui'
 import { formatDate } from '../timetable/dates'
 import { inputClass } from '../timetable/wizard/styles'
@@ -35,8 +35,6 @@ export function AssignPage() {
   const [fromTime, setFromTime] = useState('')
   const [toTime, setToTime] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
-  const [advice, setAdvice] = useState<BusyOn | null>(null)
-  const [confirmed, setConfirmed] = useState(false)
   const a = t.assignments
   const p = a.page
 
@@ -49,16 +47,15 @@ export function AssignPage() {
       operatorUserId: chosen,
       ...(fromMode === 'time' ? { validFrom: instantOf(date, fromTime) } : {}),
       ...(toMode === 'time' ? { validTo: instantOf(date, toTime) } : {}),
-      ...(confirmed ? { acknowledgeOverlap: true } : {}),
     }
 
     assign.mutate(request, {
       onSuccess: (done) => navigate(`/journeys?date=${date}`, { state: { message: a.assigned(journey?.trainNumber ?? '', done.name) } }),
       onError: (error) => {
         if (error instanceof ApiError && error.reason === 'operator_overlaps_another_journey') {
+          // A block, not advice: the operator is on another train in that range. The list is refreshed, so they show as unavailable.
           const body = (error.body ?? {}) as Record<string, unknown>
-          setAdvice({ journeyId: String(body.journeyId ?? ''), trainNumber: String(body.trainNumber ?? ''), until: typeof body.until === 'string' ? body.until : null })
-          setConfirmed(false)
+          setProblem(p.busyRefused(chosenName, String(body.trainNumber ?? ''), typeof body.until === 'string' ? formatDayAndTime(body.until) : ''))
         } else {
           setProblem(error instanceof ApiError ? (assignmentReason(error.reason) ?? p.directoryFailed) : p.directoryFailed)
         }
@@ -98,7 +95,16 @@ export function AssignPage() {
           ) : (
             operators.data.map((o) => (
               <label key={o.userId} className="flex min-h-touch flex-wrap items-center gap-sm rounded-md border border-line px-[12px] text-[15px]">
-                <input type="radio" name="operator" checked={chosen === o.userId} disabled={!o.enabled} onChange={() => setChosen(o.userId)} />
+                <input
+                  type="radio"
+                  name="operator"
+                  checked={chosen === o.userId}
+                  disabled={!o.enabled || !o.available}
+                  onChange={() => {
+                    setChosen(o.userId)
+                    setProblem(null)
+                  }}
+                />
                 <span className="font-bold">{o.name}</span>
                 {!o.enabled ? (
                   <span className="text-muted">{p.disabled}</span>
@@ -110,12 +116,13 @@ export function AssignPage() {
                 ) : (
                   <span className="inline-flex items-center gap-xs font-semibold text-warning">
                     <Icon name="warning" size={16} />
-                    {p.busy(o.busyOn?.trainNumber ?? '', o.busyOn?.until ? formatClockShort(o.busyOn.until) : '')}
+                    {p.busy(o.busyOn?.trainNumber ?? '', o.busyOn?.until ? formatDayAndTime(o.busyOn.until) : '')}
                   </span>
                 )}
               </label>
             ))
           )}
+          {operators.data?.some((o) => o.enabled && !o.available) ? <p className="m-0 text-label text-muted">{p.busyNote}</p> : null}
         </fieldset>
 
         <div className="flex flex-wrap gap-lg">
@@ -153,20 +160,6 @@ export function AssignPage() {
           {p.crewNote}
         </p>
 
-        {advice ? (
-          <div className="flex flex-col gap-sm rounded-md border-[1.5px] border-ink p-md">
-            <h2 className="m-0 text-[15px] font-bold">{p.adviceTitle}</h2>
-            <p className="m-0 flex items-start gap-sm text-[15px]">
-              <Icon name="info" size={18} />
-              {p.advice(chosenName, advice.trainNumber, advice.until ? formatClockShort(advice.until) : '')}
-            </p>
-            <label className="flex min-h-touch items-center gap-sm text-[15px] font-semibold">
-              <input type="checkbox" className="size-[22px]" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-              {p.adviceConfirm}
-            </label>
-          </div>
-        ) : null}
-
         {problem ? (
           <p role="alert" className="m-0 rounded-md border-[3px] border-warning bg-warning-bg p-[12px] text-label font-semibold text-warning">
             {problem}
@@ -174,7 +167,7 @@ export function AssignPage() {
         ) : null}
 
         <div className="flex flex-wrap gap-sm">
-          <Button variant="primary" onClick={submit} disabled={assign.isPending || (advice !== null && !confirmed)}>
+          <Button variant="primary" onClick={submit} disabled={assign.isPending || (operators.data?.find((o) => o.userId === chosen)?.available === false)}>
             {assign.isPending ? p.submitting : p.submit}
           </Button>
           <Link to={`/journeys?date=${date}`} className="inline-flex min-h-touch items-center px-sm text-[15px] font-semibold text-ink underline">

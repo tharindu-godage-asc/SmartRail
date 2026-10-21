@@ -18,4 +18,9 @@ public sealed class ServiceCancellation
     public required string Reason { get; set; }
     public required string CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>Set when a controller restores the service: the cancellation stays as history but no longer applies (nothing is deleted).</summary>
+    public DateTimeOffset? RestoredAt { get; set; }
+
+    public string? RestoredBy { get; set; }
 }

@@ -2,6 +2,7 @@ import type { Dispatch } from 'react'
 import type { LineOptions, ValidationIssue } from '../../../core/api/types'
 import { t } from '../../../core/strings'
 import { cell, Th } from '../../../core/ui'
+import { Icon } from '../../../core/Icon'
 import { inRunningOrder, isLocked, type Action, type Draft } from './draft'
 import { issuesForStop } from './issues'
 import { IssueList } from './parts'
@@ -46,6 +47,12 @@ export function StopsStep({
 
       <p className="m-0 text-label text-muted">{w.timeHint}</p>
 
+      {draft.stops.some((s) => s.included && s.platform === null) ? (
+        <p className="m-0 flex items-start gap-sm text-label">
+          <Icon name="info" size={18} />
+          {w.platformHint}
+        </p>
+      ) : null}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>

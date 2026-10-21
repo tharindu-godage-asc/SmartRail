@@ -389,11 +389,11 @@ describe('Main board', () => {
     expect(second.getByText('Scheduled')).toBeInTheDocument()
   })
 
-  it('shows a dash for a train with no platform', async () => {
+  it('says TBA (platform to be announced) for a train with no platform', async () => {
     renderDisplay('/display/board/GPH', () => json(board({ trains: [call({ platform: null })] })))
 
     const row = within(await screen.findByRole('listitem'))
-    expect(row.getByText('–')).toBeInTheDocument()
+    expect(row.getByText('TBA')).toBeInTheDocument()
   })
 
   it('offline shows the scheduled times, marked "Not live", not the last estimates (AC-E09-01 4, EC-111)', async () => {

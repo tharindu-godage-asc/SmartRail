@@ -77,10 +77,22 @@ export interface OverviewJourney {
   verification: string
 }
 
+/** A journey nobody has started although its departure time has passed: nobody assigned, or the operator has not reported the departure. */
+export interface OverdueJourney {
+  journeyId: string
+  trainNumber: string
+  from: string
+  to: string
+  scheduledDeparture: string
+  minutesLate: number
+  hasOperator: boolean
+}
+
 export interface Overview {
   openExceptionCount: number
   journeys: OverviewJourney[]
   serverTime: string
+  overdueToStart?: OverdueJourney[]
 }
 
 // ---- Controller journey detail (spec 16 F1, read only). ----
@@ -114,6 +126,15 @@ export interface DetailEvent {
   delayUnknown: boolean
   reason: string | null
   reasonCode: string | null
+  /** The platform a PlatformChanged event set (null: back to the planned platform). */
+  platform?: string | null
+}
+
+/** Advice from the API when another train uses the platform at about the same time (FR-57). */
+export interface PlatformWarning {
+  trainNumber: string
+  minutesApart: number
+  oppositeDirection: boolean
 }
 
 export interface ControllerJourneyDetail {
@@ -304,6 +325,8 @@ export interface AssignmentJourney {
   /** `Weekly` or `Extra`. */
   source: string
   operator: CurrentOperator | null
+  /** Nothing has started it although its first departure time has passed by more than the grace period. */
+  overdueToStart?: boolean
 }
 
 export interface BusyOn {

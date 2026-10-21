@@ -9,7 +9,7 @@ internal sealed class ServiceChangeLogConfiguration : IEntityTypeConfiguration<S
 {
     public void Configure(EntityTypeBuilder<ServiceChangeLog> b)
     {
-        b.ToTable("service_change_log", t => t.HasCheckConstraint("ck_service_change_log_action", "action in ('Created', 'Amended', 'Cancelled')"));
+        b.ToTable("service_change_log", t => t.HasCheckConstraint("ck_service_change_log_action", "action in ('Created', 'Amended', 'Cancelled', 'Restored')"));
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
         b.Property(x => x.Action).HasMaxLength(12);
@@ -30,6 +30,7 @@ internal sealed class ServiceCancellationConfiguration : IEntityTypeConfiguratio
         b.Property(x => x.TrainNumber).HasMaxLength(10);
         b.Property(x => x.Reason).HasMaxLength(200);
         b.Property(x => x.CreatedBy).HasMaxLength(64);
+        b.Property(x => x.RestoredBy).HasMaxLength(64);
         b.HasIndex(x => new { x.LineId, x.TrainNumber, x.FromDate });
         b.HasOne<Line>().WithMany().HasForeignKey(x => x.LineId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<TrainService>().WithMany().HasForeignKey(x => x.ServiceId).OnDelete(DeleteBehavior.NoAction);

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { config } from '../../core/config'
@@ -8,6 +9,7 @@ import { journeyStatusLabel, t } from '../../core/strings'
 import { formatClockShort, formatDayAndTime } from '../../core/time'
 import { cell, Panel, StatusChip, Th } from '../../core/ui'
 import { useApi } from '../auth/apiContext'
+import { PlatformDialog } from './PlatformDialog'
 import { TrackView } from './TrackView'
 
 const j = t.journeyDetail
@@ -42,6 +44,8 @@ function eventText(e: DetailEvent): string {
       return j.events.arrived(e.source, e.stationName ?? '')
     case 'DelayReported':
       return j.events.delay(e.source, e.delayUnknown ? j.delayUnknown : j.minutes(e.totalDelayMinutes ?? 0), j.reasons[e.reason ?? ''] ?? e.reason ?? '')
+    case 'PlatformChanged':
+      return j.events.platform(e.platform ?? null)
     case 'ReasonVerified':
       return j.events.verified(j.reasons[e.reasonCode ?? ''] ?? e.reasonCode ?? '')
     default:
@@ -58,6 +62,8 @@ export function JourneyDetailPage() {
   const [params] = useSearchParams()
   const query = useJourneyDetail(journeyId)
   const d = query.data
+  const [editing, setEditing] = useState<DetailStop | null>(null)
+  const [done, setDone] = useState<string | null>(null)
   const search = params.toString() ? `?${params.toString()}` : ''
 
   if (query.isError && query.error instanceof ApiError && query.error.status === 404) {
@@ -106,9 +112,26 @@ export function JourneyDetailPage() {
         </div>
       </div>
 
+      {editing ? (
+        <PlatformDialog
+          journeyId={journeyId}
+          stop={editing}
+          onClose={() => setEditing(null)}
+          onDone={(message) => {
+            setEditing(null)
+            setDone(message)
+          }}
+        />
+      ) : null}
+
       <div className="grid gap-[14px] lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-[14px]">
           <Panel title={j.stops}>
+            {done ? (
+              <p role="status" className="m-0 rounded-md border-[1.5px] border-ink p-[12px] text-label font-semibold">
+                {done}
+              </p>
+            ) : null}
             <TrackView detail={d} />
             <p className="m-0 text-label">{positionSentence(d)}</p>
             <div className="max-h-[min(60vh,520px)] overflow-auto">
@@ -133,9 +156,19 @@ export function JourneyDetailPage() {
                         <td className={cell}>{time ? `${time.text}${time.kind === 'estimated' ? ` (${j.est})` : ''}` : '—'}</td>
                         <td className={cell}>{j.states[stop.state] ?? stop.state}</td>
                         <td className={cell}>
-                          {stop.platform ?? stop.plannedPlatform ?? '—'}
+                          {stop.platform ?? stop.plannedPlatform ?? j.platform.none}
                           {stop.platform && stop.plannedPlatform && stop.platform !== stop.plannedPlatform ? (
                             <span className="ml-xs text-caption text-muted">({j.planned(stop.plannedPlatform)})</span>
+                          ) : null}
+                          {d.status !== 'Completed' && d.status !== 'Cancelled' && stop.state !== 'Passed' ? (
+                            <button
+                              type="button"
+                              onClick={() => setEditing(stop)}
+                              aria-label={j.platform.setFor(stop.stationName)}
+                              className="ml-sm min-h-touch cursor-pointer border-0 bg-transparent p-0 text-label font-semibold text-ink underline underline-offset-4"
+                            >
+                              {j.platform.set}
+                            </button>
                           ) : null}
                         </td>
                       </tr>

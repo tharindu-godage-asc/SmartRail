@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using SmartRail.Application.Features.Journeys;
 using SmartRail.Domain.Journeys;
 
 namespace SmartRail.Application.Features.Assignments;
@@ -49,7 +50,8 @@ public sealed record JourneyListItem(
     DateTimeOffset LastArrival,
     string Status,
     string Source,
-    CurrentOperator? Operator);
+    CurrentOperator? Operator,
+    bool OverdueToStart = false);
 
 public sealed record CurrentOperator(string UserId, string Name, DateTimeOffset ValidFrom, DateTimeOffset? ValidTo);
 
@@ -108,7 +110,7 @@ public static class AssignmentMetrics
     public static readonly Counter<long> Ended = Meter.CreateCounter<long>("smartrail.assignments.ended", description: "Operator assignments ended, by reason");
 }
 
-public sealed class ListAssignmentJourneysHandler(IAssignmentRepository repository, IOperatorDirectory directory, TimeProvider clock)
+public sealed class ListAssignmentJourneysHandler(IAssignmentRepository repository, IOperatorDirectory directory, TimeProvider clock, JourneySettings settings)
 {
     public async Task<(bool Valid, IReadOnlyList<JourneyListItem> Items)> HandleAsync(string? date, string? filter, CancellationToken cancellationToken)
     {
@@ -124,18 +126,32 @@ public sealed class ListAssignmentJourneysHandler(IAssignmentRepository reposito
             return (false, []);
         }
 
-        var items = await repository.ListJourneysAsync(day, unassigned, clock.GetUtcNow(), cancellationToken);
+        var now = clock.GetUtcNow();
+        var items = await repository.ListJourneysAsync(day, unassigned, now, cancellationToken);
         var names = (await directory.ListAsync(cancellationToken)).ToDictionary(o => o.UserId, o => o.Name);
-        return (true, items.Select(i => i.Operator is null ? i : i with { Operator = i.Operator with { Name = names.GetValueOrDefault(i.Operator.UserId, i.Operator.UserId) } }).ToList());
+        return (true, items.Select(i =>
+        {
+            var overdue = OverdueRules.IsOverdueToStart(Enum.Parse<JourneyStatus>(i.Status), i.FirstDeparture, now, settings.OverdueToStartMinutes);
+            return (i.Operator is null ? i : i with { Operator = i.Operator with { Name = names.GetValueOrDefault(i.Operator.UserId, i.Operator.UserId) } }) with { OverdueToStart = overdue };
+        }).ToList());
     }
 }
 
-public sealed class ListOperatorsHandler(IOperatorDirectory directory, IAssignmentRepository repository, TimeProvider clock)
+public sealed class ListOperatorsHandler(IOperatorDirectory directory, IAssignmentRepository repository, TimeProvider clock, AssignmentSettings settings)
 {
     public async Task<IReadOnlyList<OperatorChoice>> HandleAsync(Guid? journeyId, DateTimeOffset? from, DateTimeOffset? to, CancellationToken cancellationToken)
     {
         var operators = (await directory.ListAsync(cancellationToken)).Where(o => o.IsOperator).ToList();
         var start = from ?? clock.GetUtcNow();
+
+        // For a journey, "available" means free for that journey's own window (the default start to its last arrival), the same window the assign
+        // check uses, so the list never disables an operator the assign would accept, or the other way round.
+        if (journeyId is { } id && from is null && to is null && await repository.GetJourneyTimesAsync(id, cancellationToken) is { } times)
+        {
+            start = AssignmentRules.DefaultFrom(times.FirstDeparture, TimeSpan.FromMinutes(settings.LeadMinutes), clock.GetUtcNow());
+            to = times.LastArrival;
+        }
+
         var busy = await repository.BusyOperatorsAsync(journeyId, start, to, cancellationToken);
         return operators.Select(o => new OperatorChoice(o.UserId, o.Name, o.Enabled, !busy.ContainsKey(o.UserId), busy.GetValueOrDefault(o.UserId))).ToList();
     }

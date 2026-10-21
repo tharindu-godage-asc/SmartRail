@@ -5,6 +5,7 @@ import { formatClockShort, todayInColombo } from '../../core/time'
 import { Button, cell, Panel, Th } from '../../core/ui'
 import { formatDate } from '../timetable/dates'
 import { inputClass } from '../timetable/wizard/styles'
+import { filterJourneys, stageIcon, stageOf, stages, type Stage } from './journeyStage'
 import { useAssignmentJourneys } from './queries'
 
 /**
@@ -17,7 +18,17 @@ export function JourneysPage({ all = false }: { all?: boolean }) {
   const unassigned = useAssignmentJourneys(date, 'unassigned')
   const everything = useAssignmentJourneys(date, 'all')
   const query = all ? everything : unassigned
-  const rows = query.data ?? []
+  const everyRow = query.data ?? []
+  const stageParam = params.get('status')
+  const stage: Stage | 'all' = stages.includes(stageParam as Stage) ? (stageParam as Stage) : 'all'
+  const text = (params.get('q') ?? '').trim()
+  const rows = filterJourneys(everyRow, stage, text)
+  const setFilter = (key: 'status' | 'q', value: string) => {
+    const next = new URLSearchParams(params)
+    if (value === '' || value === 'all') next.delete(key)
+    else next.set(key, value)
+    setParams(next)
+  }
   const location = useLocation()
   const message = (location.state as { message?: string } | null)?.message
   const search = `?date=${date}`
@@ -38,7 +49,12 @@ export function JourneysPage({ all = false }: { all?: boolean }) {
             type="date"
             className={inputClass}
             value={date}
-            onChange={(e) => e.target.value && setParams({ date: e.target.value })}
+            onChange={(e) => {
+              if (!e.target.value) return
+              const next = new URLSearchParams(params)
+              next.set('date', e.target.value)
+              setParams(next)
+            }}
           />
         </div>
       </div>
@@ -55,6 +71,55 @@ export function JourneysPage({ all = false }: { all?: boolean }) {
       </nav>
 
       <Panel>
+        {query.data && everyRow.length > 0 ? (
+          <div role="group" aria-label={t.assignments.filters.label} className="flex flex-wrap items-end justify-between gap-md">
+            <fieldset className="m-0 flex flex-wrap items-center gap-xs border-0 p-0">
+              <legend className="mb-xs p-0 text-label font-bold">{t.assignments.filters.status}</legend>
+              {(['all', ...stages] as const).map((value) => {
+                const count = value === 'all' ? everyRow.length : everyRow.filter((r) => stageOf(r) === value).length
+                const selected = stage === value
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setFilter('status', value)}
+                    className={`inline-flex min-h-touch cursor-pointer items-center gap-xs rounded-pill border-[1.5px] border-ink px-[14px] text-label ${selected ? 'bg-ink font-bold text-page' : 'bg-page font-semibold text-ink'}`}
+                  >
+                    {value === 'all' ? t.assignments.filters.all : t.assignments.stages[value]}
+                    <span className="tabular-nums">
+                      {' '}
+                      ({count})
+                    </span>
+                  </button>
+                )
+              })}
+            </fieldset>
+            <div className="flex flex-col gap-xs">
+              <label htmlFor="journeys-search" className="text-label font-bold">
+                {t.assignments.filters.search}
+              </label>
+              <input
+                id="journeys-search"
+                type="search"
+                className={`${inputClass} w-[200px]`}
+                value={params.get('q') ?? ''}
+                placeholder={t.assignments.filters.searchPlaceholder}
+                onChange={(e) => setFilter('q', e.target.value)}
+              />
+            </div>
+          </div>
+        ) : null}
+        {query.data && everyRow.length > 0 ? (
+          <p className="m-0 flex items-center gap-md text-label text-muted" role="status">
+            {t.assignments.filters.showing(rows.length, everyRow.length)}
+            {stage !== 'all' || text !== '' ? (
+              <button type="button" onClick={() => setParams(new URLSearchParams({ date }))} className="min-h-touch cursor-pointer border-0 bg-transparent p-0 text-label font-semibold text-ink underline underline-offset-4">
+                {t.assignments.filters.clear}
+              </button>
+            ) : null}
+          </p>
+        ) : null}
         {query.isError ? (
           <div className="flex flex-wrap items-center gap-md">
             <p role="alert" className="m-0 flex items-center gap-sm text-[15px] font-semibold">
@@ -65,8 +130,10 @@ export function JourneysPage({ all = false }: { all?: boolean }) {
           </div>
         ) : query.isPending ? (
           <p className="m-0 text-label text-muted">{t.assignments.loading}</p>
-        ) : rows.length === 0 ? (
+        ) : everyRow.length === 0 ? (
           <p className="m-0 text-[15px]">{all ? t.assignments.empty.all : t.assignments.empty.unassigned}</p>
+        ) : rows.length === 0 ? (
+          <p className="m-0 text-[15px]">{t.assignments.filters.none}</p>
         ) : (
           <div className="max-h-[min(60vh,520px)] overflow-auto">
             <table className="w-full border-collapse">
@@ -75,6 +142,7 @@ export function JourneysPage({ all = false }: { all?: boolean }) {
                   <Th>{t.assignments.cols.train}</Th>
                   <Th>{t.assignments.cols.route}</Th>
                   <Th>{t.assignments.cols.departs}</Th>
+                  <Th>{t.assignments.cols.status}</Th>
                   <Th>{t.assignments.cols.source}</Th>
                   <Th>{t.assignments.cols.operator}</Th>
                   <Th>{t.assignments.cols.action}</Th>
@@ -91,6 +159,12 @@ export function JourneysPage({ all = false }: { all?: boolean }) {
                     <td className={cell}>{t.timetable.to(journey.from, journey.to)}</td>
                     <td className={cell}>
                       {formatClockShort(journey.firstDeparture)} · {formatDate(journey.operatingDate)}
+                    </td>
+                    <td className={cell}>
+                      <span className="inline-flex items-center gap-xs font-semibold">
+                        <Icon name={stageIcon[stageOf(journey)]} size={16} />
+                        {t.assignments.stages[stageOf(journey)]}
+                      </span>
                     </td>
                     <td className={cell}>{t.assignments.sources[journey.source] ?? journey.source}</td>
                     <td className={cell}>

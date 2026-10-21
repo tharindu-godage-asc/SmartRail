@@ -24,13 +24,16 @@ public sealed record OverviewJourney(
     long? SecondsSinceUpdate,
     string Verification);
 
-public sealed record OverviewResponse(int OpenExceptionCount, IReadOnlyList<OverviewJourney> Journeys, DateTimeOffset ServerTime);
+/// <summary>A journey whose first departure time has passed and that nothing has started: nobody assigned, or the operator has not reported the departure.</summary>
+public sealed record OverdueJourney(Guid JourneyId, string TrainNumber, string From, string To, DateTimeOffset ScheduledDeparture, int MinutesLate, bool HasOperator);
+
+public sealed record OverviewResponse(int OpenExceptionCount, IReadOnlyList<OverviewJourney> Journeys, DateTimeOffset ServerTime, IReadOnlyList<OverdueJourney>? OverdueToStart = null);
 
 /// <summary>
 /// GET /api/v1/overview (FR-50, AC-E05-01): every journey in progress with its last event, delay, next stop, time since the
 /// last update and verification state, plus the open exceptions count. It only reads; it never changes what passengers see.
 /// </summary>
-public sealed class GetOverviewHandler(IJourneyRepository journeys, IExceptionRepository exceptions, TimeProvider clock, JourneySettings settings)
+public sealed class GetOverviewHandler(IJourneyRepository journeys, IExceptionRepository exceptions, Assignments.IAssignmentRepository assignments, TimeProvider clock, JourneySettings settings)
 {
     public async Task<OverviewResponse> HandleAsync(CancellationToken cancellationToken)
     {
@@ -72,15 +75,31 @@ public sealed class GetOverviewHandler(IJourneyRepository journeys, IExceptionRe
                 summary.AwaitingVerificationJourneyIds.Contains(data.JourneyId) ? "awaiting" : "none"));
         }
 
-        return new OverviewResponse(summary.Count, items.OrderBy(i => i.TrainNumber, StringComparer.Ordinal).ToList(), now);
+        // Today's journeys that nothing has started although their departure time has passed (not Running, Completed or Cancelled).
+        var todays = await assignments.ListJourneysAsync(today, false, now, cancellationToken);
+        var overdue = todays
+            .Where(j => OverdueRules.IsOverdueToStart(Enum.Parse<JourneyStatus>(j.Status), j.FirstDeparture, now, settings.OverdueToStartMinutes))
+            .OrderBy(j => j.FirstDeparture)
+            .Select(j => new OverdueJourney(j.JourneyId, j.TrainNumber, j.From, j.To, j.FirstDeparture, OverdueRules.MinutesLate(j.FirstDeparture, now), j.Operator is not null))
+            .ToList();
+
+        return new OverviewResponse(summary.Count, items.OrderBy(i => i.TrainNumber, StringComparer.Ordinal).ToList(), now, overdue);
     }
 
     /// <summary>The same rule as the passenger line status: started, and not past its expected end plus the grace period.</summary>
+    /// <summary>
+    /// Running means the train has actually started: the first stop report made the journey Running (a journey nobody has started is
+    /// "overdue to start", listed on its own), and it is not past its expected end plus the grace period.
+    /// </summary>
     private static bool InProgress(JourneyData data, DateTimeOffset now, TimeSpan grace)
     {
+        if (data.Status != JourneyStatus.Running)
+        {
+            return false;
+        }
+
         var schedule = data.Schedule();
-        var start = schedule[0].Departure ?? schedule[0].Arrival;
         var end = (schedule[^1].Arrival ?? schedule[^1].Departure) + TimeSpan.FromMinutes(data.DelayMinutes);
-        return start is { } startAt && end is { } endAt && now >= startAt && now <= endAt + grace;
+        return end is { } endAt && now <= endAt + grace;
     }
 }

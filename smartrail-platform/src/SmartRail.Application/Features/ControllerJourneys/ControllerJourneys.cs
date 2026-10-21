@@ -58,7 +58,8 @@ public sealed record DetailEvent(
     int? TotalDelayMinutes,
     bool DelayUnknown,
     string? Reason,
-    string? ReasonCode);
+    string? ReasonCode,
+    string? Platform = null);
 
 public sealed record DetailOperator(string Name, DateTimeOffset ValidFrom, DateTimeOffset? ValidTo);
 
@@ -133,7 +134,8 @@ public sealed class GetControllerJourneyHandler(
             events.Add(new DetailEvent(
                 e.Id, e.OccurredAt, e.Type.ToString(), e.Source.ToString(), actor,
                 e.ServiceStopId is { } id ? stopName.GetValueOrDefault(id) : null,
-                delay?.TotalDelayMinutes, delay?.DelayUnknown ?? false, delay?.Reason, e.Type == EventType.ReasonVerified ? ReasonCodeOf(e.Payload) : null));
+                delay?.TotalDelayMinutes, delay?.DelayUnknown ?? false, delay?.Reason, e.Type == EventType.ReasonVerified ? ReasonCodeOf(e.Payload) : null,
+                e.Type == EventType.PlatformChanged ? PlatformOf(e.Payload) : null));
         }
 
         var current = data.Assignments.Where(a => AssignmentRules.Covers(a.ValidFrom, a.ValidTo, now)).OrderByDescending(a => a.ValidFrom).FirstOrDefault();
@@ -152,6 +154,18 @@ public sealed class GetControllerJourneyHandler(
             data.JourneyId, data.TrainNumber, data.OperatingDate, extras.Direction, extras.Category, extras.ServiceType,
             data.Status.ToString(), snapshot.StatusKey, snapshot.StatusGroup, data.DelayMinutes, data.DelayKnown, now,
             reportedReason, snapshot.Reason is { } r ? new DetailVerifiedReason(r.Code, r.VerifiedAt) : null, position, op, stops, events);
+    }
+
+    /// <summary>The platform a PlatformChanged event set (null = back to the planned platform).</summary>
+    private static string? PlatformOf(string? payload)
+    {
+        if (string.IsNullOrWhiteSpace(payload))
+        {
+            return null;
+        }
+
+        using var document = System.Text.Json.JsonDocument.Parse(payload);
+        return document.RootElement.TryGetProperty("platform", out var platform) && platform.ValueKind == System.Text.Json.JsonValueKind.String ? platform.GetString() : null;
     }
 
     private async Task<string> ActorAsync(RawEvent e, CancellationToken cancellationToken)
