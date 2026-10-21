@@ -29,6 +29,7 @@ services:
       Cors__AllowedOrigins__1: http://localhost:5174
       # Compose only: exposes GET /api/v1/whoami for manual testing.
       Diagnostics__WhoAmI: "true"
+      OpenApi__Enabled: "true"
     ports: ["8080:8080"]
     # If the database is still unreachable the API exits and is restarted (no retry loop in the code).
     restart: on-failure
