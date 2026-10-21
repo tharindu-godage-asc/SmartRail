@@ -114,6 +114,15 @@ export interface DetailEvent {
   delayUnknown: boolean
   reason: string | null
   reasonCode: string | null
+  /** The platform a PlatformChanged event set (null: back to the planned platform). */
+  platform?: string | null
+}
+
+/** Advice from the API when another train uses the platform at about the same time (FR-57). */
+export interface PlatformWarning {
+  trainNumber: string
+  minutesApart: number
+  oppositeDirection: boolean
 }
 
 export interface ControllerJourneyDetail {
