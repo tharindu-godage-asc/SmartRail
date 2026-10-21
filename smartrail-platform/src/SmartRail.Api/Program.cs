@@ -46,16 +46,27 @@ if (databaseConfigured)
 
 builder.Services.AddHealthChecks();
 
+// Errors nobody handled become an RFC 9457 problem answer (500, no stack trace) instead of an empty body.
+builder.Services.AddProblemDetails();
+
+// The API description (OpenAPI JSON) is for exploring and testing the API: on only when OpenApi:Enabled is true (Compose sets it), off everywhere else.
+var openApiEnabled = builder.Configuration.GetValue<bool>("OpenApi:Enabled");
+if (openApiEnabled)
+{
+    builder.Services.AddOpenApi();
+}
+
 // One instrumentation (OpenTelemetry) for metrics, traces and logs. The environment name is a resource
 // attribute so every signal can be filtered by dev, test, staging or prod in Grafana.
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService("smartrail-api").AddAttributes(new Dictionary<string, object>
         { ["deployment.environment"] = env }))
     .WithMetrics(m => m.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddRuntimeInstrumentation().AddMeter(AuthMetrics.MeterName).AddMeter(EventMetrics.MeterName).AddMeter(SearchMetrics.MeterName).AddMeter(BoardMetrics.MeterName).AddMeter(ExceptionMetrics.MeterName).AddOtlpExporter())
-    .WithTracing(t => t.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddNpgsql().AddOtlpExporter());
+    .WithTracing(t => t.AddAspNetCoreInstrumentation(o => o.Filter = context => !context.Request.Path.StartsWithSegments("/health")).AddHttpClientInstrumentation().AddNpgsql().AddOtlpExporter());
 builder.Logging.AddOpenTelemetry(o => { o.IncludeScopes = true; o.AddOtlpExporter(); });
 
 var app = builder.Build();
+app.UseExceptionHandler();
 app.UseSmartRailCors();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -77,6 +88,12 @@ if (databaseConfigured)
     app.MapExceptionFeatures();
     app.MapVerificationFeatures();
     app.MapControllerJourneyFeatures();
+}
+
+if (openApiEnabled)
+{
+    // Public on purpose: it describes the API, it holds no data. Served at /openapi/v1.json.
+    app.MapOpenApi().AllowAnonymous();
 }
 
 if (app.Configuration.GetValue<bool>("Diagnostics:WhoAmI"))

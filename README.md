@@ -34,6 +34,7 @@ The first run builds the images and takes a few minutes. The demo data (a journe
 | SmallBites admin (sell an item out) | http://localhost:8090/admin | none |
 | Keycloak | http://localhost:8180 | `admin` / `admin-dev-only` |
 | Grafana (SmartRail Overview) | http://localhost:3000 | none (anonymous) |
+| API description (OpenAPI JSON, Compose only) | http://localhost:8080/openapi/v1.json | none (switched on by `OpenApi__Enabled`, off everywhere else) |
 | Argo CD (the delivery cluster, see below) | https://localhost:8443 after a port-forward | `admin` / the password in the cluster secret (see below) |
 
 ## Station codes
