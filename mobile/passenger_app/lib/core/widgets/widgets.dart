@@ -292,10 +292,18 @@ class Notice extends StatelessWidget {
 
 /// The small header of an inner screen: back, a title and an optional trailing widget.
 class InnerHeader extends StatelessWidget implements PreferredSizeWidget {
-  const InnerHeader({required this.title, this.trailing, super.key});
+  const InnerHeader({
+    required this.title,
+    this.trailing,
+    this.leadingIcon = Icons.arrow_back,
+    super.key,
+  });
 
   final Widget title;
   final Widget? trailing;
+
+  /// The arrow, or a close (x) for screens drawn that way.
+  final IconData leadingIcon;
 
   /// The height of the status bar the header must start below. Set once per build by the app's top banner wrapper (it is zero while the
   /// offline banner covers the status bar), because a Scaffold gives its app bar no inset of its own.
@@ -319,8 +327,10 @@ class InnerHeader extends StatelessWidget implements PreferredSizeWidget {
         child: Row(
           children: [
             IconButton(
-              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-              icon: const Icon(Icons.arrow_back),
+              tooltip: leadingIcon == Icons.close
+                  ? MaterialLocalizations.of(context).closeButtonTooltip
+                  : MaterialLocalizations.of(context).backButtonTooltip,
+              icon: Icon(leadingIcon),
               onPressed: () => Navigator.of(context).maybePop(),
             ),
             Expanded(child: Center(child: title)),

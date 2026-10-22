@@ -39,6 +39,7 @@ class Preferences {
   static const _language = 'language';
   static const _onboarded = 'onboarded';
   static const _from = 'from';
+  static const _usualTo = 'usual_to';
   static const _recent = 'recent';
   static const _follows = 'follows';
   static const _stations = 'stations';
@@ -54,6 +55,10 @@ class Preferences {
   /// The remembered origin (AC-E06-01 4): saved here, no location permission.
   String? get fromCode => _p.getString(_from);
   Future<void> setFromCode(String code) => _p.setString(_from, code);
+
+  /// The destination chosen last, kept with the origin as "your usual trip" for Quick start on Home. Not used as a default selection.
+  String? get usualTo => _p.getString(_usualTo);
+  Future<void> setUsualTo(String code) => _p.setString(_usualTo, code);
 
   List<String> get recent => _p.getStringList(_recent) ?? const [];
   Future<void> addRecent(String code) => _p.setStringList(

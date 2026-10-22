@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/l10n/strings.dart';
 import '../features/home/home_screens.dart';
+import '../features/account/account_screens.dart';
 import '../features/food/food_menu_screen.dart';
 import '../features/gallery/design_gallery.dart';
 import '../features/live/live_screen.dart';
@@ -84,9 +85,23 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/onboard', builder: (_, _) => const OnboardingScreen()),
+      // Screens only: there is no account service behind them (spec 10 Q5).
+      GoRoute(path: '/signin', builder: (_, _) => const SignInScreen()),
+      GoRoute(
+        path: '/register',
+        builder: (_, _) => const CreateAccountScreen(),
+      ),
       // The fixture screens for states with no backend yet: debug builds only.
       if (kDebugMode) ...[
         GoRoute(path: '/gallery', builder: (_, _) => const DesignGallery()),
+        GoRoute(
+          path: '/gallery/signin-error',
+          builder: (_, _) => const SignInScreen(showError: true),
+        ),
+        GoRoute(
+          path: '/gallery/register-errors',
+          builder: (_, _) => const CreateAccountScreen(showErrors: true),
+        ),
         GoRoute(
           path: '/gallery/:kind',
           builder: (_, state) => OverrideScreen(
