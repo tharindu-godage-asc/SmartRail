@@ -74,6 +74,7 @@ void main() {
         await tester.tap(
           find.widgetWithText(FilledButton, 'Departed Veyangoda'),
         );
+        await confirmReport(tester);
         await settle(tester);
 
         expect(reportApi.sent, hasLength(1));
@@ -93,6 +94,25 @@ void main() {
       },
     );
 
+    testWidgets('Cancel in the confirmation sends nothing', (tester) async {
+      final reportApi = ScriptedReportApi([]);
+      final app = TestApp(reportApi: reportApi);
+      await app.pump(tester);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Departed Veyangoda'));
+      await settle(tester);
+      expect(find.text('Report departure from Veyangoda?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Cancel'));
+      await settle(tester);
+
+      expect(reportApi.sent, isEmpty);
+      expect(
+        find.widgetWithText(FilledButton, 'Departed Veyangoda'),
+        findsOneWidget,
+      );
+      await app.close(tester);
+    });
+
     testWidgets('a double tap makes one report (spec rule 9)', (tester) async {
       final reportApi = ScriptedReportApi([]);
       final app = TestApp(reportApi: reportApi);
@@ -101,6 +121,7 @@ void main() {
       final button = find.widgetWithText(FilledButton, 'Departed Veyangoda');
       await tester.tap(button);
       await tester.tap(button, warnIfMissed: false);
+      await confirmReport(tester);
       await settle(tester);
 
       expect(reportApi.sent, hasLength(1));
@@ -117,6 +138,7 @@ void main() {
         await tester.tap(
           find.widgetWithText(FilledButton, 'Departed Veyangoda'),
         );
+        await confirmReport(tester);
         await settle(tester);
 
         expect(find.text('Not sent yet'), findsOneWidget);
@@ -146,6 +168,7 @@ void main() {
         await tester.tap(
           find.widgetWithText(FilledButton, 'Departed Veyangoda'),
         );
+        await confirmReport(tester);
         await settle(tester);
 
         expect(find.text('Rejected'), findsOneWidget);
@@ -174,6 +197,7 @@ void main() {
         await tester.tap(
           find.widgetWithText(FilledButton, 'Departed Veyangoda'),
         );
+        await confirmReport(tester);
         await settle(tester);
 
         expect(find.text('Check your phone’s date and time.'), findsOneWidget);
@@ -193,6 +217,7 @@ void main() {
         await app.pump(tester);
 
         await tester.tap(find.widgetWithText(FilledButton, 'Arrived Gampaha'));
+        await confirmReport(tester);
         await settle(tester);
 
         final sent = (app.queue as InMemoryReportQueue).items.single;
@@ -249,6 +274,7 @@ void main() {
         await app.pump(tester);
 
         await tester.tap(find.widgetWithText(FilledButton, 'Arrived Gampaha'));
+        await confirmReport(tester);
         await settle(tester);
 
         expect(find.text('Not sent yet'), findsOneWidget);
@@ -278,6 +304,7 @@ void main() {
         await tester.tap(
           find.widgetWithText(FilledButton, 'Arrived Colombo Fort'),
         );
+        await confirmReport(tester);
         await settle(tester);
 
         // Nimal-Completed: the title, where the train arrived, and the counts of this operator's reports.

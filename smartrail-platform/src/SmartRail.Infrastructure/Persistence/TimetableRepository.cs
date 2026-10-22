@@ -79,10 +79,10 @@ public sealed class TimetableRepository(SmartrailDbContext db) : ITimetableRepos
 
         foreach (var service in services)
         {
-            var from = service.EffectiveFrom;
-            var to = service.EffectiveTo;
+            // A train number belongs to one service for good: any existing row with the number (any dates, any version, also an ended or
+            // cancelled one) refuses the create. A change to a service is an amend, which makes a new version of the same number.
             var clash = await db.TrainServices.AsNoTracking()
-                .Where(s => s.TrainNumber == service.TrainNumber && s.EffectiveFrom <= (to ?? DateOnly.MaxValue) && (s.EffectiveTo == null || s.EffectiveTo >= from))
+                .Where(s => s.TrainNumber == service.TrainNumber)
                 .Select(s => new { s.Id, s.TrainNumber })
                 .FirstOrDefaultAsync(cancellationToken);
             if (clash is not null)

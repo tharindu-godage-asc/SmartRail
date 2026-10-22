@@ -209,6 +209,29 @@ public sealed class TimetableTests(PostgresFixture postgres) : JourneyApiTestBas
     }
 
     [Fact]
+    public async Task A_number_that_exists_is_refused_even_for_dates_that_do_not_overlap_and_as_an_extra_train()
+    {
+        Assert.Equal(HttpStatusCode.Created, (await Post("/api/v1/timetable/services", WeeklyBody())).StatusCode);
+
+        var later = WeeklyBody();
+        later["effectiveFrom"] = "2027-03-01";
+        var extra = new Dictionary<string, object?>
+        {
+            ["kind"] = "Extra", ["trainNumber"] = "8072", ["lineCode"] = "MAIN", ["category"] = "Regional", ["serviceType"] = "Express",
+            ["dates"] = new[] { "2026-10-20" }, ["stops"] = GoodStops,
+        };
+
+        foreach (var body in new[] { later, extra })
+        {
+            var response = await Post("/api/v1/timetable/services", body);
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+            Assert.Equal("train_number_in_use", (await ReadAsync(response)).GetProperty("reason").GetString());
+        }
+
+        Assert.Equal(1, await Database.ScalarAsync<long>("select count(*) from train_service where train_number = '8072'"));
+    }
+
+    [Fact]
     public async Task A_train_number_that_a_seeded_service_already_runs_is_refused()
     {
         var response = await Post("/api/v1/timetable/services", WeeklyBody(number: "8058"));

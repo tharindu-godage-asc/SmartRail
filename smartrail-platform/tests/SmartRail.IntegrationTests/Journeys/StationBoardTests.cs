@@ -36,6 +36,24 @@ public sealed class StationBoardTests(PostgresFixture postgres) : JourneyApiTest
 
     private static JsonElement First(JsonElement board) => board.GetProperty("trains")[0];
 
+    [Fact]
+    public async Task A_train_number_with_two_services_does_not_break_the_board_for_the_live_journey_of_the_other()
+    {
+        // The same number on another date, as an extra train twice: two services, one live journey.
+        await Database.ExecuteAsync(@"
+            with copy as (
+                insert into train_service (id, train_number, line_id, service_type, service_category, direction, runs_on, unreserved_capacity, effective_from, effective_to, kind, version)
+                select gen_random_uuid(), train_number, line_id, service_type, service_category, direction, 'Daily', unreserved_capacity, date '2026-10-07', date '2026-10-07', 'Extra', 1
+                from train_service where train_number = '8058' returning id)
+            insert into service_stop (id, service_id, station_id, sequence, scheduled_arrival, scheduled_departure, planned_platform_id, arrival_report_required, collection_eligible)
+            select gen_random_uuid(), copy.id, x.station_id, x.sequence, x.scheduled_arrival, x.scheduled_departure, x.planned_platform_id, x.arrival_report_required, x.collection_eligible
+            from copy, service_stop x join train_service s on s.id = x.service_id where s.train_number = '8058' and s.kind = 'Weekly';");
+
+        var response = await Get("/api/v1/stations/VYG/board?count=20");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     // ---- AC-E09-01 (1): what is due, with platform, times, status and three-language destination ----
 
     [Fact]

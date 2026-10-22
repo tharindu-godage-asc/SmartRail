@@ -438,7 +438,7 @@ export const t = {
       scheduledExtra: (count: number) => (count === 1 ? '1 extra train added.' : `${count} extra trains added.`),
     },
     reasons: {
-      train_number_in_use: 'This train number already runs on these dates.',
+      train_number_in_use: 'A service with this train number already exists. Choose another number, or amend the existing service.',
       warnings_not_acknowledged: 'The advice changed. Read it again and confirm.',
       invalid_service: 'The service is not valid. See the errors.',
       line_not_found: 'The line was not found.',

@@ -124,6 +124,18 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           width: double.infinity,
           child: SegmentedButton<bool>(
             showSelectedIcon: true,
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? colors.textPrimary
+                    : null,
+              ),
+              foregroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? colors.bgPage
+                    : colors.textPrimary,
+              ),
+            ),
             segments: const [
               ButtonSegment(
                 value: false,

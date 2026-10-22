@@ -43,6 +43,13 @@ abstract final class Strings {
   static String nextArrivalOrDeparture(String station) =>
       'Next: $station (arrival or departure)';
   static String departedButton(String station) => 'Departed $station';
+  static String confirmDepartedTitle(String station) =>
+      'Report departure from $station?';
+  static String confirmArrivedTitle(String station) =>
+      'Report arrival at $station?';
+  static const confirmReportBody =
+      'The report is sent with the time now. Check it is right before you confirm.';
+  static const confirmReport = 'Confirm';
   static String arrivedButton(String station) => 'Arrived $station';
   static String departedLabel(String station) => 'Departed $station';
   static String arrivedLabel(String station) => 'Arrived $station';

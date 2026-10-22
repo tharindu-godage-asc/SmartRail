@@ -213,7 +213,7 @@ describe('New weekly service (spec 15, W2)', () => {
     await user.click(await screen.findByRole('button', { name: 'Next: review' }))
     await user.click(await screen.findByRole('button', { name: 'Schedule service' }))
 
-    expect(await screen.findByText('This train number already runs on these dates.')).toBeInTheDocument()
+    expect(await screen.findByText('A service with this train number already exists. Choose another number, or amend the existing service.')).toBeInTheDocument()
     expect(screen.getByText(/17:25 · Veyangoda/)).toBeInTheDocument() // the draft is still there
     expect(screen.getByRole('button', { name: 'Schedule service' })).toBeEnabled()
   })

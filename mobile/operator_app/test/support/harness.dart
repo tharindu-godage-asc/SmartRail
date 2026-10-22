@@ -128,3 +128,9 @@ Future<void> _loadTestFont() async {
   }
   await loader.load();
 }
+
+/// Answers the confirmation that every Departed or Arrived tap asks for.
+Future<void> confirmReport(WidgetTester tester) async {
+  await settle(tester);
+  await tester.tap(find.widgetWithText(FilledButton, 'Confirm'));
+}

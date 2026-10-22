@@ -140,7 +140,8 @@ public sealed class GetStationBoardHandler(
             var stopAt = stops.First(s => s.StationCode == station.Code);
             var destination = Ref(stops[^1].StationCode);
 
-            foreach (var data in live.Where(j => j.TrainNumber == service.TrainNumber))
+            // A train number can have several services (an extra on two dates): a journey belongs to the one whose stops it has.
+            foreach (var data in live.Where(j => j.TrainNumber == service.TrainNumber && j.Stops.Any(s => s.ServiceStopId == stopAt.ServiceStopId)))
             {
                 if (IsOnBoard(data, stopAt, now, grace))
                 {
