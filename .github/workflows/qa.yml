@@ -4,6 +4,9 @@ name: qa
 # (Actions tab, "Run workflow"). The unit, integration, web and mobile suites have their own workflows (ci, web, mobile, smallbites).
 # Locally the same run is: ./scripts/qa.sh --e2e-only
 on:
+  # Temporary: lets the first run happen from this branch (a manual run needs the file on the default branch). Remove once it is on main.
+  push:
+    branches: [claude/feature/qa-automation]
   schedule:
     - cron: "0 2 * * *" # 07:30 in Sri Lanka, outside the 23:00 to 01:00 window in which the flows skip themselves
   workflow_dispatch:
