@@ -1,12 +1,15 @@
 import { expect, test, type Page } from '@playwright/test'
 import {
   API,
-  assignNimal,
+  assignOperator,
   call,
   createTrainToday,
   findJourneyId,
-  nimalJourney,
-  releaseNimal,
+  finishJourney,
+  OPERATOR_NAME,
+  OPERATOR_USER,
+  operatorJourney,
+  releaseOperator,
   report,
   SMALLBITES,
   tokenFor,
@@ -32,28 +35,28 @@ async function signInAsController(page: Page) {
   await page.locator('#kc-login').click()
 }
 
-/** A new train with Nimal assigned. Returns what the flow needs and releases Nimal at the end. */
-async function trainWithNimal() {
+/** A new train with the operator assigned. Returns what the flow needs and releases the operator at the end. */
+async function trainWithOperator() {
   const controller = await tokenFor('jayasinghe')
-  const nimal = await tokenFor('nimal')
+  const operator = await tokenFor(OPERATOR_USER)
   const trainNumber = await createTrainToday(controller)
   const journeyId = await findJourneyId(controller, trainNumber)
-  await assignNimal(controller, journeyId)
-  const journey = await nimalJourney(nimal)
+  await assignOperator(controller, journeyId)
+  const journey = await operatorJourney(operator)
   expect(journey.journeyId, 'the newest assignment is this train').toBe(journeyId)
-  return { controller, nimal, trainNumber, journeyId, stops: journey.stops }
+  return { controller, operator, trainNumber, journeyId, stops: journey.stops }
 }
 
 test('flow 1: operator reports reach the public status and a station board', async () => {
-  const { controller, nimal, trainNumber, journeyId, stops } = await trainWithNimal()
+  const { controller, operator, trainNumber, journeyId, stops } = await trainWithOperator()
   try {
     // Before any report the public status shows no delay.
     const before = await call<{ delayMinutes: number }>(null, `/api/v1/journeys/${journeyId}/status`)
     expect(before.status).toBe(200)
     expect(before.body.delayMinutes).toBe(0)
 
-    expect((await report(nimal, journeyId, { eventType: 'Departed', serviceStopId: stops[0]!.serviceStopId })).status).toBe(201)
-    expect((await report(nimal, journeyId, { eventType: 'DelayReported', reason: 'SignalIssue', totalDelayMinutes: 12 })).status).toBe(201)
+    expect((await report(operator, journeyId, { eventType: 'Departed', serviceStopId: stops[0]!.serviceStopId })).status).toBe(201)
+    expect((await report(operator, journeyId, { eventType: 'DelayReported', reason: 'SignalIssue', totalDelayMinutes: 12 })).status).toBe(201)
 
     // The passenger's status, the train lookup and the board of the next station all show it, with no delay reason (D-10).
     const status = await call<{ delayMinutes: number; statusKey: string; lastKnownPosition: { stationCode: string; state: string } | null }>(null, `/api/v1/journeys/${journeyId}/status`)
@@ -62,23 +65,30 @@ test('flow 1: operator reports reach the public status and a station board', asy
     expect(status.body.lastKnownPosition).toMatchObject({ stationCode: 'VYG', state: 'Departed' })
     expect(JSON.stringify(status.body)).not.toContain('SignalIssue')
 
-    const board = await call<{ trains: { trainNumber: string; delayMinutes: number | null }[] }>(null, '/api/v1/stations/GPH/board?count=20')
-    expect(board.body.trains.find((t) => t.trainNumber === trainNumber)?.delayMinutes).toBe(12)
+    // The board of Gampaha lists at most 20 trains and earlier runs leave trains on it, so the test train is put on platform 2 (empty in the
+    // reference data) and the board is read for that platform: it also proves a controller's platform change reaches the board.
+    const platform = await call(controller, `/api/v1/journeys/${journeyId}/stops/${stops[1]!.serviceStopId}/platform`, { method: 'POST', body: { platformCode: '2', acknowledgeWarnings: true } })
+    expect(platform.status, JSON.stringify(platform.body)).toBe(200)
+    const board = await call<{ trains: { trainNumber: string; platform: string | null; delayMinutes: number | null }[] }>(null, '/api/v1/stations/GPH/board?platform=2&count=20')
+    const onBoard = board.body.trains.find((t) => t.trainNumber === trainNumber)
+    expect(onBoard?.platform).toBe('2')
+    expect(onBoard?.delayMinutes).toBe(12)
 
     // An arrival at Gampaha (an in-between stop since spec 19) is accepted and moves the train there.
-    expect((await report(nimal, journeyId, { eventType: 'Arrived', serviceStopId: stops[1]!.serviceStopId })).status).toBe(201)
+    expect((await report(operator, journeyId, { eventType: 'Arrived', serviceStopId: stops[1]!.serviceStopId })).status).toBe(201)
     const arrived = await call<{ lastKnownPosition: { stationCode: string; state: string } }>(null, `/api/v1/journeys/${journeyId}/status`)
     expect(arrived.body.lastKnownPosition).toMatchObject({ stationCode: 'GPH', state: 'Arrived' })
   } finally {
-    await releaseNimal(controller, journeyId)
+    await finishJourney(operator, journeyId, stops)
+    await releaseOperator(controller, journeyId)
   }
 })
 
 test('flow 2: a controller verifies a delay reason and passengers then see it', async ({ page }) => {
-  const { controller, nimal, journeyId, stops } = await trainWithNimal()
+  const { controller, operator, journeyId, stops } = await trainWithOperator()
   try {
-    await report(nimal, journeyId, { eventType: 'Departed', serviceStopId: stops[0]!.serviceStopId })
-    const delay = await report(nimal, journeyId, { eventType: 'DelayReported', reason: 'Weather', totalDelayMinutes: 9 })
+    await report(operator, journeyId, { eventType: 'Departed', serviceStopId: stops[0]!.serviceStopId })
+    const delay = await report(operator, journeyId, { eventType: 'DelayReported', reason: 'Weather', totalDelayMinutes: 9 })
     expect(delay.status).toBe(201)
 
     const before = await call<Record<string, unknown>>(null, `/api/v1/journeys/${journeyId}/status`)
@@ -100,21 +110,22 @@ test('flow 2: a controller verifies a delay reason and passengers then see it', 
     expect(after.body.reason?.code).toBe('Weather')
     expect(Date.parse(after.body.reason?.verifiedAt ?? '')).not.toBeNaN()
   } finally {
-    await releaseNimal(controller, journeyId)
+    await finishJourney(operator, journeyId, stops)
+    await releaseOperator(controller, journeyId)
   }
 })
 
 test('flow 3: ending an assignment as a lost device refuses the operator', async ({ page }) => {
-  const { controller, nimal, trainNumber, journeyId, stops } = await trainWithNimal()
+  const { controller, operator, trainNumber, journeyId, stops } = await trainWithOperator()
   try {
-    expect((await report(nimal, journeyId, { eventType: 'Departed', serviceStopId: stops[0]!.serviceStopId })).status).toBe(201)
+    expect((await report(operator, journeyId, { eventType: 'Departed', serviceStopId: stops[0]!.serviceStopId })).status).toBe(201)
     const firstReportAt = Date.now()
 
     await signInAsController(page)
     await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Journeys' }).click()
     await page.getByRole('link', { name: /^All journeys/ }).click()
     const row = page.getByRole('row', { name: new RegExp(trainNumber) })
-    await expect(row).toContainText('Nimal')
+    await expect(row).toContainText(OPERATOR_NAME)
     await row.getByRole('link', { name: 'Crew and control' }).click()
 
     await page.getByRole('button', { name: /^End assignment/ }).click()
@@ -123,15 +134,15 @@ test('flow 3: ending an assignment as a lost device refuses the operator', async
     await dialog.getByRole('button', { name: 'End assignment' }).click()
     await expect(page.getByText('Assignment ended.')).toBeVisible()
 
-    // From now a report from Nimal for this journey is refused, even one that claims an earlier time (FR-56).
-    const late = await report(nimal, journeyId, { eventType: 'Departed', serviceStopId: stops[1]!.serviceStopId, occurredAt: new Date(firstReportAt + 1_000).toISOString() }) // inside the assignment, received after it ended
+    // From now a report from the operator for this journey is refused, even one that claims an earlier time (FR-56).
+    const late = await report(operator, journeyId, { eventType: 'Departed', serviceStopId: stops[1]!.serviceStopId, occurredAt: new Date(firstReportAt + 1_000).toISOString() }) // inside the assignment, received after it ended
     expect(late.status).toBe(403)
     expect((late.body as unknown as { reason: string }).reason).toBe('assignment_ended')
     // The report he made before stays in the record.
     const detail = await call<{ events: { type: string }[] }>(controller, `/api/v1/controller/journeys/${journeyId}`)
     expect(detail.body.events.some((e: { type: string }) => e.type === 'Departed')).toBe(true)
   } finally {
-    await releaseNimal(controller, journeyId)
+    await releaseOperator(controller, journeyId)
   }
 })
 

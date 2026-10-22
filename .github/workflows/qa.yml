@@ -1,0 +1,71 @@
+name: qa
+# The browser end-to-end flows (Playwright) against the whole Docker Compose stack: API, Postgres, Keycloak, SmallBites and the web app.
+# Not part of the pull request checks: it needs the full stack and takes a few minutes. It runs every night and on demand
+# (Actions tab, "Run workflow"). The unit, integration, web and mobile suites have their own workflows (ci, web, mobile, smallbites).
+# Locally the same run is: ./scripts/qa.sh --e2e-only
+on:
+  # Temporary: lets the first run happen from this branch (a manual run needs the file on the default branch). Remove once it is on main.
+  push:
+    branches: [claude/feature/qa-automation]
+  schedule:
+    - cron: "0 2 * * *" # 07:30 in Sri Lanka, outside the 23:00 to 01:00 window in which the flows skip themselves
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm, cache-dependency-path: web/ops/package-lock.json }
+
+      - name: Start the stack (first build takes a few minutes)
+        working-directory: smartrail-platform
+        run: docker compose up -d --build
+
+      - name: Wait for the API and Keycloak
+        run: |
+          wait_for() {
+            echo "waiting for $1 at $2"
+            for i in $(seq 1 90); do
+              if curl -fs "$2" >/dev/null; then echo "$1 is up after about $((i * 3))s"; return 0; fi
+              sleep 3
+            done
+            echo "$1 did not answer"; return 1
+          }
+          wait_for "API" http://localhost:8080/health/ready
+          wait_for "Keycloak" http://localhost:8180/realms/smartrail
+          wait_for "SmallBites" http://localhost:8090/
+
+      - name: Install the web app and the browser
+        working-directory: web/ops
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Browser flows
+        working-directory: web/ops
+        env: { CI: "1" }
+        run: npm run e2e:qa
+
+      - name: Keep the report and the traces of failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright
+          path: |
+            web/ops/playwright-report
+            web/ops/test-results
+          if-no-files-found: ignore
+
+      - name: Container logs (only when something failed)
+        if: failure()
+        working-directory: smartrail-platform
+        run: docker compose logs --no-color --tail 200
+
+      - name: Stop the stack
+        if: always()
+        working-directory: smartrail-platform
+        run: docker compose down

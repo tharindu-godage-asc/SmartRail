@@ -12,7 +12,9 @@ services:
       ConnectionStrings__SmartrailMigrations: "Host=postgres;Port=5432;Database=smartrail;Username=smartrail;Password=smartrail-dev-only;Gss Encryption Mode=Disable"
       # Only this stack applies migrations and loads the demo journey on startup; the cluster and prod never set these.
       Database__ApplyMigrationsOnStartup: "true"
-      Seeding__DemoData: "true"
+      # Off since 22 Oct 2026: the demo layer (journey 8058 for Nimal, 8070, yesterday's 8058, and putting back cleared reference services) made
+      # a week of extra journeys at every start. The timetable is whatever is in the database. Set "true" to bring the demo layer back.
+      Seeding__DemoData: "false"
       # Spec 11: SmartRail reads the menu from SmallBites (its own system). The website address is opened by the phone, through adb reverse.
       # Spec 13: the journey generator keeps the next 7 days of journeys (FR-11). Off in the cluster and in the tests.
       Scheduling__GenerateJourneys: "true"
