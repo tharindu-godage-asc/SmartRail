@@ -120,8 +120,15 @@ class SelectionController extends Notifier<Selection> {
 
   Future<void> setTo(String code) async {
     await ref.read(preferencesProvider).addRecent(code);
+    await ref.read(preferencesProvider).setUsualTo(code);
     state = Selection(from: state.from, to: code);
   }
+
+  /// Swaps the two ends (the arrows between the fields on Home). The remembered origin is left as it was.
+  void swap() => state = Selection(from: state.to, to: state.from);
+
+  /// Uses a trip from Quick start without changing what is remembered.
+  void use(String from, String to) => state = Selection(from: from, to: to);
 }
 
 final selectionProvider = NotifierProvider<SelectionController, Selection>(
