@@ -1,12 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 
 /**
- * Spec 08, section 9: Nimal reports a delay through the API, Jayasinghe signs in on the web app, sees the Critical row, resolves it,
+ * Spec 08, section 9: The operator reports a delay through the API, Jayasinghe signs in on the web app, sees the Critical row, resolves it,
  * and the row is gone. Also: Nimal on the web app sees "No dashboard access" and the API refuses his token.
  * Dev passwords only (docker/keycloak/realm-smartrail.json). The demo journey 8058 is used; each run reports a delay of "unknown"
  * length, which is always accepted, so the test can be run again and again without resetting the database.
  */
-import { assignNimal, createTrainToday, findJourneyId, nimalJourney, releaseNimal, report } from './flow-helpers.js'
+import { OPERATOR_USER, assignOperator, createTrainToday, findJourneyId, operatorJourney, releaseOperator, report } from './flow-helpers.js'
 const API = 'http://localhost:8080'
 const KEYCLOAK = 'http://localhost:8180/realms/smartrail/protocol/openid-connect/token'
 const password = (user: string) => `${user}-dev-only`
@@ -40,29 +40,29 @@ async function signInOnKeycloak(page: Page, user: string) {
 }
 
 /**
- * Nimal reports "delay, technical fault, length unknown" on a train made for this run (the demo journey 8058 is finished once its
- * day is over, so it cannot be used again). Returns the event ID. Nimal is released from the train afterwards.
+ * The operator reports "delay, technical fault, length unknown" on a train made for this run (the demo journey 8058 is finished once its
+ * day is over, so it cannot be used again). Returns the event ID. The operator is released from the train afterwards.
  */
-async function nimalReportsATechnicalFault(): Promise<{ eventId: string; trainNumber: string }> {
+async function operatorReportsATechnicalFault(): Promise<{ eventId: string; trainNumber: string }> {
   const controller = await tokenFor('jayasinghe')
-  const nimal = await tokenFor('nimal')
+  const operator = await tokenFor(OPERATOR_USER)
   const trainNumber = await createTrainToday(controller)
   const journeyId = await findJourneyId(controller, trainNumber)
-  await assignNimal(controller, journeyId)
-  const journey = await nimalJourney(nimal)
+  await assignOperator(controller, journeyId)
+  const journey = await operatorJourney(operator)
   expect(journey.journeyId).toBe(journeyId)
   try {
-    await report(nimal, journeyId, { eventType: 'Departed', serviceStopId: journey.stops[0]!.serviceStopId })
-    const delay = await report(nimal, journeyId, { eventType: 'DelayReported', reason: 'TechnicalFault', delayUnknown: true })
+    await report(operator, journeyId, { eventType: 'Departed', serviceStopId: journey.stops[0]!.serviceStopId })
+    const delay = await report(operator, journeyId, { eventType: 'DelayReported', reason: 'TechnicalFault', delayUnknown: true })
     expect(delay.status).toBe(201)
     return { eventId: delay.body.eventId, trainNumber }
   } finally {
-    await releaseNimal(controller, journeyId)
+    await releaseOperator(controller, journeyId)
   }
 }
 
 test('a Technical fault report reaches the controller, who resolves it', async ({ page }) => {
-  const { eventId, trainNumber } = await nimalReportsATechnicalFault()
+  const { eventId, trainNumber } = await operatorReportsATechnicalFault()
   const jayasinghe = await tokenFor('jayasinghe')
   const queue = await api<{ items: { id: string; relatedEventId: string }[] }>(jayasinghe, '/api/v1/exceptions?status=open')
   const created = queue.body.items.find((item) => item.relatedEventId === eventId)
@@ -108,15 +108,12 @@ test('a Technical fault report reaches the controller, who resolves it', async (
   expect(stored).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}\./)
 })
 
-test('the overview lists train 8058 with the delay shown as unknown (only while the demo train is in progress)', async ({ page }) => {
-  // The demo journey runs 08:20 to 08:55 Sri Lanka time and can be at most 4 hours late, so it is "in progress" only until about 13:10.
-  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Colombo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
-  test.skip(hour < 8 || hour >= 13, 'The demo train is not in progress at this time of day; the overview is covered by the API tests.')
-
-  await nimalReportsATechnicalFault()
+test('the overview lists the train the operator started, with the delay shown as unknown', async ({ page }) => {
+  // The train is made for this run and its operator starts it, so it is "running" at any time of day (the demo journey 8058 is not used).
+  const { trainNumber } = await operatorReportsATechnicalFault()
   await signInOnKeycloak(page, 'jayasinghe')
 
-  const row = page.locator('tr', { hasText: 'Veyangoda → Colombo Fort' })
+  const row = page.locator('tr', { hasText: trainNumber })
   await expect(row).toBeVisible()
   await expect(row.getByText('Delay unknown')).toBeVisible()
   await expect(row.getByText('Awaiting verification')).toBeVisible()

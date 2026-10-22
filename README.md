@@ -130,7 +130,7 @@ npm run e2e                                            # every Playwright test, 
 - Screenshots and a trace of a failed run are written to `web/ops/test-results/`. Open one with `npx playwright show-trace test-results/<folder>/trace.zip`.
 - For an HTML report of a run: `npx playwright test e2e/critical-flows.spec.ts --reporter=html`, then `npx playwright show-report`.
 
-**What each run does to the data:** every flow schedules its own extra train for today (numbers 9xxx, with a random number, so run again on a 409), assigns Nimal to it, and releases him at the end. The flows can be repeated without resetting the database. Test trains stay in the database because events are never deleted.
+**What each run does to the data:** every flow schedules its own extra train for today (numbers 9xxx, with a random number, so run again on a 409), assigns **Second Operator** (`operator2`, who the demo seeder never assigns) to it, and releases them at the end. Nimal is not used: he is the demo operator of journey 8058, and an operator cannot be on two journeys at once. If the random number already exists, another is tried. Flows 1 and 2 also run their train to the end so it leaves the station boards. The flows can be repeated without resetting the database. Test trains stay in the database because events are never deleted.
 
 | # | Flow | What it proves | File |
 |---|---|---|---|
@@ -141,6 +141,20 @@ npm run e2e                                            # every Playwright test, 
 | 5 | Catering | An item sold out at SmallBites shows as sold out in SmartRail's menu; the caterer's token cannot read operations (FR-90, D-72) | `e2e/critical-flows.spec.ts` |
 
 `e2e/controller-flow.spec.ts` (resolve an exception, no dashboard access for an operator, sign out) and `e2e/display.spec.ts` are extra checks. Two display tests depend on the demo trains, which the local database cleanup removed, so they can fail on a changed database.
+
+### Automated QA: one command, and every night on GitHub
+
+**On your machine:** `./scripts/qa.sh` starts the stack if it is down (`./start.sh`), runs every suite (`./scripts/test-report.sh`: unit, integration, SmallBites, web, both Flutter apps), then the browser flows, and ends with one table:
+
+```
+QA result  2026-10-22 08:43
+PASS  412s      Suites: unit, integration, SmallBites, web, passenger app, operator app
+PASS  52s       Browser flows: critical flows, timetable and controller (Playwright)
+```
+
+It exits with a non-zero code if any step failed. Options: `--quick` (skip the slow .NET integration tests), `--e2e-only`, `--no-e2e`, `--no-coverage`. Results: `test-report/index.html`, `test-report/qa-summary.txt`, and for the browser flows `web/ops/playwright-report/` (open with `npx playwright show-report` from `web/ops`) with a trace for each failure. The browser flows alone: `npm run e2e:qa` from `web/ops` (the three flow files, nine tests).
+
+**On GitHub:** the workflow `.github/workflows/qa.yml` (`qa`) starts the whole Compose stack on a runner, waits for the API, Keycloak and SmallBites, installs Chromium and runs `npm run e2e:qa`. It runs every night at 02:00 UTC and from the Actions tab (Run workflow). It uploads the Playwright report and traces as an artifact and prints the container logs when something failed. It is not part of the pull request checks (it needs the full stack): the pull request checks are `ci`, `web`, `mobile` and `smallbites`. This workflow has not been run on GitHub yet; the same steps were run locally.
 
 ### Test report (every test, pass or fail, and coverage)
 

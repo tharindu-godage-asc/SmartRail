@@ -46,7 +46,10 @@ if want web; then
   banner "Web (vitest)"
   cov=()
   [[ $COVERAGE == 1 ]] && cov=(--coverage --coverage.reportOnFailure=true --coverage.reporter=json-summary --coverage.reportsDirectory=../../test-report/web-coverage)
-  (cd web/ops && npx vitest run --maxWorkers=4 --testTimeout=30000 --reporter=verbose --reporter=json --outputFile.json=../../test-report/web.json "${cov[@]}") || FAILED=1
+  # Two workers: with more, a busy machine (Docker, an emulator) can fail to start a worker in time and silently skip test files
+  # ("Failed to start forks worker"). A failed run is tried once more before it counts, because that start-up failure is the usual cause.
+  run_web() { (cd web/ops && npx vitest run --maxWorkers=2 --testTimeout=30000 --reporter=verbose --reporter=json --outputFile.json=../../test-report/web.json "${cov[@]}"); }
+  run_web || { echo "The web suite failed: running it once more to rule out a worker start-up failure."; run_web; } || FAILED=1
 fi
 
 flutter_suite() {
