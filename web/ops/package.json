@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "e2e:critical": "playwright test e2e/critical-flows.spec.ts e2e/timetable.spec.ts",
+    "e2e:qa": "playwright test e2e/critical-flows.spec.ts e2e/timetable.spec.ts e2e/controller-flow.spec.ts",
     "preview": "vite preview"
   },
   "dependencies": {
