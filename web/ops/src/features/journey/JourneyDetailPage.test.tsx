@@ -200,3 +200,50 @@ describe('Set the platform of a stop (spec 20, FR-57)', () => {
     expect(await screen.findByText(/Controller set the platform to 2/)).toBeInTheDocument()
   })
 })
+
+describe('Cancel journey (just that day\'s run)', () => {
+  function renderWith(post: Api['post'], answer: ControllerJourneyDetail) {
+    const get = vi.fn(async () => answer)
+    const api = { get: get as unknown as Api['get'], post } satisfies Api
+    return renderWithApi(
+      <Routes>
+        <Route path="/journeys/:journeyId" element={<JourneyDetailPage />} />
+      </Routes>,
+      api,
+      '/journeys/j1',
+    )
+  }
+
+  it('is offered only while the journey has not started', async () => {
+    renderWith(vi.fn(), detail({ status: 'Running' }))
+    await screen.findByText('Nimal Perera')
+    expect(screen.queryByRole('button', { name: 'Cancel journey' })).not.toBeInTheDocument()
+  })
+
+  it('needs a reason and then sends it for this journey', async () => {
+    const post = vi.fn(async () => ({ cancelledJourneys: 1 }))
+    renderWith(post, detail({ status: 'Scheduled', stops: [stop(1, 'Veyangoda', 'Upcoming'), stop(2, 'Gampaha', 'Upcoming'), stop(3, 'Colombo Fort', 'Upcoming')] }))
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel journey' }))
+    const dialog = await screen.findByRole('dialog')
+    const confirm = within(dialog).getByRole('button', { name: 'Confirm cancellation' })
+    expect(confirm).toBeDisabled()
+    await userEvent.type(within(dialog).getByLabelText('Reason'), 'Rolling stock not available')
+    await userEvent.click(confirm)
+
+    expect(post).toHaveBeenCalledWith('/api/v1/journeys/j1/cancel', { reason: 'Rolling stock not available' })
+    expect(await screen.findByText('Journey cancelled.')).toBeInTheDocument()
+  })
+
+  it('says so, and changes nothing, when the journey already has reports', async () => {
+    const post = vi.fn().mockRejectedValue(new ApiError(409, 'journey_has_events', { date: '2026-10-15' }))
+    renderWith(post, detail({ status: 'Scheduled' }))
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel journey' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.type(within(dialog).getByLabelText('Reason'), 'Too late')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Confirm cancellation' }))
+
+    expect(await within(dialog).findByText(/already has reports/)).toBeInTheDocument()
+  })
+})
