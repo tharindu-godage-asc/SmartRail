@@ -126,7 +126,14 @@ class StationPicker extends ConsumerStatefulWidget {
 }
 
 class _StationPickerState extends ConsumerState<StationPicker> {
+  final _search = TextEditingController();
   String _query = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -136,6 +143,7 @@ class _StationPickerState extends ConsumerState<StationPicker> {
     final recent = ref.watch(recentProvider);
     final sel = ref.watch(selectionProvider);
     final isFrom = widget.which == 'from';
+    final c = context.colors;
 
     Future<void> pick(String code) async {
       final controller = ref.read(selectionProvider.notifier);
@@ -146,9 +154,12 @@ class _StationPickerState extends ConsumerState<StationPicker> {
 
     return Scaffold(
       appBar: InnerHeader(
-        title: Text(
-          isFrom ? s[K.chooseFrom] : s[K.chooseTo],
-          style: context.text.labelLarge,
+        title: Semantics(
+          header: true,
+          child: Text(
+            isFrom ? s[K.from] : s[K.to],
+            style: context.text.labelLarge?.copyWith(fontSize: 18),
+          ),
         ),
       ),
       body: stations.when(
@@ -176,21 +187,52 @@ class _StationPickerState extends ConsumerState<StationPicker> {
           final shown = all
               .where((st) => st.code != other && match(st))
               .toList();
+          // Recent stations stay listed while typing, below the matches (as in the design).
           final recents = [
             for (final code in recent)
-              ...all.where(
-                (st) => st.code == code && st.code != other && match(st),
-              ),
+              ...all.where((st) => st.code == code && st.code != other),
           ];
+          // The API lists the line starting at Colombo Fort, the end the trains run to.
+          final lastStop = all.isEmpty ? null : all.first.code;
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.all(Space.md),
+                padding: const EdgeInsets.fromLTRB(
+                  Space.md,
+                  Space.md,
+                  Space.md,
+                  Space.sm,
+                ),
                 child: TextField(
+                  controller: _search,
+                  textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: c.bgPage,
+                    prefixIcon: Icon(Icons.search, color: c.brandAccent),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: s[K.clearSearch],
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              _search.clear();
+                              setState(() => _query = '');
+                            },
+                          ),
                     hintText: s[K.searchStations],
-                    border: const OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(Radii.md + 4),
+                      borderSide: BorderSide(color: c.borderDefault),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(Radii.md + 4),
+                      borderSide: BorderSide(color: c.borderDefault),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(Radii.md + 4),
+                      borderSide: BorderSide(color: c.brandAccent, width: 2),
+                    ),
                   ),
                   onChanged: (v) => setState(() => _query = v),
                 ),
@@ -198,35 +240,59 @@ class _StationPickerState extends ConsumerState<StationPicker> {
               Expanded(
                 child: ListView(
                   children: [
-                    if (recents.isNotEmpty && q.isEmpty) ...[
+                    _SectionLabel(s[K.matchingStations]),
+                    if (shown.isEmpty)
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          Space.md,
-                          0,
-                          Space.md,
-                          Space.xs,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Space.md,
+                          vertical: Space.sm,
                         ),
-                        child: Text(s[K.recent], style: context.text.bodySmall),
+                        child: Text(s[K.noStationMatch]),
                       ),
-                      for (final st in recents)
-                        _StationRow(st.name(lang), () => pick(st.code)),
-                      const Divider(),
+                    for (final st in shown) ...[
+                      _StationRow(
+                        name: st.name(lang),
+                        subtitle: st.code == lastStop
+                            ? '${s[K.mainLine]} · ${s[K.lastStop]}'
+                            : s[K.mainLine],
+                        icon: Icons.train,
+                        onTap: () => pick(st.code),
+                      ),
+                      const _RowDivider(),
                     ],
-                    if (isFrom && sel.from != null && q.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          Space.md,
-                          0,
-                          Space.md,
-                          Space.xs,
+                    if (recents.isNotEmpty) ...[
+                      const SizedBox(height: Space.sm),
+                      _SectionLabel(s[K.recent]),
+                      for (final st in recents) ...[
+                        _StationRow(
+                          name: st.name(lang),
+                          subtitle: st.code == sel.from
+                              ? s[K.usualStart]
+                              : null,
+                          icon: Icons.history,
+                          onTap: () => pick(st.code),
                         ),
-                        child: Text(
-                          '${s[K.usualStart]}: ${stationName(all, sel.from!, lang)}',
-                          style: context.text.bodySmall,
-                        ),
+                        const _RowDivider(),
+                      ],
+                    ],
+                    Padding(
+                      padding: const EdgeInsets.all(Space.md),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info, size: 20, color: c.textSecondary),
+                          const SizedBox(width: Space.sm),
+                          Expanded(
+                            child: Text(
+                              s[K.stationsHint],
+                              style: context.text.bodySmall?.copyWith(
+                                color: c.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    for (final st in shown)
-                      _StationRow(st.name(lang), () => pick(st.code)),
+                    ),
                   ],
                 ),
               ),
@@ -238,16 +304,64 @@ class _StationPickerState extends ConsumerState<StationPicker> {
   }
 }
 
+/// A small uppercase heading over a group of stations ("MATCHING STATIONS", "RECENT").
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(Space.md, Space.md, Space.md, Space.xs),
+    child: Semantics(
+      header: true,
+      child: Text(
+        text.toUpperCase(),
+        style: context.text.bodySmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+          color: context.colors.textSecondary,
+        ),
+      ),
+    ),
+  );
+}
+
+class _RowDivider extends StatelessWidget {
+  const _RowDivider();
+
+  @override
+  Widget build(BuildContext context) =>
+      Divider(height: 1, indent: 72, color: context.colors.borderDefault);
+}
+
 class _StationRow extends StatelessWidget {
-  const _StationRow(this.name, this.onTap);
+  const _StationRow({
+    required this.name,
+    required this.icon,
+    required this.onTap,
+    this.subtitle,
+  });
 
   final String name;
+  final String? subtitle;
+  final IconData icon;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => ListTile(
     minTileHeight: 56,
-    title: Text(name, style: const TextStyle(fontSize: 17)),
+    leading: Icon(icon, color: context.colors.brandAccent),
+    title: Text(
+      name,
+      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+    ),
+    subtitle: subtitle == null
+        ? null
+        : Text(
+            subtitle!,
+            style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
+          ),
     onTap: onTap,
   );
 }

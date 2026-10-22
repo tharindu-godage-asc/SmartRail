@@ -1,4 +1,5 @@
 import 'package:clock/clock.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -248,17 +249,125 @@ class AlertsTab extends ConsumerWidget {
   }
 }
 
-/// My tickets: ticketing is not in this version, so the tab says so (spec 10 Q5) instead of offering buttons that do nothing.
+/// My tickets, as designed (`Passenger · My tickets (empty)`): a back arrow and title, an empty state, and the two buttons that lead to buying a
+/// ticket. Ticketing and accounts are not in this version (spec 10 Q5), so the screen shows the design but the two buttons only say so.
 class TicketsTab extends ConsumerWidget {
   const TicketsTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(stringsProvider);
-    return Notice(
-      icon: Icons.confirmation_number_outlined,
-      title: s[K.ticketsTitle],
-      body: s[K.ticketsBody],
+    final c = context.colors;
+    void unavailable() {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(s[K.ticketsBody])));
+    }
+
+    return Column(
+      children: [
+        Container(
+          height: 56,
+          decoration: BoxDecoration(
+            color: c.bgPage,
+            border: Border(bottom: BorderSide(color: c.borderDefault)),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  tooltip: s[K.back],
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.go('/home'),
+                ),
+              ),
+              Semantics(
+                header: true,
+                child: Text(
+                  s[K.ticketsTitle],
+                  style: context.text.labelLarge?.copyWith(fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 88,
+                    height: 88,
+                    decoration: BoxDecoration(
+                      color: c.brandAccentSurface,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.confirmation_number_outlined,
+                      size: 40,
+                      color: c.brandAccent,
+                    ),
+                  ),
+                  const SizedBox(height: Space.lg),
+                  Text(
+                    s[K.ticketsEmptyTitle],
+                    textAlign: TextAlign.center,
+                    style: context.text.headlineMedium,
+                  ),
+                  const SizedBox(height: Space.sm),
+                  Text(
+                    s[K.ticketsEmptyBody],
+                    textAlign: TextAlign.center,
+                    style: context.text.bodyMedium?.copyWith(
+                      color: c.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Space.md,
+            Space.sm,
+            Space.md,
+            Space.lg,
+          ),
+          child: Column(
+            children: [
+              PrimaryButton(label: s[K.ticketsSignIn], onPressed: unavailable),
+              const SizedBox(height: Space.sm + 4),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: OutlinedButton(
+                  onPressed: unavailable,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: c.brandAccent,
+                    side: BorderSide(color: c.brandAccent, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Radii.md),
+                    ),
+                  ),
+                  child: Text(
+                    s[K.ticketsBuy],
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -321,6 +430,19 @@ class AccountTab extends ConsumerWidget {
         ),
         const SizedBox(height: Space.sm),
         Text(s[K.privacyBody], style: context.text.bodyMedium),
+        if (kDebugMode) ...[
+          const SizedBox(height: Space.lg),
+          SectionCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              minTileHeight: 56,
+              leading: const Icon(Icons.science_outlined),
+              title: Text(s[K.galleryTitle]),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/gallery'),
+            ),
+          ),
+        ],
       ],
     );
   }
