@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show FilledButton, TextField;
 import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -64,7 +65,7 @@ void main() {
       ); // never promises what this version cannot do
       await tapText(tester, 'Get started');
 
-      expect(find.text('Find a train'), findsOneWidget);
+      expect(find.text('Where to today?'), findsOneWidget);
       expect(h.prefs.onboarded, isTrue);
     });
 
@@ -72,9 +73,246 @@ void main() {
       final h = await Harness.create(stored: Harness.used);
       await h.pump(tester);
 
-      expect(find.text('Find a train'), findsOneWidget);
+      expect(find.text('Where to today?'), findsOneWidget);
       expect(find.text('Main Line: running normally'), findsOneWidget);
     });
+  });
+
+  group('Home of the design, and the sign in and create account screens (frontend only)', () {
+    const remembered = <String, Object>{
+      'language': 'en',
+      'onboarded': true,
+      'from': 'VYG',
+      'usual_to': 'CF',
+    };
+
+    testWidgets(
+      'Home shows Where to today with the fields, Find trains off until both are chosen, and Quick start',
+      (tester) async {
+        final h = await Harness.create(stored: remembered);
+        await h.pump(tester);
+
+        expect(find.text('Where to today?'), findsOneWidget);
+        expect(find.text('Find trains'), findsOneWidget);
+        expect(find.text('QUICK START'), findsOneWidget);
+        expect(find.text('Your usual trip'), findsOneWidget);
+        expect(find.text('Going home'), findsOneWidget);
+        // The line status badge is still there, as it was.
+        expect(find.textContaining('Main Line'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'a Quick start trip opens its results without changing the remembered origin',
+      (tester) async {
+        final h = await Harness.create(stored: remembered);
+        await h.pump(tester);
+
+        await tapText(tester, 'Going home');
+        expect(find.textContaining('Train 8058'), findsWidgets);
+        expect(h.prefs.fromCode, 'VYG');
+      },
+    );
+
+    testWidgets('the swap button exchanges From and To', (tester) async {
+      final handle = tester.ensureSemantics();
+      final h = await Harness.create(stored: remembered);
+      await h.pump(tester);
+      await tapText(tester, 'Going home'); // From Colombo Fort, To Veyangoda
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('From: Colombo Fort'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel('Swap From and To'));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('From: Veyangoda'), findsOneWidget);
+      expect(find.bySemanticsLabel('To: Colombo Fort'), findsOneWidget);
+      handle.dispose();
+    });
+
+    testWidgets(
+      'Sign in checks the form on the phone and says accounts are not available',
+      (tester) async {
+        final h = await Harness.create(stored: Harness.used);
+        await h.pump(tester);
+        await tapText(tester, 'My tickets');
+        await tapText(tester, 'Sign in or create account');
+
+        expect(find.text('to buy and keep your tickets'), findsOneWidget);
+        expect(find.text('Forgot password?'), findsOneWidget);
+        expect(
+          find.text(
+            'Signing in is only for buying tickets. You can check trains without an account.',
+          ),
+          findsOneWidget,
+        );
+
+        await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+        await tester.pump();
+        expect(
+          find.text('Enter an email address like name@example.com'),
+          findsOneWidget,
+        );
+        expect(find.text('Enter your password'), findsOneWidget);
+
+        await tester.enterText(
+          find.byType(TextField).at(0),
+          'kasuni@example.com',
+        );
+        await tester.enterText(find.byType(TextField).at(1), 'secret-1234');
+        await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+        await tester.pump();
+        expect(
+          find.text('Accounts are not available in this version.'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('Create account asks for a password of at least 8 characters', (
+      tester,
+    ) async {
+      final h = await Harness.create(stored: Harness.used);
+      await h.pump(tester);
+      await tapText(tester, 'My tickets');
+      await tapText(tester, 'Sign in or create account');
+      await tapText(tester, 'Create account');
+
+      expect(find.text('Create your account'), findsOneWidget);
+      expect(find.text('Use at least 8 characters.'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).at(0), 'Kasuni Perera');
+      await tester.enterText(
+        find.byType(TextField).at(1),
+        'kasuni@example.com',
+      );
+      await tester.enterText(find.byType(TextField).at(2), '1234');
+      await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+      await tester.pump();
+      expect(
+        find.text('Password is too short. Use at least 8 characters.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+      'the gallery draws the wrong-password and the existing-email states',
+      (tester) async {
+        final h = await Harness.create(stored: Harness.used);
+        await h.pump(tester);
+        await tapText(tester, 'Account');
+        await tapText(tester, 'Design gallery (debug)');
+        await tapText(tester, 'Sign in: wrong email or password');
+        expect(find.text('Email or password is not correct'), findsOneWidget);
+        await tester.tap(find.byTooltip('Close'));
+        await tester.pumpAndSettle();
+        await tapText(tester, 'Create account: errors');
+        expect(
+          find.text(
+            'An account with this email already exists. Sign in instead, or use another email.',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+  });
+
+  group(
+    'disrupted trains, from fixtures (spec 10 boards 16 to 18, debug gallery)',
+    () {
+      Future<void> openGallery(WidgetTester tester) async {
+        final h = await Harness.create(stored: Harness.used);
+        await h.pump(tester);
+        await tapText(tester, 'Account');
+        await tapText(tester, 'Design gallery (debug)');
+      }
+
+      testWidgets(
+        'a suspended service says so with the verified reason and no arrival time',
+        (tester) async {
+          await openGallery(tester);
+          await tapText(tester, 'Service suspended');
+
+          expect(find.text('Reason: Signal issue'), findsOneWidget);
+          expect(
+            find.text('Verified by Operations \u00b7 08:35'),
+            findsOneWidget,
+          );
+          expect(
+            find.text(
+              'No arrival time is shown while the service is suspended.',
+            ),
+            findsOneWidget,
+          );
+          expect(find.text('Suspended here'), findsOneWidget);
+          expect(find.text('Follow this train'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'a cancelled train says it will not run and offers other trains',
+        (tester) async {
+          await openGallery(tester);
+          await tapText(tester, 'Train cancelled');
+
+          expect(find.text('Train 8062 will not run today.'), findsOneWidget);
+          expect(
+            find.text('Verified by Operations \u00b7 08:20'),
+            findsOneWidget,
+          );
+          expect(find.text('See other trains'), findsOneWidget);
+          expect(find.text('STOPS'), findsNothing);
+        },
+      );
+
+      testWidgets(
+        'a terminated train names its last stop and marks the stops it does not serve',
+        (tester) async {
+          await openGallery(tester);
+          await tapText(tester, 'Terminates at Ragama');
+
+          expect(
+            find.text('This train will not continue to Colombo Fort.'),
+            findsOneWidget,
+          );
+          expect(find.text('Ends here'), findsOneWidget);
+          expect(find.text('Not served by this train'), findsNWidgets(2));
+          expect(find.text('See other trains'), findsOneWidget);
+        },
+      );
+    },
+  );
+
+  group('station picker (design: Choose a station)', () {
+    testWidgets(
+      'lists matching stations with the line and the last stop, a clear button, the hint, and keeps the bottom bar',
+      (tester) async {
+        final h = await Harness.create(stored: Harness.used);
+        await h.pump(tester);
+        await tapText(tester, 'Trains');
+        await tapText(tester, 'Choose where you are going');
+
+        expect(find.text('MATCHING STATIONS'), findsOneWidget);
+        expect(
+          find.text(
+            'All stations on the Main Line are listed. Type to narrow the list.',
+          ),
+          findsOneWidget,
+        );
+        // The bar of the design stays under the picker, with Trains selected.
+        expect(find.text('My tickets'), findsOneWidget);
+
+        await tester.enterText(find.byType(TextField), 'Colombo');
+        await tester.pump();
+        expect(find.text('Colombo Fort'), findsOneWidget);
+        expect(find.text('Main Line \u00b7 Last stop'), findsOneWidget);
+        expect(find.text('Gampaha'), findsNothing);
+
+        await tester.tap(find.byTooltip('Clear search'));
+        await tester.pump();
+        expect(find.byTooltip('Clear search'), findsNothing);
+        expect(find.text('Gampaha'), findsWidgets);
+      },
+    );
   });
 
   group('find trains (AC-E06-01)', () {
@@ -427,7 +665,7 @@ void main() {
         h.api.status = statusJson(delay: 8, reported: 1, departed: true);
         await h.pump(tester);
         expect(
-          find.text('Your train'),
+          find.text('FOLLOWING'),
           findsNothing,
         ); // none followed: search first, no empty card
 
@@ -447,7 +685,7 @@ void main() {
         await tester.pumpAndSettle();
         await tapText(tester, 'Home');
 
-        expect(find.text('Your train'), findsOneWidget);
+        expect(find.text('FOLLOWING'), findsOneWidget);
         expect(find.text('Arrives at Gampaha'), findsOneWidget);
         expect(find.text('08:38'), findsOneWidget);
         expect(find.text('Delayed 8 min'), findsOneWidget);
@@ -485,10 +723,42 @@ void main() {
         await tapText(tester, 'Alerts');
         expect(find.text('No service alerts'), findsOneWidget);
         await tapText(tester, 'My tickets');
+        // The designed empty state with its two buttons; ticketing is not in this version, so a button only says so.
+        expect(find.text('No tickets yet'), findsOneWidget);
+        expect(
+          find.textContaining('You never need one to check trains.'),
+          findsOneWidget,
+        );
+        expect(find.text('Sign in or create account'), findsOneWidget);
+        await tapText(tester, 'Buy a ticket');
+        await tester.pump();
         expect(
           find.text('Tickets are not available in this version.'),
           findsOneWidget,
         );
+      },
+    );
+
+    testWidgets(
+      'the bottom bar has five tabs with Home raised in the middle, and the back arrow on My tickets returns Home',
+      (tester) async {
+        final h = await Harness.create(stored: Harness.used);
+        await h.pump(tester);
+
+        for (final label in [
+          'Trains',
+          'My tickets',
+          'Home',
+          'Alerts',
+          'Account',
+        ]) {
+          expect(find.text(label), findsWidgets);
+        }
+        await tapText(tester, 'My tickets');
+        expect(find.byTooltip('Back'), findsOneWidget);
+        await tester.tap(find.byTooltip('Back'));
+        await tester.pumpAndSettle(const Duration(milliseconds: 100));
+        expect(find.text('No tickets yet'), findsNothing);
       },
     );
 

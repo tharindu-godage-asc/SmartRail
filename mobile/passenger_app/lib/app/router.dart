@@ -1,13 +1,18 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/l10n/strings.dart';
 import '../features/home/home_screens.dart';
+import '../features/account/account_screens.dart';
 import '../features/food/food_menu_screen.dart';
+import '../features/gallery/design_gallery.dart';
 import '../features/live/live_screen.dart';
+import '../features/live/override_screens.dart';
 import '../features/onboarding/onboarding_screens.dart';
 import '../features/search/search_screens.dart';
+import 'nav_bar.dart';
 import 'providers.dart';
 
 /// The five tabs of the design, Home in the middle: Trains, My tickets, Home, Alerts, Account.
@@ -26,34 +31,39 @@ class AppShell extends ConsumerWidget {
         .indexWhere(location.startsWith)
         .clamp(0, _tabs.length - 1);
     return Scaffold(
-      body: SafeArea(bottom: false, child: child),
-      bottomNavigationBar: NavigationBar(
+      // The station picker brings its own header, which already starts below the status bar.
+      body: SafeArea(
+        top: !location.startsWith('/pick'),
+        bottom: false,
+        child: child,
+      ),
+      bottomNavigationBar: DesignNavBar(
         selectedIndex: index,
-        onDestinationSelected: (i) => context.go(_tabs[i]),
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.train_outlined),
-            selectedIcon: const Icon(Icons.train),
+        onSelected: (i) => context.go(_tabs[i]),
+        tabs: [
+          NavTab(
+            icon: Icons.train_outlined,
+            selectedIcon: Icons.train,
             label: s[K.tabTrains],
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.confirmation_number_outlined),
-            selectedIcon: const Icon(Icons.confirmation_number),
+          NavTab(
+            icon: Icons.confirmation_number_outlined,
+            selectedIcon: Icons.confirmation_number,
             label: s[K.tabTickets],
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            selectedIcon: const Icon(Icons.home),
+          NavTab(
+            icon: Icons.home_outlined,
+            selectedIcon: Icons.home,
             label: s[K.tabHome],
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.notifications_none),
-            selectedIcon: const Icon(Icons.notifications),
+          NavTab(
+            icon: Icons.notifications_none,
+            selectedIcon: Icons.notifications,
             label: s[K.tabAlerts],
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.person_outline),
-            selectedIcon: const Icon(Icons.person),
+          NavTab(
+            icon: Icons.person_outline,
+            selectedIcon: Icons.person,
             label: s[K.tabAccount],
           ),
         ],
@@ -75,6 +85,35 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/onboard', builder: (_, _) => const OnboardingScreen()),
+      // Screens only: there is no account service behind them (spec 10 Q5).
+      GoRoute(path: '/signin', builder: (_, _) => const SignInScreen()),
+      GoRoute(
+        path: '/register',
+        builder: (_, _) => const CreateAccountScreen(),
+      ),
+      // The fixture screens for states with no backend yet: debug builds only.
+      if (kDebugMode) ...[
+        GoRoute(path: '/gallery', builder: (_, _) => const DesignGallery()),
+        GoRoute(
+          path: '/gallery/signin-error',
+          builder: (_, _) => const SignInScreen(showError: true),
+        ),
+        GoRoute(
+          path: '/gallery/register-errors',
+          builder: (_, _) => const CreateAccountScreen(showErrors: true),
+        ),
+        GoRoute(
+          path: '/gallery/:kind',
+          builder: (_, state) => OverrideScreen(
+            fixture: OverrideFixture.of(
+              OverrideKind.values.firstWhere(
+                (k) => k.name == state.pathParameters['kind'],
+                orElse: () => OverrideKind.suspended,
+              ),
+            ),
+          ),
+        ),
+      ],
       ShellRoute(
         builder: (_, state, child) =>
             AppShell(location: state.uri.path, child: child),
@@ -84,12 +123,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/tickets', builder: (_, _) => const TicketsTab()),
           GoRoute(path: '/alerts', builder: (_, _) => const AlertsTab()),
           GoRoute(path: '/account', builder: (_, _) => const AccountTab()),
+          // Inside the shell, so the bottom bar stays (Trains selected), as in the design.
+          GoRoute(
+            path: '/pick/:which',
+            builder: (_, state) =>
+                StationPicker(which: state.pathParameters['which']!),
+          ),
         ],
-      ),
-      GoRoute(
-        path: '/pick/:which',
-        builder: (_, state) =>
-            StationPicker(which: state.pathParameters['which']!),
       ),
       GoRoute(path: '/results', builder: (_, _) => const ResultsScreen()),
       GoRoute(
