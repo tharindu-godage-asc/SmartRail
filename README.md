@@ -161,6 +161,24 @@ The five critical flows do not need the demo layer. `e2e/display.spec.ts` does: 
 
 The other controller checks (`e2e/controller-flow.spec.ts`: the overview, no dashboard access for an operator, sign out), the catering check (`e2e/critical-flows.spec.ts`: an item sold out at SmallBites shows as sold out in SmartRail's menu, and the caterer's token cannot read operations, FR-90 and D-72) and `e2e/display.spec.ts` are extra checks. Two display tests depend on the demo trains, which the local database cleanup removed, so they can fail on a changed database.
 
+### Flutter integration tests (the `integration_test` package)
+
+Each phone app has one integration test in `integration_test/`. They run on the Android emulator against the **real** stack (no fakes), so they prove the app and the API work together. The faster widget tests in `test/` (with fakes) are separate and run in CI.
+
+| App | Test | What it proves |
+|---|---|---|
+| Passenger | `mobile/passenger_app/integration_test/passenger_search_test.dart` | The real station list loads, a passenger picks Veyangoda and Colombo Fort, and the real API's trains are listed. Reads only. |
+| Operator | `mobile/operator_app/integration_test/operator_journey_test.dart` | With a real Keycloak token for Nimal, the app shows the journey the real API assigns to him. Reads only. |
+
+```bash
+./scripts/reset-db.sh --demo                  # a clean stack with the demo layer (the operator test needs a journey for Nimal)
+./start.sh --emulator                 # or any running Android emulator
+./scripts/mobile-integration.sh               # both apps; or: ./scripts/mobile-integration.sh passenger
+```
+The script checks the stack and the emulator, sets `adb reverse` for ports 8080 and 8180, and runs `flutter test integration_test --device-id <emulator>` in each app. The first build of each app takes a few minutes. If Nimal has no journey the operator test skips itself with a message.
+
+The browser sign-in of the operator app cannot be driven by the package, so that test takes a real access token from Keycloak (the Compose-only `smartrail-dev-token` client) and gives it to the app as if the sign-in had happened. Sign-in itself is covered by the Android sign-in spike and the app's unit tests. They are not in CI (they need an emulator).
+
 ### Automated QA: one command, and every night on GitHub
 
 **On your machine:** `./scripts/qa.sh` starts the stack if it is down (`./start.sh`), runs every suite (`./scripts/test-report.sh`: unit, integration, SmallBites, web, both Flutter apps), then the browser flows, and ends with one table:
