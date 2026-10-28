@@ -27,6 +27,10 @@ if [[ $DEMO == 1 ]]; then
   FILES+=(-f "$OVERRIDE")
 fi
 
+# Build first: if the build fails (no network, a broken Dockerfile) nothing has been removed yet and the running stack keeps its data.
+echo "[$(date +%H:%M:%S)] Building the images (nothing is removed until this succeeds)"
+docker compose "${FILES[@]}" build || { echo "The build failed, so nothing was removed. Fix it (check the network) and run this again." >&2; exit 1; }
+
 echo "[$(date +%H:%M:%S)] Removing the stack and its volumes"
 docker compose down -v
 echo "[$(date +%H:%M:%S)] Starting the stack (demo layer: $([[ $DEMO == 1 ]] && echo on || echo off))"

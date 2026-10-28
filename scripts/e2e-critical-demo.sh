@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Runs the 5 critical flows (operator report to passenger, verify a delay reason, lost device, controller resolves a fault report, catering) in a visible browser,
+# Runs the 5 critical flows (operator report to passenger, verify a delay reason, lost device, controller resolves a fault report, scheduling a train) in a visible browser,
 # slowed down so a person can follow each step. Needs the stack (./start.sh, or ./scripts/reset-db.sh). Run from anywhere in Git Bash.
 #
 #   ./scripts/e2e-critical-demo.sh              headed, 700 ms after every browser action
 #   ./scripts/e2e-critical-demo.sh --slow 1500  slower (milliseconds after every action)
 #   ./scripts/e2e-critical-demo.sh --reset      afterwards, put the database back to its initial state (DELETES local data)
-#   ./scripts/e2e-critical-demo.sh --flow 3     only one flow: 1, 2, 3, 4 (controller resolves a fault report) or 5 (catering)
+#   ./scripts/e2e-critical-demo.sh --flow 3     only one flow: 1, 2, 3, 4 (controller resolves a fault report) or 5 (scheduling a train)
 #
 # Many steps call the API directly (no browser), so the window is only busy on the controller screens. Each flow makes its own test data.
 set -uo pipefail
@@ -30,7 +30,7 @@ cd "$ROOT/web/ops"
 [[ -d node_modules ]] || npm ci
 npx playwright install chromium >/dev/null 2>&1 || true
 
-args=(e2e/critical-flows.spec.ts e2e/controller-flow.spec.ts -g "flow ${FLOW:-[1-5]}:")
+args=(e2e/critical-flows.spec.ts e2e/controller-flow.spec.ts e2e/timetable.spec.ts -g "flow ${FLOW:-[1-5]}:")
 
 echo "Running the critical flows headed, ${SLOW} ms after every action${FLOW:+ (flow $FLOW only)}."
 SLOWMO="$SLOW" npx playwright test "${args[@]}" --headed --workers=1

@@ -1,17 +1,23 @@
 name: qa
 # The browser end-to-end flows (Playwright) against the whole Docker Compose stack: API, Postgres, Keycloak, SmallBites and the web app.
-# Not part of the pull request checks: it needs the full stack and takes a few minutes. It runs every night and on demand
-# (Actions tab, "Run workflow"). The unit, integration, web and mobile suites have their own workflows (ci, web, mobile, smallbites).
+# It needs the full stack and takes several minutes. It runs on every pull request into dev or main, on every push to dev or main, every night
+# and on demand (Actions tab, "Run workflow"). It is not a required check in the branch ruleset (see smartrail-platform/docs/branch-protection.md),
+# so it reports but does not block a merge. The unit, integration, web and mobile suites have their own workflows (ci, web, mobile, smallbites).
 # Locally the same run is: ./scripts/qa.sh --e2e-only
 on:
-  # Temporary: lets the first run happen from this branch (a manual run needs the file on the default branch). Remove once it is on main.
+  pull_request:
+    branches: [dev, main]
   push:
-    branches: [claude/feature/qa-automation]
+    branches: [dev, main]
   schedule:
     - cron: "0 2 * * *" # 07:30 in Sri Lanka, outside the 23:00 to 01:00 window in which the flows skip themselves
   workflow_dispatch:
 permissions:
   contents: read
+# A newer push to the same pull request or branch replaces the run still going, so runs do not queue up.
+concurrency:
+  group: qa-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   e2e:
     runs-on: ubuntu-latest

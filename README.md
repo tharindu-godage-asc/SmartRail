@@ -119,8 +119,9 @@ These are the flows I automated as the most critical (QA section of the brief). 
 **Run them** (from `web/ops`)
 ```bash
 npm run e2e:critical                                   # flows 1 to 5, one after the other (about 40 seconds)
-npx playwright test e2e/critical-flows.spec.ts         # flows 1, 2, 3 and 5
+npx playwright test e2e/critical-flows.spec.ts         # flows 1, 2 and 3 (and the extra catering check)
 npx playwright test e2e/controller-flow.spec.ts       # flow 4 (and three extra controller checks)
+npx playwright test e2e/timetable.spec.ts              # flow 5
 npx playwright test -g "flow 3"                        # one flow, by its name
 npx playwright test e2e/critical-flows.spec.ts --headed   # watch the browser
 npm run e2e                                            # every Playwright test, including the extra checks below
@@ -156,11 +157,29 @@ The five critical flows do not need the demo layer. `e2e/display.spec.ts` does: 
 | 2 | Verify a delay reason | The controller verifies in the web app and the passenger status then carries the reason and the time (FR-52) | `e2e/critical-flows.spec.ts` |
 | 3 | Lost device | The controller ends an assignment in the web app and the operator is refused, even for an earlier claimed time (FR-12, FR-56) | `e2e/critical-flows.spec.ts` |
 | 4 | Controller resolves a fault report | A Technical fault delay report reaches the controller's exceptions queue and the controller resolves it (spec 07, spec 08) | `e2e/controller-flow.spec.ts` |
-| 5 | Catering | An item sold out at SmallBites shows as sold out in SmartRail's menu; the caterer's token cannot read operations (FR-90, D-72) | `e2e/critical-flows.spec.ts` |
+| 5 | Scheduling a train | A controller schedules a service, finds it in the list, cancels one date and finds it under Cancelled (FR-11, specs 13 to 15) | `e2e/timetable.spec.ts` |
 
-The other controller checks (`e2e/controller-flow.spec.ts`: the overview, no dashboard access for an operator, sign out), the timetable flow (`e2e/timetable.spec.ts`: schedule, find, cancel one date, find it under Cancelled) and `e2e/display.spec.ts` are extra checks. Two display tests depend on the demo trains, which the local database cleanup removed, so they can fail on a changed database.
+The other controller checks (`e2e/controller-flow.spec.ts`: the overview, no dashboard access for an operator, sign out), the catering check (`e2e/critical-flows.spec.ts`: an item sold out at SmallBites shows as sold out in SmartRail's menu, and the caterer's token cannot read operations, FR-90 and D-72) and `e2e/display.spec.ts` are extra checks. Two display tests depend on the demo trains, which the local database cleanup removed, so they can fail on a changed database.
 
-### Automated QA: one command, and every night on GitHub
+### Flutter integration tests (the `integration_test` package)
+
+Each phone app has one integration test in `integration_test/`. They run on the Android emulator against the **real** stack (no fakes), so they prove the app and the API work together. The faster widget tests in `test/` (with fakes) are separate and run in CI.
+
+| App | Test | What it proves |
+|---|---|---|
+| Passenger | `mobile/passenger_app/integration_test/passenger_search_test.dart` | The real station list loads, a passenger picks Veyangoda and Colombo Fort, and the real API's trains are listed. Reads only. |
+| Operator | `mobile/operator_app/integration_test/operator_journey_test.dart` | With a real Keycloak token for Nimal, the app shows the journey the real API assigns to him. Reads only. |
+
+```bash
+./scripts/reset-db.sh --demo                  # a clean stack with the demo layer (the operator test needs a journey for Nimal)
+./start.sh --emulator                 # or any running Android emulator
+./scripts/mobile-integration.sh               # both apps; or: ./scripts/mobile-integration.sh passenger
+```
+The script checks the stack and the emulator, sets `adb reverse` for ports 8080 and 8180, and runs `flutter test integration_test --device-id <emulator>` in each app. The first build of each app takes a few minutes. If Nimal has no journey the operator test skips itself with a message.
+
+The browser sign-in of the operator app cannot be driven by the package, so that test takes a real access token from Keycloak (the Compose-only `smartrail-dev-token` client) and gives it to the app as if the sign-in had happened. Sign-in itself is covered by the Android sign-in spike and the app's unit tests. They are not in CI (they need an emulator).
+
+### Automated QA: one command, on every change, and every night on GitHub
 
 **On your machine:** `./scripts/qa.sh` starts the stack if it is down (`./start.sh`), runs every suite (`./scripts/test-report.sh`: unit, integration, SmallBites, web, both Flutter apps), then the browser flows, and ends with one table:
 
@@ -172,7 +191,7 @@ PASS  52s       Browser flows: critical flows, timetable and controller (Playwri
 
 It exits with a non-zero code if any step failed. Options: `--quick` (skip the slow .NET integration tests), `--e2e-only`, `--no-e2e`, `--no-coverage`. Results: `test-report/index.html`, `test-report/qa-summary.txt`, and for the browser flows `web/ops/playwright-report/` (open with `npx playwright show-report` from `web/ops`) with a trace for each failure. The browser flows alone: `npm run e2e:qa` from `web/ops` (the three flow files, nine tests).
 
-**On GitHub:** the workflow `.github/workflows/qa.yml` (`qa`) starts the whole Compose stack on a runner, waits for the API, Keycloak and SmallBites, installs Chromium and runs `npm run e2e:qa`. It runs every night at 02:00 UTC and from the Actions tab (Run workflow). It uploads the Playwright report and traces as an artifact and prints the container logs when something failed. It is not part of the pull request checks (it needs the full stack): the pull request checks are `ci`, `web`, `mobile` and `smallbites`. This workflow has not been run on GitHub yet; the same steps were run locally.
+**On GitHub:** the workflow `.github/workflows/qa.yml` (`qa`) starts the whole Compose stack on a runner, waits for the API, Keycloak and SmallBites, installs Chromium and runs `npm run e2e:qa`. It runs on every pull request into `dev` or `main`, on every push to `dev` or `main`, every night at 02:00 UTC, and from the Actions tab (Run workflow). A newer push to the same branch cancels the run still going. It uploads the Playwright report and traces as an artifact and prints the container logs when something failed. It is **not a required check** (it needs the full stack and takes several minutes), so it reports on the pull request but does not block the merge; the required checks are `build-test`, `security` and `image` from `ci`. The Flutter integration tests (emulator) are not part of it.
 
 ### Test report (every test, pass or fail, and coverage)
 
