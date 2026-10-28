@@ -12,7 +12,7 @@
 #                                    which DELETES the local Compose data: ./scripts/reset-db.sh)
 #
 # Results: test-report/index.html (suites, from scripts/test-report.sh), web/ops/playwright-report/ and test-results/ (browser flows, with traces
-# of the failures), and test-report/qa-summary.txt (the table below). The same flows run on GitHub as the "qa" workflow (nightly and by hand).
+# of the failures), and test-report/qa-summary.txt (the table below). The same flows run on GitHub as the "qa" workflow (on pull requests and pushes to dev and main, nightly and by hand).
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"

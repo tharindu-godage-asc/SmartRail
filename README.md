@@ -179,7 +179,7 @@ The script checks the stack and the emulator, sets `adb reverse` for ports 8080 
 
 The browser sign-in of the operator app cannot be driven by the package, so that test takes a real access token from Keycloak (the Compose-only `smartrail-dev-token` client) and gives it to the app as if the sign-in had happened. Sign-in itself is covered by the Android sign-in spike and the app's unit tests. They are not in CI (they need an emulator).
 
-### Automated QA: one command, and every night on GitHub
+### Automated QA: one command, on every change, and every night on GitHub
 
 **On your machine:** `./scripts/qa.sh` starts the stack if it is down (`./start.sh`), runs every suite (`./scripts/test-report.sh`: unit, integration, SmallBites, web, both Flutter apps), then the browser flows, and ends with one table:
 
@@ -191,7 +191,7 @@ PASS  52s       Browser flows: critical flows, timetable and controller (Playwri
 
 It exits with a non-zero code if any step failed. Options: `--quick` (skip the slow .NET integration tests), `--e2e-only`, `--no-e2e`, `--no-coverage`. Results: `test-report/index.html`, `test-report/qa-summary.txt`, and for the browser flows `web/ops/playwright-report/` (open with `npx playwright show-report` from `web/ops`) with a trace for each failure. The browser flows alone: `npm run e2e:qa` from `web/ops` (the three flow files, nine tests).
 
-**On GitHub:** the workflow `.github/workflows/qa.yml` (`qa`) starts the whole Compose stack on a runner, waits for the API, Keycloak and SmallBites, installs Chromium and runs `npm run e2e:qa`. It runs every night at 02:00 UTC and from the Actions tab (Run workflow). It uploads the Playwright report and traces as an artifact and prints the container logs when something failed. It is not part of the pull request checks (it needs the full stack): the pull request checks are `ci`, `web`, `mobile` and `smallbites`. This workflow has not been run on GitHub yet; the same steps were run locally.
+**On GitHub:** the workflow `.github/workflows/qa.yml` (`qa`) starts the whole Compose stack on a runner, waits for the API, Keycloak and SmallBites, installs Chromium and runs `npm run e2e:qa`. It runs on every pull request into `dev` or `main`, on every push to `dev` or `main`, every night at 02:00 UTC, and from the Actions tab (Run workflow). A newer push to the same branch cancels the run still going. It uploads the Playwright report and traces as an artifact and prints the container logs when something failed. It is **not a required check** (it needs the full stack and takes several minutes), so it reports on the pull request but does not block the merge; the required checks are `build-test`, `security` and `image` from `ci`. The Flutter integration tests (emulator) are not part of it.
 
 ### Test report (every test, pass or fail, and coverage)
 
