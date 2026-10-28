@@ -18,7 +18,7 @@ import {
 
 /**
  * The five critical end-to-end flows of the assessment (QA section of the brief), run by hand against the Compose stack:
- *   1. Live chain: an operator's reports reach the public status and a station board (NFR-04).
+ *   1. Live chain: an operator's reports reach the public status, a station board and the platform display shown in the browser (NFR-04).
  *   2. Verify a delay reason: the controller verifies in the web app and the passenger status then carries the reason (FR-52, D-10).
  *   3. Assignment and lost device: the controller ends an assignment in the web app and the operator is refused (FR-12, FR-56).
  *   4. Controller resolves a fault report: a Technical fault delay report reaches the exceptions queue and the controller resolves it
@@ -50,7 +50,7 @@ async function trainWithOperator() {
   return { controller, operator, trainNumber, journeyId, stops: journey.stops }
 }
 
-test('flow 1: operator reports reach the public status and a station board', async () => {
+test('flow 1: operator reports reach the public status and a station board', async ({ page }) => {
   const { controller, operator, trainNumber, journeyId, stops } = await trainWithOperator()
   try {
     // Before any report the public status shows no delay.
@@ -76,6 +76,12 @@ test('flow 1: operator reports reach the public status and a station board', asy
     const onBoard = board.body.trains.find((t) => t.trainNumber === trainNumber)
     expect(onBoard?.platform).toBe('2')
     expect(onBoard?.delayMinutes).toBe(12)
+
+    // What a passenger sees on the station: the platform display (no sign-in) shows this train and its delay. Platform 2 is empty in the
+    // reference data, so this train is the first one. The display polls every 10 s, hence the longer wait. Visible in a headed run.
+    await page.goto('/display/platform/GPH/2')
+    await expect(page.getByText(`Train ${trainNumber}`)).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText('Delayed 12 min').first()).toBeVisible({ timeout: 20_000 })
 
     // An arrival at Gampaha (an in-between stop since spec 19) is accepted and moves the train there.
     expect((await report(operator, journeyId, { eventType: 'Arrived', serviceStopId: stops[1]!.serviceStopId })).status).toBe(201)

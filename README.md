@@ -153,7 +153,7 @@ The five critical flows do not need the demo layer. `e2e/display.spec.ts` does: 
 
 | # | Flow | What it proves | File |
 |---|---|---|---|
-| 1 | Operator reports reach passengers | A departure, a delay and an arrival at an in-between stop appear in the public status and a station board; the reason is not public (NFR-04, D-10) | `e2e/critical-flows.spec.ts` |
+| 1 | Operator reports reach passengers | A departure, a delay and an arrival at an in-between stop appear in the public status and a station board, and the platform display (opened in the browser, so a headed run shows it); the reason is not public (NFR-04, D-10) | `e2e/critical-flows.spec.ts` |
 | 2 | Verify a delay reason | The controller verifies in the web app and the passenger status then carries the reason and the time (FR-52) | `e2e/critical-flows.spec.ts` |
 | 3 | Lost device | The controller ends an assignment in the web app and the operator is refused, even for an earlier claimed time (FR-12, FR-56) | `e2e/critical-flows.spec.ts` |
 | 4 | Controller resolves a fault report | A Technical fault delay report reaches the controller's exceptions queue and the controller resolves it (spec 07, spec 08) | `e2e/controller-flow.spec.ts` |
