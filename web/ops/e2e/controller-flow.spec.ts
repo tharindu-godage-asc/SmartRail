@@ -61,7 +61,7 @@ async function operatorReportsATechnicalFault(): Promise<{ eventId: string; trai
   }
 }
 
-test('a Technical fault report reaches the controller, who resolves it', async ({ page }) => {
+test('flow 4: a Technical fault report reaches the controller, who resolves it', async ({ page }) => {
   const { eventId, trainNumber } = await operatorReportsATechnicalFault()
   const jayasinghe = await tokenFor('jayasinghe')
   const queue = await api<{ items: { id: string; relatedEventId: string }[] }>(jayasinghe, '/api/v1/exceptions?status=open')

@@ -21,7 +21,8 @@ import {
  *   1. Live chain: an operator's reports reach the public status and a station board (NFR-04).
  *   2. Verify a delay reason: the controller verifies in the web app and the passenger status then carries the reason (FR-52, D-10).
  *   3. Assignment and lost device: the controller ends an assignment in the web app and the operator is refused (FR-12, FR-56).
- *   4. Timetable: schedule, find and cancel a service (timetable.spec.ts, spec 15).
+ *   4. Controller resolves a fault report: a Technical fault delay report reaches the exceptions queue and the controller resolves it
+ *      (controller-flow.spec.ts, spec 08 and spec 07). The timetable flow (timetable.spec.ts, spec 15) is an extra check, no longer one of the five.
  *   5. Catering: an item sold out at SmallBites shows as sold out in SmartRail's menu read (FR-90, D-72) and the caterer cannot read operations data.
  * Each flow makes its own train for today, so the tests repeat without a database reset. Dev passwords only.
  */
