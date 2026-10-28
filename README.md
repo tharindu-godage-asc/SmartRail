@@ -119,8 +119,9 @@ These are the flows I automated as the most critical (QA section of the brief). 
 **Run them** (from `web/ops`)
 ```bash
 npm run e2e:critical                                   # flows 1 to 5, one after the other (about 40 seconds)
-npx playwright test e2e/critical-flows.spec.ts         # flows 1, 2, 3 and 5
+npx playwright test e2e/critical-flows.spec.ts         # flows 1, 2 and 3 (and the extra catering check)
 npx playwright test e2e/controller-flow.spec.ts       # flow 4 (and three extra controller checks)
+npx playwright test e2e/timetable.spec.ts              # flow 5
 npx playwright test -g "flow 3"                        # one flow, by its name
 npx playwright test e2e/critical-flows.spec.ts --headed   # watch the browser
 npm run e2e                                            # every Playwright test, including the extra checks below
@@ -156,9 +157,9 @@ The five critical flows do not need the demo layer. `e2e/display.spec.ts` does: 
 | 2 | Verify a delay reason | The controller verifies in the web app and the passenger status then carries the reason and the time (FR-52) | `e2e/critical-flows.spec.ts` |
 | 3 | Lost device | The controller ends an assignment in the web app and the operator is refused, even for an earlier claimed time (FR-12, FR-56) | `e2e/critical-flows.spec.ts` |
 | 4 | Controller resolves a fault report | A Technical fault delay report reaches the controller's exceptions queue and the controller resolves it (spec 07, spec 08) | `e2e/controller-flow.spec.ts` |
-| 5 | Catering | An item sold out at SmallBites shows as sold out in SmartRail's menu; the caterer's token cannot read operations (FR-90, D-72) | `e2e/critical-flows.spec.ts` |
+| 5 | Scheduling a train | A controller schedules a service, finds it in the list, cancels one date and finds it under Cancelled (FR-11, specs 13 to 15) | `e2e/timetable.spec.ts` |
 
-The other controller checks (`e2e/controller-flow.spec.ts`: the overview, no dashboard access for an operator, sign out), the timetable flow (`e2e/timetable.spec.ts`: schedule, find, cancel one date, find it under Cancelled) and `e2e/display.spec.ts` are extra checks. Two display tests depend on the demo trains, which the local database cleanup removed, so they can fail on a changed database.
+The other controller checks (`e2e/controller-flow.spec.ts`: the overview, no dashboard access for an operator, sign out), the catering check (`e2e/critical-flows.spec.ts`: an item sold out at SmallBites shows as sold out in SmartRail's menu, and the caterer's token cannot read operations, FR-90 and D-72) and `e2e/display.spec.ts` are extra checks. Two display tests depend on the demo trains, which the local database cleanup removed, so they can fail on a changed database.
 
 ### Automated QA: one command, and every night on GitHub
 
