@@ -7,12 +7,17 @@ import { defineConfig } from '@playwright/test'
  */
 export default defineConfig({
   testDir: './e2e',
-  timeout: 60_000,
+  // SLOWMO=<ms> pauses that long after every browser action (scripts/e2e-critical-demo.sh), so a person can follow; the test gets more time.
+  timeout: process.env.SLOWMO ? 180_000 : 60_000,
   workers: 1,
   retries: 0,
   // On CI (and for the QA script) an HTML report is written as well, so a failure comes with its trace to open.
   reporter: process.env.CI || process.env.QA ? [['list'], ['html', { open: 'never' }]] : [['list']],
-  use: { baseURL: 'http://localhost:5173', trace: 'retain-on-failure' },
+  use: {
+    baseURL: 'http://localhost:5173',
+    trace: 'retain-on-failure',
+    launchOptions: { slowMo: Number(process.env.SLOWMO ?? 0) },
+  },
   // DISPLAY_ONLY=1 skips the dashboard's dev server: the station displays are their own service and must work without it.
   webServer: process.env.DISPLAY_ONLY
     ? undefined

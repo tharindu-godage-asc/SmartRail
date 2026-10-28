@@ -120,10 +120,28 @@ These are the flows I automated as the most critical (QA section of the brief). 
 ```bash
 npm run e2e:critical                                   # flows 1 to 5, one after the other (about 40 seconds)
 npx playwright test e2e/critical-flows.spec.ts         # flows 1, 2, 3 and 5
+npx playwright test e2e/controller-flow.spec.ts       # flow 4 (and three extra controller checks)
 npx playwright test -g "flow 3"                        # one flow, by its name
 npx playwright test e2e/critical-flows.spec.ts --headed   # watch the browser
 npm run e2e                                            # every Playwright test, including the extra checks below
 ```
+
+**Watch them slowly (headed, for a demo)** (from the repo root)
+```bash
+./scripts/e2e-critical-demo.sh                # the five flows in a visible browser, 700 ms after every action
+./scripts/e2e-critical-demo.sh --slow 1500    # slower
+./scripts/e2e-critical-demo.sh --flow 4       # one flow only (1 to 5)
+./scripts/e2e-critical-demo.sh --reset        # afterwards, reset the database to its initial state
+```
+Many steps call the API directly, so the browser is only busy on the controller screens. The pause is the `SLOWMO` setting of `web/ops/playwright.config.ts`.
+
+**Start from a clean database, and clean up afterwards** (from the repo root)
+```bash
+./scripts/reset-db.sh          # removes the Compose containers AND volumes, starts the stack again: the initial state (DELETES local data)
+./scripts/reset-db.sh --demo   # the same with the demo layer on (journey 8058 for Nimal, 8070), which the display tests need
+./scripts/qa.sh --e2e-only     # the browser flows with one PASS/FAIL table, then resets the database (--no-reset keeps the test data)
+```
+The five critical flows do not need the demo layer. `e2e/display.spec.ts` does: run `./scripts/reset-db.sh --demo` first, otherwise its delay and next-trains tests skip with a message. Two display tests also depend on the time of day (the main board test runs 08:00 to 13:00 Sri Lanka time only).
 
 **Look at the results**
 - The terminal prints each flow with `ok` or `x` and its time. A failure shows the line that failed.
@@ -137,10 +155,10 @@ npm run e2e                                            # every Playwright test, 
 | 1 | Operator reports reach passengers | A departure, a delay and an arrival at an in-between stop appear in the public status and a station board; the reason is not public (NFR-04, D-10) | `e2e/critical-flows.spec.ts` |
 | 2 | Verify a delay reason | The controller verifies in the web app and the passenger status then carries the reason and the time (FR-52) | `e2e/critical-flows.spec.ts` |
 | 3 | Lost device | The controller ends an assignment in the web app and the operator is refused, even for an earlier claimed time (FR-12, FR-56) | `e2e/critical-flows.spec.ts` |
-| 4 | Timetable | Schedule a service, find it, cancel one date, find it under Cancelled (FR-11) | `e2e/timetable.spec.ts` |
+| 4 | Controller resolves a fault report | A Technical fault delay report reaches the controller's exceptions queue and the controller resolves it (spec 07, spec 08) | `e2e/controller-flow.spec.ts` |
 | 5 | Catering | An item sold out at SmallBites shows as sold out in SmartRail's menu; the caterer's token cannot read operations (FR-90, D-72) | `e2e/critical-flows.spec.ts` |
 
-`e2e/controller-flow.spec.ts` (resolve an exception, no dashboard access for an operator, sign out) and `e2e/display.spec.ts` are extra checks. Two display tests depend on the demo trains, which the local database cleanup removed, so they can fail on a changed database.
+The other controller checks (`e2e/controller-flow.spec.ts`: the overview, no dashboard access for an operator, sign out), the timetable flow (`e2e/timetable.spec.ts`: schedule, find, cancel one date, find it under Cancelled) and `e2e/display.spec.ts` are extra checks. Two display tests depend on the demo trains, which the local database cleanup removed, so they can fail on a changed database.
 
 ### Automated QA: one command, and every night on GitHub
 

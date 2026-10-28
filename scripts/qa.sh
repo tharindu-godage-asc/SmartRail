@@ -8,6 +8,8 @@
 #   ./scripts/qa.sh --e2e-only       only the browser flows (needs the stack; starts it if it is down)
 #   ./scripts/qa.sh --no-e2e         only the suites, no browser flows
 #   ./scripts/qa.sh --no-coverage    skip coverage in the suites
+#   ./scripts/qa.sh --no-reset       keep the test data after the browser flows (by default the database is reset to its initial state,
+#                                    which DELETES the local Compose data: ./scripts/reset-db.sh)
 #
 # Results: test-report/index.html (suites, from scripts/test-report.sh), web/ops/playwright-report/ and test-results/ (browser flows, with traces
 # of the failures), and test-report/qa-summary.txt (the table below). The same flows run on GitHub as the "qa" workflow (nightly and by hand).
@@ -15,14 +17,15 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-QUICK=0; COVERAGE=1; E2E=1; SUITES=1
+QUICK=0; COVERAGE=1; E2E=1; SUITES=1; RESET=1
 for arg in "$@"; do
   case "$arg" in
+    --no-reset) RESET=0 ;;
     --quick) QUICK=1 ;;
     --no-coverage) COVERAGE=0 ;;
     --no-e2e) E2E=0 ;;
     --e2e-only) SUITES=0 ;;
-    *) echo "Unknown option: $arg (use --quick, --e2e-only, --no-e2e, --no-coverage)"; exit 2 ;;
+    *) echo "Unknown option: $arg (use --quick, --e2e-only, --no-e2e, --no-coverage, --no-reset)"; exit 2 ;;
   esac
 done
 
@@ -66,6 +69,10 @@ if [[ $E2E == 1 ]]; then
   (cd web/ops && npx playwright install chromium >/dev/null 2>&1) || true
   # Playwright writes its HTML report to playwright-report/ and a traces folder for each failure.
   run_step "Browser flows: critical flows, timetable and controller (Playwright)" bash -c 'cd web/ops && QA=1 npm run e2e:qa'
+  # The flows leave test trains behind (reports are append-only), so put the database back to its initial state.
+  if [[ $RESET == 1 ]]; then
+    run_step "Reset the database to its initial state" ./scripts/reset-db.sh
+  fi
 fi
 
 # ---- the table ----
